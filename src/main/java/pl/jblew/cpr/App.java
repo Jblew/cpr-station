@@ -1,5 +1,7 @@
 package pl.jblew.cpr;
 
+import pl.jblew.cpr.bootstrap.Bootstrap;
+
 /**
  * Hello world!
  *
@@ -8,6 +10,7 @@ public class App
 {
     public static void main( String[] args )
     {
-        System.out.println( "Hello World!" );
+        Bootstrap b = new Bootstrap();
+        b.synchronousStart();
     }
 }
