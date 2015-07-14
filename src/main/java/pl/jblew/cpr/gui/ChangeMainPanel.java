@@ -5,13 +5,13 @@
  */
 package pl.jblew.cpr.gui;
 
-import javax.swing.JPanel;
+import pl.jblew.cpr.util.PrintableBusMessage;
 
 /**
  *
  * @author teofil
  */
-public class ChangeMainPanel {
+public class ChangeMainPanel implements PrintableBusMessage {
     
     private final MainPanel mainPanel;
 
@@ -23,4 +23,8 @@ public class ChangeMainPanel {
         return mainPanel;
     }
 
+    @Override
+    public String toString() {
+        return "ChangeMainPanel{" + "mainPanel=" + mainPanel + '}';
+    }
 }

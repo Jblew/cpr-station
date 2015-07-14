@@ -9,21 +9,16 @@ import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.net.URL;
 import javax.swing.BorderFactory;
-import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
-import javax.swing.border.EtchedBorder;
+import pl.jblew.cpr.db.DatabaseChanged;
 import pl.jblew.cpr.gui.panels.HomePanel;
 import pl.jblew.cpr.util.MessageToStatusBar;
-import pl.jblew.cpr.util.PrintableBusMessage;
 
 /**
  *
@@ -60,17 +55,21 @@ public class MainWindow {
 
     private class MainContentPane extends JPanel {
         private final JLabel statusBar;
-
+        private final JLabel dbLabel;
         private MainPanel mainPanel = new HomePanel();
 
         MainContentPane() {
-            statusBar = new JLabel("Loading...");
+            statusBar = new JLabel("Ładowanie...");
             statusBar.setBorder(BorderFactory.createLoweredBevelBorder());
 
-            //JToolBar toolBar = new JToolBar();
-            //JButton prevButton
+            dbLabel = new JLabel("Brak bazy danych, podłącz klucz z bazą");
+            dbLabel.setForeground(Color.RED);
+            
+            JToolBar toolBar = new JToolBar();
+            toolBar.add(dbLabel);
+            
             this.setLayout(new BorderLayout());
-            //this.add(toolBar, BorderLayout.NORTH);
+            this.add(toolBar, BorderLayout.NORTH);
             this.add(mainPanel, BorderLayout.CENTER);
             this.add(statusBar, BorderLayout.SOUTH);
         }
@@ -87,6 +86,11 @@ public class MainWindow {
 
                     mainPanel = newMainPanel;
                     mainPanel.activate();
+                    
+                    repaint();
+                    setVisible(false);
+                    setVisible(true);
+                    //frame.repaint();
                 }
             });
         }
@@ -109,6 +113,17 @@ public class MainWindow {
         @Subscribe
         public void changeMainPanel(ChangeMainPanel e) {
             setMainPanel(e.getMainPanel());
+        }
+        
+        @Subscribe
+        public void databaseChanged(final DatabaseChanged e) {
+            SwingUtilities.invokeLater(new Runnable() {
+                @Override
+                public void run() {
+                    dbLabel.setForeground((e.isNull()? Color.RED : Color.BLACK));
+                    dbLabel.setText("Baza danych: "+e.getDeviceName());
+                }
+            });
         }
     }
 }

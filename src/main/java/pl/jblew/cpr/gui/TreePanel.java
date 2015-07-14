@@ -81,7 +81,7 @@ public class TreePanel extends JPanel {
                 model.reload(root);
                 
                 TreePath devicesPath = new TreePath(devicesNode.getPath());
-                if(devicesNode.getChildCount() == 1) tree.expandPath(devicesPath);
+                tree.expandPath(devicesPath);
             }
         });
     }
@@ -136,10 +136,17 @@ public class TreePanel extends JPanel {
         tree_.addTreeSelectionListener(new TreeSelectionListener() {
             @Override
             public void valueChanged(TreeSelectionEvent e) {
-                TreePath devicesPath = new TreePath(devicesNode.getPath());
-                if(devicesPath.isDescendant(e.getPath()) && !devicesPath.equals(e.getPath())) {
-                    
+                Object selected = e.getPath().getLastPathComponent();
+                
+                if(selected instanceof SelectableIconTreeNode) {
+                    SelectableIconTreeNode selectableNode = (SelectableIconTreeNode) selected;
+                    selectableNode.nodeSelected(tree);
                 }
+                
+                //TreePath devicesPath = new TreePath(devicesNode.getPath());
+                //if(devicesPath.isDescendant(e.getPath()) && !devicesPath.equals(e.getPath())) {
+                //    
+                //}
                 
                 //if(devicesPath.isDescendant(devicesPath)) {
                 //    System.out.println("devicesNode is child of devicesNode");

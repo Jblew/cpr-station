@@ -7,6 +7,8 @@ package pl.jblew.cpr.bootstrap;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+import pl.jblew.cpr.db.DatabaseDetector;
+import pl.jblew.cpr.db.DatabaseManager;
 import pl.jblew.cpr.file.DeviceDetectorProcess;
 import pl.jblew.cpr.gui.GUI;
 import pl.jblew.cpr.util.MessageToStatusBar;
@@ -32,6 +34,12 @@ public class Bootstrap {
         DeviceDetectorProcess deviceDetectorProcess = new DeviceDetectorProcess(mainBus);
         deviceDetectorProcess.addStorageDevicePresenceListener(gui.getTreePanel().getDevicesNode());
         deviceDetectorProcess.start();
+        
+        DatabaseManager dbManager = new DatabaseManager(mainBus);
+        
+        DatabaseDetector dbDetector = new DatabaseDetector();
+        dbDetector.addDatabaseDetectedListener(dbManager);
+        deviceDetectorProcess.addStorageDevicePresenceListener(dbDetector);
         
         mainBus.post(new MessageToStatusBar("Czekam na polecenia", MessageToStatusBar.Type.INFO));
     }
