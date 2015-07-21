@@ -18,9 +18,9 @@ public class HomePanel extends MainPanel {
     public HomePanel() {
         setLayout(new BorderLayout());
         
-        PhotoBrowser photoBrowser = new PhotoBrowser(HomePanel.class.getClassLoader().getResource("images/welcome.jpg"));
-        photoBrowser.setScaleType(PhotoBrowser.ScaleType.FILL);
-        add(photoBrowser, BorderLayout.CENTER);
+        //PhotoBrowser photoBrowser = new PhotoBrowser(HomePanel.class.getClassLoader().getResource("images/welcome.jpg"));
+        //photoBrowser.setScaleType(PhotoBrowser.ScaleType.FILL);
+        //add(photoBrowser, BorderLayout.CENTER);
     }
     
     @Override

@@ -6,43 +6,82 @@
 package pl.jblew.cpr.gui;
 
 import com.google.common.eventbus.EventBus;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.UIManager.LookAndFeelInfo;
 import javax.swing.UnsupportedLookAndFeelException;
+import pl.jblew.cpr.bootstrap.Context;
+import pl.jblew.cpr.db.DatabaseManager;
 
 /**
  *
  * @author teofil
  */
 public class GUI {
-    private final MainWindow window;
-    private final TreePanel treePanel;
-    private final EventBus eBus;
+    private final BlockingQueue<Runnable> executeOnLoadQueue = new LinkedBlockingQueue<>();
+    private final AtomicReference<MainWindow> window = new AtomicReference<>();
+    private final AtomicReference<TreePanel> treePanel = new AtomicReference<>();
+    private final AtomicBoolean loaded = new AtomicBoolean(false);
+    private final Context context;
 
-    public GUI(EventBus eBus_) {
-        eBus = eBus_;
+    public GUI(Context context_) {
+        context = context_;
 
-        setLookAndFeel();
-
-        window = new MainWindow(eBus);
-
-        treePanel = new TreePanel(eBus);
-        window.addTreePane(treePanel);
-    }
-
-    public void start() {
         SwingUtilities.invokeLater(new Runnable() {
+            @Override
             public void run() {
-                window.show();
+                setLookAndFeel();
+
+                window.set(new MainWindow(context));
+
+                treePanel.set(new TreePanel(context));
+                window.get().addTreePane(treePanel.get());
+
+                loaded.set(true);
+                while (true) {
+                    Runnable r = executeOnLoadQueue.poll();
+                    if (r == null) {
+                        break;
+                    } else {
+                        new Thread(r).start();
+                    }
+                }
             }
         });
     }
 
+    public void start() {
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                window.get().show();
+            }
+        });
+    }
+
+    public void executeWhenLoaded(Runnable r) {
+        if (!loaded.get()) {
+            try {
+                executeOnLoadQueue.put(r);
+            } catch (InterruptedException ex) {
+            }
+        } else {
+            new Thread(r).start();
+        }
+    }
+
     public TreePanel getTreePanel() {
-        return treePanel;
+        TreePanel tp = treePanel.get();
+        if (tp == null) {
+            throw new RuntimeException("GUI not yet loaded! Cannot getTreePanel");
+        }
+        return tp;
     }
 
     private void setLookAndFeel() {

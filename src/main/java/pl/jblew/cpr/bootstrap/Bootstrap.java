@@ -7,6 +7,7 @@ package pl.jblew.cpr.bootstrap;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+import javax.swing.JFrame;
 import pl.jblew.cpr.db.DatabaseDetector;
 import pl.jblew.cpr.db.DatabaseManager;
 import pl.jblew.cpr.file.DeviceDetectorProcess;
@@ -27,15 +28,27 @@ public class Bootstrap {
                 System.out.println(e);
             }
         });
-
-        GUI gui = new GUI(mainBus);
-        gui.start();
-        
-        DeviceDetectorProcess deviceDetectorProcess = new DeviceDetectorProcess(mainBus);
-        deviceDetectorProcess.addStorageDevicePresenceListener(gui.getTreePanel().getDevicesNode());
-        deviceDetectorProcess.start();
         
         DatabaseManager dbManager = new DatabaseManager(mainBus);
+        
+        DeviceDetectorProcess deviceDetectorProcess = new DeviceDetectorProcess(mainBus);
+        
+        final Context context = new Context(mainBus, dbManager, deviceDetectorProcess, new JFrame());
+        
+        final GUI gui = new GUI(context);
+        gui.start();
+        
+        gui.executeWhenLoaded(new Runnable() {
+            @Override
+            public void run() {
+                context.deviceDetector.addStorageDevicePresenceListener(gui.getTreePanel().getDevicesNode());
+                context.deviceDetector.addStorageDevicePresenceListener(gui.getTreePanel().getCarriersNode());
+                context.deviceDetector.start();
+            }
+        
+        });
+        
+        
         
         DatabaseDetector dbDetector = new DatabaseDetector();
         dbDetector.addDatabaseDetectedListener(dbManager);

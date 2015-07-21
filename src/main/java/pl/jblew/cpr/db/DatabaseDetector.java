@@ -15,7 +15,8 @@ import pl.jblew.cpr.util.ListenersManager;
  * @author teofil
  */
 public class DatabaseDetector implements StorageDevicePresenceListener {
-    public static final String DF_FILE_NAME = "cpr-s-db.h2.h2.db";
+    public static final String DB_FILE_NAME = "cpr-s-db";
+    public static final String DB_FILE_EXTENSION = ".h2.db";
     private final ListenersManager<DatabaseDetectedListener> listenersManager = new ListenersManager<>();
 
     public DatabaseDetector() {
@@ -33,7 +34,8 @@ public class DatabaseDetector implements StorageDevicePresenceListener {
     @Override
     public void storageDeviceConnected(File root, final String deviceName) {
         if (root.isDirectory() && root.canRead()) {
-            final File potentialDbFile = new File(root.getAbsolutePath() + File.separator + DF_FILE_NAME);
+            final File potentialDbFile = new File(root.getAbsolutePath() + File.separator + DB_FILE_NAME+DB_FILE_EXTENSION);
+            final File potentialDbFileJDBCPath = new File(root.getAbsolutePath() + File.separator + DB_FILE_NAME);
             System.out.println("Checking for DB on "+potentialDbFile);
             
             if (potentialDbFile.exists()) {
@@ -43,7 +45,7 @@ public class DatabaseDetector implements StorageDevicePresenceListener {
                     listenersManager.callListeners(new ListenersManager.ListenerCaller<DatabaseDetectedListener>() {
                         @Override
                         public void callListener(DatabaseDetectedListener listener) {
-                            listener.databaseDetected(deviceName, potentialDbFile);
+                            listener.databaseDetected(deviceName, potentialDbFileJDBCPath);
                         }
 
                     });

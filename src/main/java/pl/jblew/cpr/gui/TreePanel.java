@@ -5,31 +5,31 @@
  */
 package pl.jblew.cpr.gui;
 
-import com.google.common.eventbus.EventBus;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.GridLayout;
-import java.io.File;
-import java.net.URL;
+import java.util.concurrent.atomic.AtomicBoolean;
+import javax.swing.BorderFactory;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTree;
+import javax.swing.SwingUtilities;
 import javax.swing.event.TreeExpansionEvent;
 import javax.swing.event.TreeExpansionListener;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
-import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeModel;
-import javax.swing.tree.MutableTreeNode;
-import javax.swing.tree.TreeCellRenderer;
-import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
-import pl.jblew.cpr.file.StorageDevicePresenceListener;
+import pl.jblew.cpr.bootstrap.Context;
+import pl.jblew.cpr.gui.treenodes.CarriersNode;
 import pl.jblew.cpr.gui.treenodes.DevicesNode;
+import pl.jblew.cpr.gui.treenodes.EventsNode;
 import pl.jblew.cpr.gui.treenodes.NodeChangeListener;
+import pl.jblew.cpr.logic.Event;
 
 /**
  *
@@ -39,20 +39,18 @@ public class TreePanel extends JPanel {
     private final JScrollPane scrollPane;
     private final JTree tree;
     private final DevicesNode devicesNode;
-    private final DefaultMutableTreeNode carriersNode;
-    private final DefaultMutableTreeNode sortedPhotosNode;
-    private final DefaultMutableTreeNode unsortedPhotosNode;
+    private final CarriersNode carriersNode;
+    private final EventsNode sortedPhotosNode;
+    private final EventsNode unsortedPhotosNode;
+    //private final ExecutorService loadingExecutor = Executors.newSingleThreadExecutor();
 
-    public TreePanel(EventBus eBus) {
+    public TreePanel(Context context) {
         DefaultMutableTreeNode top = new DefaultMutableTreeNode("CPR-station");
 
-        devicesNode = new DevicesNode(eBus);
-        carriersNode = new IconTreeNode("Wszystkie nośniki",
-                new ImageIcon(TreePanel.class.getClassLoader().getResource("images/carriers.png")));
-        sortedPhotosNode = new IconTreeNode("Posegregowane",
-                new ImageIcon(TreePanel.class.getClassLoader().getResource("images/sorted-photos.png")));
-        unsortedPhotosNode = new IconTreeNode("Nieposegregowane",
-                new ImageIcon(TreePanel.class.getClassLoader().getResource("images/unsorted-photos.png")));
+        devicesNode = new DevicesNode(context);
+        carriersNode = new CarriersNode(context.dbManager, context.eBus);
+        sortedPhotosNode = new EventsNode(context, Event.Type.SORTED);
+        unsortedPhotosNode = new EventsNode(context, Event.Type.UNSORTED);
 
         addMainNodesAndListeners(top);
 
@@ -66,28 +64,56 @@ public class TreePanel extends JPanel {
 
         setLayout(new GridLayout(1, 1));
         add(scrollPane);
+
+        tree.expandPath(new TreePath(devicesNode.getPath()));
+        tree.expandPath(new TreePath(unsortedPhotosNode.getPath()));
+        tree.expandPath(new TreePath(carriersNode.getPath()));
+        tree.expandPath(new TreePath(sortedPhotosNode.getPath()));
+        
     }
 
     private void addMainNodesAndListeners(DefaultMutableTreeNode top) {
         top.add(devicesNode);
+        top.add(unsortedPhotosNode);
         top.add(carriersNode);
         top.add(sortedPhotosNode);
-        top.add(unsortedPhotosNode);
-        devicesNode.addNodeChangeListener(new NodeChangeListener() {
+        
+        
+
+        NodeChangeListener nodeChangeListener = new NodeChangeListener() {
             @Override
             public void nodeChanged(DefaultMutableTreeNode node) {
                 DefaultTreeModel model = (DefaultTreeModel) tree.getModel();
                 DefaultMutableTreeNode root = (DefaultMutableTreeNode) model.getRoot();
-                model.reload(root);
-                
-                TreePath devicesPath = new TreePath(devicesNode.getPath());
-                tree.expandPath(devicesPath);
+                model.reload(node);
+
+                SwingUtilities.invokeLater(new Runnable() {
+                    @Override
+                    public void run() {
+                        tree.expandPath(new TreePath(devicesNode.getPath()));
+                        tree.expandPath(new TreePath(unsortedPhotosNode.getPath()));
+                        tree.expandPath(new TreePath(carriersNode.getPath()));
+                        tree.expandPath(new TreePath(sortedPhotosNode.getPath()));
+                        tree.revalidate();
+                        revalidate();
+                        repaint();
+                    }
+                });
             }
-        });
+        };
+
+        devicesNode.addNodeChangeListener(nodeChangeListener);
+        carriersNode.addNodeChangeListener(nodeChangeListener);
+        sortedPhotosNode.addNodeChangeListener(nodeChangeListener);
+        unsortedPhotosNode.addNodeChangeListener(nodeChangeListener);
     }
-    
+
     public DevicesNode getDevicesNode() {
         return devicesNode;
+    }
+
+    public CarriersNode getCarriersNode() {
+        return carriersNode;
     }
 
     private void setTreeRenderer(JTree tree) {
@@ -99,12 +125,21 @@ public class TreePanel extends JPanel {
 
                 if (node instanceof IconTreeNode) {
                     setIcon(((IconTreeNode) node).getIcon());
+                    if (!((IconTreeNode) node).isActive()) {
+                        this.setForeground(Color.GRAY);
+                    }
                 } else if (tree.getModel().getRoot().equals(node)) {
                     setIcon(TreeIcons.ROOT.getIcon());
                 } else if (node.getChildCount() > 0) {
                     setIcon(TreeIcons.PARENT.getIcon());
                 } else {
                     setIcon(TreeIcons.LEAF.getIcon());
+                }
+
+                if (node instanceof AddTopMargin) {
+                    setBorder(BorderFactory.createEmptyBorder(15, 0, 0, 0));
+                } else {
+                    setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
                 }
 
                 return this;
@@ -117,13 +152,13 @@ public class TreePanel extends JPanel {
         tree_.addTreeExpansionListener(new TreeExpansionListener() {
             @Override
             public void treeExpanded(TreeExpansionEvent event) {
-                
+
             }
 
             @Override
             public void treeCollapsed(TreeExpansionEvent event) {
                 //System.out.println("Collapsed path count: "+);
-                if(event.getPath().getPathCount() == 2) {
+                if (event.getPath().getPathCount() == 2) {
                     tree_.expandPath(event.getPath());
                 }
 
@@ -132,22 +167,21 @@ public class TreePanel extends JPanel {
                 //}
             }
         });
-        
+
         tree_.addTreeSelectionListener(new TreeSelectionListener() {
             @Override
             public void valueChanged(TreeSelectionEvent e) {
                 Object selected = e.getPath().getLastPathComponent();
-                
-                if(selected instanceof SelectableIconTreeNode) {
+
+                if (selected instanceof SelectableIconTreeNode) {
                     SelectableIconTreeNode selectableNode = (SelectableIconTreeNode) selected;
                     selectableNode.nodeSelected(tree);
                 }
-                
+
                 //TreePath devicesPath = new TreePath(devicesNode.getPath());
                 //if(devicesPath.isDescendant(e.getPath()) && !devicesPath.equals(e.getPath())) {
                 //    
                 //}
-                
                 //if(devicesPath.isDescendant(devicesPath)) {
                 //    System.out.println("devicesNode is child of devicesNode");
                 //}
@@ -183,6 +217,7 @@ public class TreePanel extends JPanel {
 
     public static class IconTreeNode extends DefaultMutableTreeNode {
         private final Icon icon;
+        private final AtomicBoolean active = new AtomicBoolean(true);
 
         public IconTreeNode(String text, Icon icon_) {
             super(text);
@@ -193,14 +228,25 @@ public class TreePanel extends JPanel {
         public Icon getIcon() {
             return icon;
         }
+
+        public boolean isActive() {
+            return active.get();
+        }
+
+        public void setActive(boolean active_) {
+            active.set(active_);
+        }
     }
-    
+
     public static abstract class SelectableIconTreeNode extends IconTreeNode {
 
         public SelectableIconTreeNode(String text, Icon icon_) {
             super(text, icon_);
         }
-        
+
         public abstract void nodeSelected(JTree tree);
+    }
+
+    public static interface AddTopMargin {
     }
 }

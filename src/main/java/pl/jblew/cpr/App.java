@@ -1,16 +1,16 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
 package pl.jblew.cpr;
 
-import pl.jblew.cpr.bootstrap.Bootstrap;
-
 /**
- * Hello world!
  *
+ * @author teofil
  */
-public class App 
-{
-    public static void main( String[] args )
-    {
-        Bootstrap b = new Bootstrap();
-        b.synchronousStart();
+public class App {
+    public static void main(String [] args) {
+        CPRStation.main(args);
     }
 }

@@ -7,15 +7,17 @@ package pl.jblew.cpr.file;
 
 import com.google.common.eventbus.EventBus;
 import java.io.File;
-import java.nio.file.FileSystems;
-import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import net.samuelcampos.usbdrivedectector.USBDeviceDetectorManager;
 import net.samuelcampos.usbdrivedectector.USBStorageDevice;
 import net.samuelcampos.usbdrivedectector.events.DeviceEventType;
 import net.samuelcampos.usbdrivedectector.events.IUSBDriveListener;
 import net.samuelcampos.usbdrivedectector.events.USBStorageEvent;
-import pl.jblew.cpr.util.MessageToStatusBar;
+import pl.jblew.cpr.util.TwoTuple;
 
 /**
  *
@@ -23,40 +25,62 @@ import pl.jblew.cpr.util.MessageToStatusBar;
  */
 public class DeviceDetectorProcess {
     private final EventBus eBus;
-    private final ArrayList<StorageDevicePresenceListener> listeners = new ArrayList<StorageDevicePresenceListener>();
+    private final ArrayList<StorageDevicePresenceListener> listeners = new ArrayList<>();
+    private final Map<String, File> devices = new HashMap<>();
 
     public DeviceDetectorProcess(EventBus eBus_) {
         eBus = eBus_;
     }
 
     public void start() {
-        USBDeviceDetectorManager detectorManager = new USBDeviceDetectorManager(2 * 1000);
-        for (USBStorageDevice device : detectorManager.getRemovableDevices()) {
-            System.out.println("USB device detected: \"" + device.getDeviceName() + "\". Writable: " + device.getRootDirectory().canWrite());
-            StorageDevicePresenceListener[] tmpList;
-            synchronized (listeners) {
-                tmpList = listeners.toArray(new StorageDevicePresenceListener[]{});
-            }
-            for (StorageDevicePresenceListener listener : tmpList) {
-                listener.storageDeviceConnected(device.getRootDirectory(), device.getDeviceName());
-            }
-        }
-        detectorManager.addDriveListener(new IUSBDriveListener() {
+        new Thread(new Runnable() {
             @Override
-            public void usbDriveEvent(USBStorageEvent usbse) {
-                StorageDevicePresenceListener[] tmpList;
-                synchronized (listeners) {
-                    tmpList = listeners.toArray(new StorageDevicePresenceListener[]{});
-                }
-                for (StorageDevicePresenceListener listener : tmpList) {
-                    if (usbse.getEventType() == DeviceEventType.CONNECTED) {
-                        listener.storageDeviceConnected(usbse.getStorageDevice().getRootDirectory(), usbse.getStorageDevice().getDeviceName());
-                    } else if (usbse.getEventType() == DeviceEventType.REMOVED) {
-                        listener.storageDeviceDisconnected(usbse.getStorageDevice().getRootDirectory(), usbse.getStorageDevice().getDeviceName());
+            public void run() {
+
+                USBDeviceDetectorManager detectorManager = new USBDeviceDetectorManager(2 * 1000);
+                for (USBStorageDevice device : detectorManager.getRemovableDevices()) {
+                    System.out.println("USB device detected: \"" + device.getDeviceName() + "\". Writable: " + device.getRootDirectory().canWrite());
+                    
+                    synchronized(devices) {
+                        devices.put(device.getDeviceName(), device.getRootDirectory());
+                    }
+                    
+                    StorageDevicePresenceListener[] tmpList;
+                    synchronized (listeners) {
+                        tmpList = listeners.toArray(new StorageDevicePresenceListener[]{});
+                    }
+                    for (StorageDevicePresenceListener listener : tmpList) {
+                        listener.storageDeviceConnected(device.getRootDirectory(), device.getDeviceName());
                     }
                 }
+                detectorManager.addDriveListener(new IUSBDriveListener() {
+                    @Override
+                    public void usbDriveEvent(USBStorageEvent usbse) {
+                        StorageDevicePresenceListener[] tmpList;
+                        
+                        synchronized(devices) {
+                            if (usbse.getEventType() == DeviceEventType.CONNECTED) {
+                                devices.put(usbse.getStorageDevice().getDeviceName(), usbse.getStorageDevice().getRootDirectory());
+                            } else if (usbse.getEventType() == DeviceEventType.REMOVED) {
+                                devices.remove(usbse.getStorageDevice().getDeviceName());
+                            }
+                            
+                        }
+                        
+                        synchronized (listeners) {
+                            tmpList = listeners.toArray(new StorageDevicePresenceListener[]{});
+                        }
+                        for (StorageDevicePresenceListener listener : tmpList) {
+                            if (usbse.getEventType() == DeviceEventType.CONNECTED) {
+                                listener.storageDeviceConnected(usbse.getStorageDevice().getRootDirectory(), usbse.getStorageDevice().getDeviceName());
+                            } else if (usbse.getEventType() == DeviceEventType.REMOVED) {
+                                listener.storageDeviceDisconnected(usbse.getStorageDevice().getRootDirectory(), usbse.getStorageDevice().getDeviceName());
+                            }
+                        }
+                    }
+                });
             }
-        });
+        }).start();
         /*File[] roots = File.listRoots();
 
          if (roots == null) {
@@ -82,5 +106,18 @@ public class DeviceDetectorProcess {
 
     public void stop() {
 
+    }
+    
+    public List<TwoTuple<String, File>> getConnectedDevices() {
+        synchronized(devices) {
+            List<TwoTuple<String, File>> out = new LinkedList<>();
+            
+            for(String deviceName : devices.keySet()) {
+                File rootFile = devices.get(deviceName);
+                out.add(new TwoTuple<>(deviceName, rootFile));
+            }
+            
+            return out;
+        }
     }
 }

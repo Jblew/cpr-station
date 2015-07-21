@@ -13,9 +13,11 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
 import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
+import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.db.DatabaseChanged;
 import pl.jblew.cpr.gui.panels.HomePanel;
 import pl.jblew.cpr.util.MessageToStatusBar;
@@ -25,31 +27,33 @@ import pl.jblew.cpr.util.MessageToStatusBar;
  * @author teofil
  */
 public class MainWindow {
-    private final EventBus eBus;
+    private final Context context;
     private final JFrame frame;
     private final MainContentPane mainContentPane;
 
-    public MainWindow(EventBus eBus_) {
-        eBus = eBus_;
+    public MainWindow(Context context_) {
+        context = context_;
 
         mainContentPane = new MainContentPane();
-        eBus.register(mainContentPane);
+        context.eBus.register(mainContentPane);
 
-        frame = new JFrame();
+        frame = context.frame;
         frame.setSize(800, 600);
-        frame.setContentPane(mainContentPane);
+        
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        
+        frame.setContentPane(mainContentPane);
     }
 
     public void show() {
         frame.setVisible(true);
     }
 
-    public void setMainPanel(MainPanel newMainPanel) {
-        mainContentPane.setMainPanel(newMainPanel);
-    }
+    //public void setMainPanel(MainPanel newMainPanel) {
+    //    mainContentPane.setMainPanel(newMainPanel);
+    //}
 
-    public void addTreePane(JPanel treePane) {
+    void addTreePane(JPanel treePane) {
         mainContentPane.add(treePane, BorderLayout.WEST);
     }
 

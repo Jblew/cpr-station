@@ -14,12 +14,14 @@ import javax.swing.ImageIcon;
 import javax.swing.JTree;
 import javax.swing.SwingUtilities;
 import javax.swing.tree.MutableTreeNode;
+import pl.jblew.cpr.bootstrap.Context;
+import pl.jblew.cpr.db.DatabaseManager;
 import pl.jblew.cpr.file.StorageDevicePresenceListener;
 import pl.jblew.cpr.gui.ChangeMainPanel;
 import pl.jblew.cpr.gui.TreePanel;
 import pl.jblew.cpr.gui.TreePanel.IconTreeNode;
 import pl.jblew.cpr.gui.TreePanel.SelectableIconTreeNode;
-import pl.jblew.cpr.gui.panels.CarrierPanel;
+import pl.jblew.cpr.gui.panels.DevicePanel;
 import pl.jblew.cpr.util.ListenersManager;
 
 /**
@@ -27,15 +29,32 @@ import pl.jblew.cpr.util.ListenersManager;
  * @author teofil
  */
 public class DevicesNode extends IconTreeNode implements StorageDevicePresenceListener {
+    private final Context context;
     private final Map<String, MutableTreeNode> devices = new HashMap<String, MutableTreeNode>();
     private final ListenersManager<NodeChangeListener> listenersManager = new ListenersManager<>();
     private final DevicesNode me = this;
-    private final EventBus eBus;
 
-    public DevicesNode(EventBus eBus_) {
+    public DevicesNode(Context context_) {
         super("Urządzenia", new ImageIcon(TreePanel.class.getClassLoader().getResource("images/devices.png")));
+        this.context = context_;
 
-        eBus = eBus_;
+        final File homeFile = new File(System.getProperty("user.home"));
+        if (homeFile.exists()) {
+            MutableTreeNode node = new SelectableIconTreeNode("Katalog domowy", new ImageIcon(TreePanel.class.getClassLoader().getResource("images/pc16.gif"))) {
+                @Override
+                public void nodeSelected(JTree tree) {
+                    SwingUtilities.invokeLater(new Runnable() {
+                        @Override
+                        public void run() {
+                            context.eBus.post(new ChangeMainPanel(new DevicePanel(context, "Katalog domowy", homeFile)));
+                        }
+                    });
+                }
+            };
+            add(node);
+            devices.put(homeFile.getPath(), node);
+            fireNodeChanged();
+        }
     }
 
     public void addNodeChangeListener(NodeChangeListener l) {
@@ -59,7 +78,7 @@ public class DevicesNode extends IconTreeNode implements StorageDevicePresenceLi
                             SwingUtilities.invokeLater(new Runnable() {
                                 @Override
                                 public void run() {
-                                    eBus.post(new ChangeMainPanel(new CarrierPanel(deviceName, rootFile)));
+                                    context.eBus.post(new ChangeMainPanel(new DevicePanel(context, deviceName, rootFile)));
                                 }
                             });
                         }

@@ -17,7 +17,20 @@ import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FilenameFilter;
+import java.io.IOException;
+import java.net.URLConnection;
+import java.util.Arrays;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.activation.MimetypesFileTypeMap;
+import javax.imageio.ImageIO;
 import javax.swing.border.BevelBorder;
 
 /**
@@ -84,7 +97,7 @@ public class FileBrowser extends JPanel {
         browsingPanel.selectionStart = -1;
         browsingPanel.selectionEnd = -1;
     }
-    
+
     public void addComponentToToolPanel(JComponent c) {
         toolPanel.add(c);
     }
@@ -100,11 +113,18 @@ public class FileBrowser extends JPanel {
         private int filesY;
         private int selectionStart = -1;
         private int selectionEnd = -1;
+        private final ExecutorService thumbnailLoaderExecutor = Executors.newSingleThreadExecutor();
+        private final AtomicBoolean loadingThumbnails = new AtomicBoolean(false);
+        private final AtomicBoolean reloadThumbnails = new AtomicBoolean(false);
+        private final Lock dataLock = new ReentrantLock();
+        private final MimetypesFileTypeMap mimetypesMap = new MimetypesFileTypeMap();
 
         public BrowsingPanel() {
             setBackground(Color.WHITE);
             setBorder(BorderFactory.createEmptyBorder());
             //setPreferredSize(new Dimension(0, 100));
+
+            mimetypesMap.addMimeTypes("image png tif jpg jpeg bmp");
 
             defaultImage = new ImageIcon(getClass().getClassLoader().getResource("images/defaultThumbnail.gif"));
             dirImage = new ImageIcon(getClass().getClassLoader().getResource("images/directoryThumbnail.gif"));
@@ -131,38 +151,54 @@ public class FileBrowser extends JPanel {
             int stopRow = Math.min(filesY, (int) Math.ceil((float) (bounds.getY() + bounds.getHeight()) / (float) ITEM_SIZE));
             int fileNum = startRow * filesX;
 
+            File[] childrenSafe;
+            dataLock.lock();
+            try {
+                childrenSafe = Arrays.copyOf(children, children.length);
+            } finally {
+                dataLock.unlock();
+            }
             for (int iY = startRow; iY < stopRow; iY++) {
                 for (int iX = 0; iX < filesX; iX++) {
-                    int boxStartX = iX * ITEM_SIZE;
-                    int boxStartY = iY * ITEM_SIZE;
+                    if (fileNum < childrenSafe.length) {
+                        int boxStartX = iX * ITEM_SIZE;
+                        int boxStartY = iY * ITEM_SIZE;
 
-                    g.setColor(Color.LIGHT_GRAY);
-                    g.drawRect(boxStartX + 5, boxStartY + 5, ITEM_SIZE - 10, ITEM_SIZE - 10);
+                        g.setColor(Color.LIGHT_GRAY);
+                        g.drawRect(boxStartX + 5, boxStartY + 5, ITEM_SIZE - 10, ITEM_SIZE - 10);
 
-                    if (fileNum >= selectionStart && fileNum <= selectionEnd) {
-                        g.setColor(Color.BLUE.brighter());
-                        g.fillRect(boxStartX + 5, boxStartY + 5, ITEM_SIZE - 10, ITEM_SIZE - 10);
+                        if (fileNum >= selectionStart && fileNum <= selectionEnd) {
+                            g.setColor(Color.BLUE.brighter());
+                            g.fillRect(boxStartX + 5, boxStartY + 5, ITEM_SIZE - 10, ITEM_SIZE - 10);
+                        }
+                        if (childrenSafe[fileNum].isDirectory()) {
+                            g.drawImage(dirImg, boxStartX + ITEM_SIZE / 2 - 64, boxStartY + ITEM_SIZE / 2 - 64, null);
+                        } else if (thumbnails[fileNum] != null) {
+                            g.drawImage(thumbnails[fileNum], boxStartX + ITEM_SIZE / 2 - 64, boxStartY + ITEM_SIZE / 2 - 64, null);
+                        } else {
+                            g.drawImage(defImg, boxStartX + ITEM_SIZE / 2 - 64, boxStartY + ITEM_SIZE / 2 - 64, null);
+                        }
+                        String name = childrenSafe[fileNum].getName();
+                        if (name.length() > maxChars - 1) {
+                            name = name.substring(0, maxChars - 1) + "...";
+                        }
+
+                        int nameLen = (int) fontMetrics.stringWidth(name);
+                        g.setColor(Color.BLACK);
+                        g.drawString(name, boxStartX + ITEM_SIZE / 2 - nameLen / 2, boxStartY + ITEM_SIZE - 13);
+                        fileNum++;
+                    } else {
+                        break;
                     }
-
-                    if(children[fileNum].isDirectory()) g.drawImage(dirImg, boxStartX + ITEM_SIZE / 2 - 64, boxStartY + ITEM_SIZE / 2 - 64, null);
-                    else g.drawImage(defImg, boxStartX + ITEM_SIZE / 2 - 64, boxStartY + ITEM_SIZE / 2 - 64, null);
-                    String name = children[fileNum].getName();
-                    if (name.length() > maxChars - 1) {
-                        name = name.substring(0, maxChars - 1) + "...";
-                    }
-
-                    int nameLen = (int) fontMetrics.stringWidth(name);
-                    g.setColor(Color.BLACK);
-                    g.drawString(name, boxStartX + ITEM_SIZE / 2 - nameLen / 2, boxStartY + ITEM_SIZE - 13);
-                    fileNum++;
                 }
             }
+
         }
 
         private void resized() {
             int numOfFiles = children.length;
             filesX = (int) Math.floor((float) getWidth() / (float) ITEM_SIZE);
-            filesY = (int) Math.floor((float) numOfFiles / (float) filesX);
+            filesY = (int) Math.ceil((float) numOfFiles / (float) filesX);
             int height = filesY * ITEM_SIZE;
             if (scrollPane != null) {
                 this.setPreferredSize(new Dimension(scrollPane.getViewport().getWidth(), height));
@@ -225,31 +261,38 @@ public class FileBrowser extends JPanel {
                     SwingUtilities.invokeLater(new Runnable() {
                         @Override
                         public void run() {
-                            int x = (int) Math.floor((float) e.getX() / (float) ITEM_SIZE);
-                            int y = (int) Math.floor((float) e.getY() / (float) ITEM_SIZE);
-                            int numOfFile = y * filesX + x;
-                            File selected = children[numOfFile];
-                            if (e.getButton() == MouseEvent.BUTTON1) {
-                                if (e.getClickCount() == 2) {
-                                    if (selected.isDirectory() && selected.canRead()) {
-                                        cwd.set(selected);
-                                        dirNameLabel.setText("/" + root.toPath().relativize(cwd.get().toPath()).toString());
-                                        browsingPanel.selectionStart = -1;
-                                        browsingPanel.selectionEnd = -1;
-                                        reloadFiles();
+                            dataLock.lock();
+                            try {
+                                int x = (int) Math.floor((float) e.getX() / (float) ITEM_SIZE);
+                                int y = (int) Math.floor((float) e.getY() / (float) ITEM_SIZE);
+                                int numOfFile = y * filesX + x;
+                                if (numOfFile < children.length) {
+                                    File selected = children[numOfFile];
+                                    if (e.getButton() == MouseEvent.BUTTON1) {
+                                        if (e.getClickCount() == 2) {
+                                            if (selected.isDirectory() && selected.canRead()) {
+                                                cwd.set(selected);
+                                                dirNameLabel.setText("/" + root.toPath().relativize(cwd.get().toPath()).toString());
+                                                browsingPanel.selectionStart = -1;
+                                                browsingPanel.selectionEnd = -1;
+                                                reloadFiles();
+                                            }
+                                        } else {
+                                            if (e.getModifiersEx() == InputEvent.SHIFT_DOWN_MASK) {
+                                                selectionEnd = numOfFile;
+                                            } else {
+                                                selectionStart = numOfFile;
+                                                selectionEnd = numOfFile;
+                                            }
+                                            repaint();
+                                        }
+                                    } else if (e.getButton() == MouseEvent.BUTTON3) {
+                                        preparePopup(children[numOfFile]);
+                                        popupMenu.show(e.getComponent(), e.getX(), e.getY());
                                     }
-                                } else {
-                                    if (e.getModifiersEx() == InputEvent.SHIFT_DOWN_MASK) {
-                                        selectionEnd = numOfFile;
-                                    } else {
-                                        selectionStart = numOfFile;
-                                        selectionEnd = numOfFile;
-                                    }
-                                    repaint();
                                 }
-                            } else if (e.getButton() == MouseEvent.BUTTON3) {
-                                preparePopup(children[numOfFile]);
-                                popupMenu.show(e.getComponent(), e.getX(), e.getY());
+                            } finally {
+                                dataLock.unlock();
                             }
                         }
                     });
@@ -295,9 +338,100 @@ public class FileBrowser extends JPanel {
                     repaint();
                 }
             });
+
+            reloadThumbnails();
+        }
+
+        private void reloadThumbnails() {
+            if (loadingThumbnails.get()) {
+                reloadThumbnails.set(true);
+            } else {
+                thumbnailLoaderExecutor.submit(new Runnable() {
+                    @Override
+                    public void run() {
+                        loadingThumbnails.set(true);
+                        reloadThumbnails.set(true);//in order to load them first
+
+                        File[] childrenSafe = new File[0];
+
+                        int fileNum = 0;
+                        int loadedImg = 0;
+                        while (true) {
+                            if (reloadThumbnails.get()) {
+                                fileNum = 0;
+                                loadedImg = 0;
+                                reloadThumbnails.set(false);
+
+                                dataLock.lock();
+                                try {
+                                    childrenSafe = Arrays.copyOf(children, children.length);
+                                    thumbnails = new Image[childrenSafe.length];
+                                } finally {
+                                    dataLock.unlock();
+                                }
+                            }
+
+                            if (fileNum < childrenSafe.length) {
+                                try {
+                                    String type = mimetypesMap.getContentType(childrenSafe[fileNum].getName());
+                                    boolean isImage = type.equals("image");
+                                    if (isImage) {
+                                        BufferedImage loadedImage = ImageIO.read(childrenSafe[fileNum]);
+                                        int newWidth = 0;
+                                        int newHeight = 0;
+                                        if (loadedImage.getWidth() > loadedImage.getHeight()) {
+                                            newWidth = 128;
+                                            newHeight = (int) Math.floor(128f * (float) loadedImage.getHeight() / (float) loadedImage.getWidth());
+                                        } else {
+                                            newHeight = 128;
+                                            newWidth = (int) Math.floor(128f * (float) loadedImage.getWidth() / (float) loadedImage.getHeight());
+                                        }
+                                        dataLock.lock();
+                                        try {
+                                            thumbnails[fileNum] = loadedImage.getScaledInstance(newWidth, newHeight, Image.SCALE_FAST);
+                                        } finally {
+                                            dataLock.unlock();
+                                        }
+                                        loadedImg++;
+                                        if (loadedImg % 3 == 0) {
+                                            SwingUtilities.invokeLater(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    repaint();
+                                                }
+                                            });
+                                        }
+                                    }
+                                } catch (IOException ex) {
+                                    Logger.getLogger(FileBrowser.class.getName()).log(Level.SEVERE, null, ex);
+                                }
+                                fileNum++;
+                            } else {
+                                break;
+                            }
+
+                            if (Thread.interrupted()) {
+                                break;
+                            }
+                            if (!loadingThumbnails.get()) {
+                                break;
+                            }
+                        }
+                        SwingUtilities.invokeLater(new Runnable() {
+                            @Override
+                            public void run() {
+                                repaint();
+                            }
+                        });
+                        loadingThumbnails.set(false);
+                    }
+                });
+            }
         }
 
         private void inactivate() {
+            loadingThumbnails.set(false);
+            thumbnailLoaderExecutor.shutdown();
         }
     }
 
