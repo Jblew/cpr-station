@@ -50,6 +50,7 @@ public class DevicePanel extends MainPanel {
         this.context = context_;
         this.deviceName = deviceName;
         this.root = root_;
+        this.browser = new SwingFileBrowser(root);
 
         System.out.println("Changing main panel");
 
@@ -86,37 +87,30 @@ public class DevicePanel extends MainPanel {
             createStructureButton.setEnabled(false);
         }
 
-        createStructureButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                try {
-                    CarrierMaker.makeCarrier(context, deviceName, root);
-
-                    SwingUtilities.invokeLater(new Runnable() {
-                        @Override
-                        public void run() {
-                            createStructureButton.setEnabled(false);
-                            createStructureButton.setForeground(Color.GREEN.darker());
-                            browser.changeCWD(browser.getCWD());
-                        }
-                    });
-                } catch (CarrierMaker.CannotCreateFileStructureException ex) {
+        createStructureButton.addActionListener((ActionEvent e) -> {
+            try {
+                CarrierMaker.makeCarrier(context, deviceName, root);
+                SwingUtilities.invokeLater(() -> {
                     createStructureButton.setEnabled(false);
-                    createStructureButton.setForeground(Color.RED);
-                    createStructureButton.setText("Nie można stworzyć struktury plików");
-                } catch (CarrierMaker.CarrierNotWritableException ex) {
-                    createStructureButton.setEnabled(false);
-                    createStructureButton.setForeground(Color.RED);
-                    createStructureButton.setText("Urządzenie nie jest zapisywalne");
-                } catch (CarrierMaker.NotConnectedToDatabaseException ex) {
-                    createStructureButton.setEnabled(false);
-                    createStructureButton.setForeground(Color.RED);
-                    createStructureButton.setText("Nie połączono z bazą danych");
-                } catch (CarrierMaker.CannotSaveCarrierToDatabase ex) {
+                    createStructureButton.setForeground(Color.GREEN.darker());
+                    browser.changeCWD(browser.getCWD());
+                });
+            }catch (CarrierMaker.CannotCreateFileStructureException ex) {
+                createStructureButton.setEnabled(false);
+                createStructureButton.setForeground(Color.RED);
+                createStructureButton.setText("Nie można stworzyć struktury plików");
+            }catch (CarrierMaker.CarrierNotWritableException ex) {
+                createStructureButton.setEnabled(false);
+                createStructureButton.setForeground(Color.RED);
+                createStructureButton.setText("Urządzenie nie jest zapisywalne");
+            }catch (CarrierMaker.NotConnectedToDatabaseException ex) {
+                createStructureButton.setEnabled(false);
+                createStructureButton.setForeground(Color.RED);
+                createStructureButton.setText("Nie połączono z bazą danych");
+            }catch (CarrierMaker.CannotSaveCarrierToDatabase ex) {
                     createStructureButton.setEnabled(false);
                     createStructureButton.setForeground(Color.RED);
                     createStructureButton.setText("Nie można zapisać do bazy danych");
-                }
             }
         });
 
@@ -125,14 +119,11 @@ public class DevicePanel extends MainPanel {
             createDbButton.setEnabled(false);
             createDbButton.setToolTipText("Najpierw odłącz poprzednią bazę");
         } else {
-            createDbButton.addActionListener(new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    context.dbManager.createAndConnect(root, deviceName);
-                    if (context.dbManager.isConnected()) {
-                        createDbButton.setEnabled(false);
-                        createDbButton.setForeground(Color.GREEN.darker());
-                    }
+            createDbButton.addActionListener((ActionEvent e) -> {
+                context.dbManager.createAndConnect(root, deviceName);
+                if (context.dbManager.isConnected()) {
+                    createDbButton.setEnabled(false);
+                    createDbButton.setForeground(Color.GREEN.darker());
                 }
             });
         }
@@ -157,38 +148,22 @@ public class DevicePanel extends MainPanel {
         add(northPanel, BorderLayout.NORTH);
 
         JButton importSelectedButton = new JButton("Importuj zaznaczone");
-        importSelectedButton.addActionListener(new ActionListener() {
-
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                SwingUtilities.invokeLater(new Runnable() {
-                    @Override
-                    public void run() {
-                        File[] selectedFiles = browser.getSelectedFiles();
-                        if (selectedFiles.length > 0) {
-                            context.eBus.post(new ChangeMainPanel(new ImportPanel(context, selectedFiles, deviceName, root)));
-                        }
-                    }
-                });
-
-            }
+        importSelectedButton.addActionListener((ActionEvent e) -> {
+            SwingUtilities.invokeLater(() -> {
+                File[] selectedFiles = browser.getSelectedFiles();
+                if (selectedFiles.length > 0) {
+                    context.eBus.post(new ChangeMainPanel(new ImportPanel(context, selectedFiles, deviceName, root)));
+                }
+            });
         });
         JButton importDirButton = new JButton("Importuj katalog i podkatalogi");
-        importDirButton.addActionListener(new ActionListener() {
-
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                SwingUtilities.invokeLater(new Runnable() {
-                    @Override
-                    public void run() {
-                        context.eBus.post(new ChangeMainPanel(new ImportPanel(context, new File[]{browser.getCWD()}, deviceName, root)));
-                    }
-                });
-
-            }
+        importDirButton.addActionListener((ActionEvent e) -> {
+            SwingUtilities.invokeLater(() -> {
+                context.eBus.post(new ChangeMainPanel(new ImportPanel(context, new File[]{browser.getCWD()}, deviceName, root)));
+            });
         });
 
-        browser = new SwingFileBrowser(root);
+        
         browser.addComponentToToolPanel(importSelectedButton);
         browser.addComponentToToolPanel(importDirButton);
 
@@ -234,63 +209,46 @@ public class DevicePanel extends MainPanel {
     }
 
     private void updateFreeSpaceAsync() {
-        freeSpaceUpdateExecutor.submit(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    long totalSpaceB = root.getTotalSpace();
-                    long freeSpaceB = root.getUsableSpace();
-                    long usedSpaceB = totalSpaceB - freeSpaceB;
-
-                    int totalSpaceMB = (int) (totalSpaceB / 1024l / 1024l);
-                    int freeSpaceMB = (int) (freeSpaceB / 1024l / 1024l);
-                    int usedSpaceMB = (int) (usedSpaceB / 1024l / 1024l);
-
-                    float totalSpaceGB = -1;
-                    float freeSpaceGB = -1;
-                    float usedSpaceGB = -1;
-
-                    if (totalSpaceMB > 1024) {
-                        totalSpaceGB = ((float) totalSpaceMB) / 1024f;
-                    }
-
-                    if (freeSpaceMB > 1024) {
-                        freeSpaceGB = ((float) freeSpaceMB) / 1024f;
-                    }
-
-                    if (usedSpaceMB > 1024) {
-                        usedSpaceGB = ((float) usedSpaceMB) / 1024f;
-                    }
-
-                    final int totalSpaceMB_ = totalSpaceMB;
-                    final int usedSpaceMB_ = usedSpaceMB;
-                    final float totalSpaceGB_ = totalSpaceGB;
-                    final int freeSpaceMB_ = freeSpaceMB;
-                    final float freeSpaceGB_ = freeSpaceGB;
-
-                    SwingUtilities.invokeLater(new Runnable() {
-                        @Override
-                        public void run() {
-                            freeSpaceBar.setMaximum(totalSpaceMB_);
-                            freeSpaceBar.setValue(usedSpaceMB_);
-
-                            DecimalFormat df = new DecimalFormat("#.0");
-
-                            freeSpaceBar.setString("Wykorzystano: " + df.format(freeSpaceBar.getPercentComplete() * 100d) + "% "
-                                    + "z " + (totalSpaceGB_ < 0 ? df.format(totalSpaceMB_) + "MB" : df.format(totalSpaceGB_) + "GB ")
-                                    + "(Wolne: " + (freeSpaceGB_ < 0 ? df.format(freeSpaceMB_) + "MB" : df.format(freeSpaceGB_) + "GB ") + ")");
-
-                        }
-                    });
-                } catch (Exception e) {
-                    SwingUtilities.invokeLater(new Runnable() {
-                        @Override
-                        public void run() {
-                            freeSpaceBar.setString("Nie można odczytać ilości wolnego miejsca");
-                            freeSpaceBar.setValue(0);
-                        }
-                    });
+        freeSpaceUpdateExecutor.submit(() -> {
+            try {
+                long totalSpaceB = root.getTotalSpace();
+                long freeSpaceB = root.getUsableSpace();
+                long usedSpaceB = totalSpaceB - freeSpaceB;
+                int totalSpaceMB = (int) (totalSpaceB / 1024l / 1024l);
+                int freeSpaceMB = (int) (freeSpaceB / 1024l / 1024l);
+                int usedSpaceMB = (int) (usedSpaceB / 1024l / 1024l);
+                float totalSpaceGB = -1;
+                float freeSpaceGB = -1;
+                float usedSpaceGB = -1;
+                if (totalSpaceMB > 1024) {
+                    totalSpaceGB = ((float) totalSpaceMB) / 1024f;
                 }
+                if (freeSpaceMB > 1024) {
+                    freeSpaceGB = ((float) freeSpaceMB) / 1024f;
+                }
+                if (usedSpaceMB > 1024) {
+                    usedSpaceGB = ((float) usedSpaceMB) / 1024f;
+                }
+                final int totalSpaceMB_ = totalSpaceMB;
+                final int usedSpaceMB_ = usedSpaceMB;
+                final float totalSpaceGB_ = totalSpaceGB;
+                final int freeSpaceMB_ = freeSpaceMB;
+                final float freeSpaceGB_ = freeSpaceGB;
+                SwingUtilities.invokeLater(() -> {
+                    freeSpaceBar.setMaximum(totalSpaceMB_);
+                    freeSpaceBar.setValue(usedSpaceMB_);
+                    
+                    DecimalFormat df = new DecimalFormat("#.0");
+                    
+                    freeSpaceBar.setString("Wykorzystano: " + df.format(freeSpaceBar.getPercentComplete() * 100d) + "% "
+                            + "z " + (totalSpaceGB_ < 0 ? df.format(totalSpaceMB_) + "MB" : df.format(totalSpaceGB_) + "GB ")
+                            + "(Wolne: " + (freeSpaceGB_ < 0 ? df.format(freeSpaceMB_) + "MB" : df.format(freeSpaceGB_) + "GB ") + ")");
+                });
+            } catch (Exception e) {
+                SwingUtilities.invokeLater(() -> {
+                    freeSpaceBar.setString("Nie można odczytać ilości wolnego miejsca");
+                    freeSpaceBar.setValue(0);
+                });
             }
         });
     }

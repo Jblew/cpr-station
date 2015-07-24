@@ -44,12 +44,7 @@ import pl.jblew.cpr.logic.MFile_Localization;
  * @author teofil
  */
 public class Importer {
-    private static final FilenameFilter fnFilter = new FilenameFilter() {
-        @Override
-        public boolean accept(File dir, String name) {
-            return !name.startsWith(".");
-        }
-    };
+    private static final FilenameFilter fnFilter = (File dir, String name) -> !name.startsWith(".");
 
     private final Context context;
     private final ImportPanel.ProgressChangedCallback progressChangedCallback;
@@ -69,66 +64,50 @@ public class Importer {
     }
 
     public void startAsync() {
-        executor.submit(new Runnable() {
-            @Override
-            public void run() {
-                Collections.sort(filesToImport, new Comparator<File>() {
-                    @Override
-                    public int compare(File o1, File o2) {
-                        long lm1 = o1.lastModified();
-                        long lm2 = o2.lastModified();
-                        return (lm1 == lm2 ? 0 : (lm1 > lm2 ? 1 : 0));
-                    }
-                });
-
-                String targetPath = deviceRoot.getAbsolutePath() + File.separator + FileStructureUtil.PATH_UNSORTED_PHOTOS + File.separator + eventName;
-                new File(targetPath).mkdirs();
-
-                int numOfFiles = filesToImport.size();
-                progressChangedCallback.progressChanged(0, "Importowanie 0/" + numOfFiles);
-
-                boolean filesOk = true;
-
-                final Map<File, File> targetFiles = new HashMap<>();
-
-                int j = 0;
-                for (File f : filesToImport) {
-                    j++;
-                    String name = String.format("%1$" + 4 + "s", j + "").replace(' ', '0')
-                            + "." + f.getName().substring(f.getName().lastIndexOf('.') + 1).toLowerCase();
-                    //System.out.println("New filename: "+name);
-                    targetFiles.put(f, new File(targetPath + File.separator + name));
+        executor.submit(() -> {
+            Collections.sort(filesToImport, (File o1, File o2) -> {
+                long lm1 = o1.lastModified();
+                long lm2 = o2.lastModified();
+                return (lm1 == lm2 ? 0 : (lm1 > lm2 ? 1 : 0));
+            });
+            String targetPath = deviceRoot.getAbsolutePath() + File.separator + FileStructureUtil.PATH_UNSORTED_PHOTOS + File.separator + eventName;
+            new File(targetPath).mkdirs();
+            int numOfFiles = filesToImport.size();
+            progressChangedCallback.progressChanged(0, "Importowanie 0/" + numOfFiles);
+            boolean filesOk = true;
+            final Map<File, File> targetFiles = new HashMap<>();
+            int j = 0;
+            for (File f : filesToImport) {
+                j++;
+                String name = String.format("%1$" + 4 + "s", j + "").replace(' ', '0')
+                        + "." + f.getName().substring(f.getName().lastIndexOf('.') + 1).toLowerCase();
+                //System.out.println("New filename: "+name);
+                targetFiles.put(f, new File(targetPath + File.separator + name));
+            }
+            final Map<File, String> md5sums = new HashMap<>();
+            int i = 0;
+            for (File f : filesToImport) {
+                float percentF = ((float) i) / ((float) numOfFiles);
+                int percent = (int) (percentF * 100f);
+                try {
+                    Files.copy(f.toPath(), targetFiles.get(f).toPath(), StandardCopyOption.COPY_ATTRIBUTES);
+                    md5sums.put(f, MD5Util.calculateMD5(targetFiles.get(f)));
+                    
+                    progressChangedCallback.progressChanged(percent, "Importowanie " + i + "/" + numOfFiles + " (" + percent + "%)");
+                } catch (IOException ex) {
+                    Logger.getLogger(Importer.class.getName()).log(Level.SEVERE, "Błąd przy kopiowaniu plików", ex);
+                    progressChangedCallback.progressChanged(percent, " Błąd przy importowaniu pliku: " + i + "/" + numOfFiles + ": " + ex.getLocalizedMessage());
+                    filesOk = false;
+                    return;//////////////////!!!!!!!!!!!!!!!!!
                 }
-
-                final Map<File, String> md5sums = new HashMap<>();
-
-                int i = 0;
-                for (File f : filesToImport) {
-                    float percentF = ((float) i) / ((float) numOfFiles);
-                    int percent = (int) (percentF * 100f);
-                    try {
-                        Files.copy(f.toPath(), targetFiles.get(f).toPath(), StandardCopyOption.COPY_ATTRIBUTES);
-                        md5sums.put(f, MD5Util.calculateMD5(targetFiles.get(f)));
-
-                        progressChangedCallback.progressChanged(percent, "Importowanie " + i + "/" + numOfFiles + " (" + percent + "%)");
-                    } catch (IOException ex) {
-                        Logger.getLogger(Importer.class.getName()).log(Level.SEVERE, "Błąd przy kopiowaniu plików", ex);
-                        progressChangedCallback.progressChanged(percent, " Błąd przy importowaniu pliku: " + i + "/" + numOfFiles + ": " + ex.getLocalizedMessage());
-                        filesOk = false;
-                        return;//////////////////!!!!!!!!!!!!!!!!!
-                    }
-                    i++;
-                }
-
-                progressChangedCallback.progressChanged(100, "Dodawanie do bazy danych");
-
-                final AtomicInteger numOfExistingFiles = new AtomicInteger(0);
-                if (filesOk) {
-                    System.out.println("Entering DB Thread");
-                    context.dbManager.executeInDBThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            System.out.println("In DB Thread");
+                i++;
+            }
+            progressChangedCallback.progressChanged(100, "Dodawanie do bazy danych");
+            final AtomicInteger numOfExistingFiles = new AtomicInteger(0);
+            if (filesOk) {
+                System.out.println("Entering DB Thread");
+                context.dbManager.executeInDBThread(() -> {
+                    System.out.println("In DB Thread");
                             try {
                                 Dao<Carrier, Integer> carrierDao = context.dbManager.getDaos().getCarrierDao();
                                 Dao<Event, Integer> eventDao = context.dbManager.getDaos().getEventDao();
@@ -202,9 +181,7 @@ public class Importer {
                             } catch (SQLException ex) {
                                 Logger.getLogger(Importer.class.getName()).log(Level.SEVERE, null, ex);
                             }
-                        }
-                    });
-                }
+                });
             }
         });
     }
@@ -254,17 +231,13 @@ public class Importer {
         final AtomicBoolean isCarrier = new AtomicBoolean(false);
 
         try {
-            c.dbManager.executeInDBThreadAndWait(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        List<Carrier> result = c.dbManager.getDaos().getCarrierDao().queryForEq("name", deviceName);
-                        isCarrier.set(result.size() > 0);
-                    } catch (SQLException ex) {
-                        Logger.getLogger(Importer.class.getName()).log(Level.SEVERE, null, ex);
-                    }
+            c.dbManager.executeInDBThreadAndWait(() -> {
+                try {
+                    List<Carrier> result = c.dbManager.getDaos().getCarrierDao().queryForEq("name", deviceName);
+                    isCarrier.set(result.size() > 0);
+                } catch (SQLException ex) {
+                    Logger.getLogger(Importer.class.getName()).log(Level.SEVERE, null, ex);
                 }
-
             });
         } catch (InterruptedException ex) {
             Logger.getLogger(Importer.class.getName()).log(Level.SEVERE, null, ex);

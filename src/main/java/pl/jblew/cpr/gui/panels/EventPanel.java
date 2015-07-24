@@ -155,76 +155,63 @@ public class EventPanel extends MainPanel {
     }
 
     private void asyncLoadData() {
-        context.dbManager.executeInDBThread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    Dao<MFile, Integer> mfileDao = context.dbManager.getDaos().getMfileDao();// context.dbManager.getDaos().getMfile_EventDao().queryForEq("eventId", event.getId());
-
-                    Dao<MFile_Event, Integer> mfile_EventDao = context.dbManager.getDaos().getMfile_EventDao();
-                    QueryBuilder<MFile_Event, Integer> queryToJoin = mfile_EventDao.queryBuilder();
-                    queryToJoin.where().ge("eventId", event.getId());
-                    final List<MFile> mfiles = mfileDao.queryBuilder().query();
-                    //context.dbManager.getDaos().getMfile_EventDao().
-
-                    final AtomicReference<Date> earliestDate = new AtomicReference<>(null);
-                    final AtomicReference<Date> latestDate = new AtomicReference<>(null);
-                    final AtomicInteger minRedundancy = new AtomicInteger(1);
-                    final AtomicInteger maxRedundancy = new AtomicInteger(0);
-                    
-                    for (MFile mf : mfiles) {
-                        if (earliestDate.get() == null || mf.getDate().before(earliestDate.get())) {
-                            earliestDate.set(mf.getDate());
-                        } else if (latestDate.get() == null || mf.getDate().after(earliestDate.get())) {
-                            latestDate.set(mf.getDate());
-                        }
-                        
-                        
-                        int redundancy = 0;
-                        Set<String> carrierIds = new HashSet<>();
-                        for(MFile_Localization mfl : mf.getLocalizations()) {
-                            if(!carrierIds.contains(mfl.getCarrierId()+"")) {
-                                redundancy++;
-                                carrierIds.add(mfl.getCarrierId()+"");
-                            }
-                        }
-                        if(redundancy < minRedundancy.get()) minRedundancy.set(redundancy);
-                        if(redundancy > maxRedundancy.get()) maxRedundancy.set(redundancy);
+        context.dbManager.executeInDBThread(() -> {
+            try {
+                Dao<MFile, Integer> mfileDao = context.dbManager.getDaos().getMfileDao();// context.dbManager.getDaos().getMfile_EventDao().queryForEq("eventId", event.getId());
+                Dao<MFile_Event, Integer> mfile_EventDao = context.dbManager.getDaos().getMfile_EventDao();
+                QueryBuilder<MFile_Event, Integer> queryToJoin = mfile_EventDao.queryBuilder();
+                queryToJoin.where().ge("eventId", event.getId());
+                final List<MFile> mfiles = mfileDao.queryBuilder().query();
+                //context.dbManager.getDaos().getMfile_EventDao().
+                final AtomicReference<Date> earliestDate = new AtomicReference<>(null);
+                final AtomicReference<Date> latestDate = new AtomicReference<>(null);
+                final AtomicInteger minRedundancy = new AtomicInteger(1);
+                final AtomicInteger maxRedundancy = new AtomicInteger(0);
+                for (MFile mf : mfiles) {
+                    if (earliestDate.get() == null || mf.getDate().before(earliestDate.get())) {
+                        earliestDate.set(mf.getDate());
+                    } else if (latestDate.get() == null || mf.getDate().after(earliestDate.get())) {
+                        latestDate.set(mf.getDate());
                     }
                     
-
-                    SwingUtilities.invokeLater(new Runnable() {
-                        @Override
-                        public void run() {
-                            numOfPhotosLabel.setText(mfiles.size() + "");
-
-                            if (earliestDate.get() != null) {
-                                SimpleDateFormat f = new SimpleDateFormat("yyyy.MM.dd");
-                                String timeSpan = f.format(earliestDate.get()) + " - " + f.format(latestDate.get());
-                                timespanLabel.setText(timeSpan);
-                            } else {
-                                timespanLabel.setText("");
-                                
-                            }
-                            String warn = "";
-                            if(minRedundancy.get() < 2) {
-                                warn = "Koniecznie wykonaj dodatkową kopię na innym nośniku";
-                            }
-                            numOfCopiesLabel.setText((minRedundancy.get()==maxRedundancy.get()? minRedundancy.get()+"" : minRedundancy.get()+" - "+maxRedundancy.get())+warn);
-                            
-                            browserPanel.removeAll();
-                            browserPanel.add(new MFileBrowser(context, mfiles, event), BorderLayout.CENTER);
-                            browserPanel.revalidate();
-                            browserPanel.repaint();
-                            System.out.println("!!!!ADDED MFileBrowser");
+                    
+                    int redundancy = 0;
+                    Set<String> carrierIds = new HashSet<>();
+                    for(MFile_Localization mfl : mf.getLocalizations()) {
+                        if(!carrierIds.contains(mfl.getCarrierId()+"")) {
+                            redundancy++;
+                            carrierIds.add(mfl.getCarrierId()+"");
                         }
-                    });
-
-                } catch (SQLException ex) {
-                    Logger.getLogger(EventPanel.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                    if(redundancy < minRedundancy.get()) minRedundancy.set(redundancy);
+                    if(redundancy > maxRedundancy.get()) maxRedundancy.set(redundancy);
                 }
-            }
+                SwingUtilities.invokeLater(() -> {
+                    numOfPhotosLabel.setText(mfiles.size() + "");
 
+                    if (earliestDate.get() != null) {
+                        SimpleDateFormat f = new SimpleDateFormat("yyyy.MM.dd");
+                        String timeSpan = f.format(earliestDate.get()) + " - " + f.format(latestDate.get());
+                        timespanLabel.setText(timeSpan);
+                    } else {
+                        timespanLabel.setText("");
+                        
+                    }
+                    String warn = "";
+                    if(minRedundancy.get() < 2) {
+                        warn = "Koniecznie wykonaj dodatkową kopię na innym nośniku";
+                    }
+                    numOfCopiesLabel.setText((minRedundancy.get()==maxRedundancy.get()? minRedundancy.get()+"" : minRedundancy.get()+" - "+maxRedundancy.get())+warn);
+                    
+                    browserPanel.removeAll();
+                    browserPanel.add(new MFileBrowser(context, mfiles, event), BorderLayout.CENTER);
+                    browserPanel.revalidate();
+                    browserPanel.repaint();
+                    System.out.println("!!!!ADDED MFileBrowser");
+                });
+            }catch (SQLException ex) {
+                Logger.getLogger(EventPanel.class.getName()).log(Level.SEVERE, null, ex);
+                }
         });
     }
 }

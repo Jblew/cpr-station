@@ -42,12 +42,8 @@ public class DatabaseDetector implements StorageDevicePresenceListener {
                 if (potentialDbFile.canWrite() && potentialDbFile.canRead()) {
                     System.out.println("Found DB file in " + potentialDbFile);
 
-                    listenersManager.callListeners(new ListenersManager.ListenerCaller<DatabaseDetectedListener>() {
-                        @Override
-                        public void callListener(DatabaseDetectedListener listener) {
-                            listener.databaseDetected(deviceName, potentialDbFileJDBCPath);
-                        }
-
+                    listenersManager.callListeners((DatabaseDetectedListener listener) -> {
+                        listener.databaseDetected(deviceName, potentialDbFileJDBCPath);
                     });
                 } else {
                     System.out.println("Found DB file in " + potentialDbFile + " but is not writable or not readable");

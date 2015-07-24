@@ -79,37 +79,31 @@ public class MainWindow {
         }
 
         public void setMainPanel(final MainPanel newMainPanel) {
-            SwingUtilities.invokeLater(new Runnable() {
-                @Override
-                public void run() {
-                    MainPanel prevMainPanel = mainPanel;
-                    prevMainPanel.inactivate();
-
-                    remove(prevMainPanel);
-                    add(newMainPanel, BorderLayout.CENTER);
-
-                    mainPanel = newMainPanel;
-                    mainPanel.activate();
-                    
-                    repaint();
-                    setVisible(false);
-                    setVisible(true);
-                    //frame.repaint();
-                }
+            SwingUtilities.invokeLater(() -> {
+                MainPanel prevMainPanel = mainPanel;
+                prevMainPanel.inactivate();
+                
+                remove(prevMainPanel);
+                add(newMainPanel, BorderLayout.CENTER);
+                
+                mainPanel = newMainPanel;
+                mainPanel.activate();
+                
+                repaint();
+                setVisible(false);
+                setVisible(true);
+                //frame.repaint();
             });
         }
 
         @Subscribe
         public void messageToStatusBar(final MessageToStatusBar e) {
-            SwingUtilities.invokeLater(new Runnable() {
-                @Override
-                public void run() {
-                    statusBar.setText(e.getMsg());
-                    if (e.getType() == MessageToStatusBar.Type.ERROR) {
-                        statusBar.setForeground(Color.RED);
-                    } else if (e.getType() == MessageToStatusBar.Type.INFO) {
-                        statusBar.setForeground(Color.BLACK);
-                    }
+            SwingUtilities.invokeLater(() -> {
+                statusBar.setText(e.getMsg());
+                if (e.getType() == MessageToStatusBar.Type.ERROR) {
+                    statusBar.setForeground(Color.RED);
+                } else if (e.getType() == MessageToStatusBar.Type.INFO) {
+                    statusBar.setForeground(Color.BLACK);
                 }
             });
         }
@@ -121,12 +115,9 @@ public class MainWindow {
         
         @Subscribe
         public void databaseChanged(final DatabaseChanged e) {
-            SwingUtilities.invokeLater(new Runnable() {
-                @Override
-                public void run() {
-                    dbLabel.setForeground((e.isNull()? Color.RED : Color.BLACK));
-                    dbLabel.setText("Baza danych: "+e.getDeviceName());
-                }
+            SwingUtilities.invokeLater(() -> {
+                dbLabel.setForeground((e.isNull()? Color.RED : Color.BLACK));
+                dbLabel.setText("Baza danych: "+e.getDeviceName());
             });
         }
     }

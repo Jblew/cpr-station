@@ -79,14 +79,11 @@ public class SwingFileBrowser extends JPanel {
         setLayout(new BorderLayout());
 
         JButton upButton = new JButton("Do góry", new ImageIcon(FileBrowser.class.getClassLoader().getResource("images/up16.png")));
-        upButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                File safeCwd = cwd.get();
-                File parent = safeCwd.getParentFile();
-                if (parent != null && !safeCwd.equals(root)) {
-                    changeCWD(parent);
-                }
+        upButton.addActionListener((ActionEvent e) -> {
+            File safeCwd = cwd.get();
+            File parent1 = safeCwd.getParentFile();
+            if (parent1 != null && !safeCwd.equals(root)) {
+                changeCWD(parent1);
             }
         });
 
@@ -122,11 +119,8 @@ public class SwingFileBrowser extends JPanel {
 
     public void changeCWD(File f) {
         cwd.set(f);
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                dirNameLabel.setText("/" + root.toPath().relativize(cwd.get().toPath()).toString());
-            }
+        SwingUtilities.invokeLater(() -> {
+            dirNameLabel.setText("/" + root.toPath().relativize(cwd.get().toPath()).toString());
         });
         reloadFiles();
     }
@@ -138,49 +132,33 @@ public class SwingFileBrowser extends JPanel {
     private void reloadFiles() {
         dataLock.lock();
         try {
-            final File[] childrenSafe = cwd.get().listFiles(new FilenameFilter() {
-                @Override
-                public boolean accept(File dir, String name) {
-                    return !(name.startsWith("."));
-                }
-            });
+            final File[] childrenSafe = cwd.get().listFiles((File dir, String name1) -> !(name1.startsWith(".")));
             components.clear();
             thumbnailLoader.stopAll();
             children = childrenSafe;
-            SwingUtilities.invokeLater(new Runnable() {
-                @Override
-                public void run() {
-                    browsingPanel.removeAll();
-                    for (File child : childrenSafe) {
-                        final FileComponent cmp = new FileComponent(child);
-
-                        if (child.isDirectory()) {
-                            cmp.setIcon(dirImage);
-                        } else if (thumbnailLoader.canBeLoaded(child)) {
-                            thumbnailLoader.loadImage(child, new ThumbnailLoader.LoadedListener() {
-                                @Override
-                                public void thumbnailLoaded(final ImageIcon img) {
-                                    SwingUtilities.invokeLater(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            //long s = System.currentTimeMillis();
-                                            //ImageIcon icon = new ImageIcon(img);
-                                            //System.out.println("Icon creation time: "+(System.currentTimeMillis()-s)+"ms");
-                                            //cmp.setImage(img);
-                                            cmp.setIcon(img);
-                                        }
-                                    });
-                                }
+            SwingUtilities.invokeLater(() -> {
+                browsingPanel.removeAll();
+                for (File child : childrenSafe) {
+                    final FileComponent cmp = new FileComponent(child);
+                    if (child.isDirectory()) {
+                        cmp.setIcon(dirImage);
+                    } else if (thumbnailLoader.canBeLoaded(child)) {
+                        thumbnailLoader.loadImage(child, (final ImageIcon img) -> {
+                            SwingUtilities.invokeLater(() -> {
+                                //long s = System.currentTimeMillis();
+                                //ImageIcon icon = new ImageIcon(img);
+                                //System.out.println("Icon creation time: "+(System.currentTimeMillis()-s)+"ms");
+                                //cmp.setImage(img);
+                                cmp.setIcon(img);
                             });
-                        }
-
-                        browsingPanel.add(cmp);
-                        dataLock.lock();
-                        try {
-                            components.put(child, cmp);
-                        } finally {
-                            dataLock.unlock();
-                        }
+                        });
+                    }
+                    browsingPanel.add(cmp);
+                    dataLock.lock();
+                    try {
+                        components.put(child, cmp);
+                    } finally {
+                        dataLock.unlock();
                     }
                 }
             });
@@ -196,14 +174,11 @@ public class SwingFileBrowser extends JPanel {
     public File[] getSelectedFiles() {
         try {
             final List<File> selectedFilesList = new LinkedList<>();
-            Runnable r = new Runnable() {
-                @Override
-                public void run() {
-                    for (File f : components.keySet()) {
-                        FileComponent fc = components.get(f);
-                        if (fc.isFileSelected()) {
-                            selectedFilesList.add(f);
-                        }
+            Runnable r = () -> {
+                for (File f : components.keySet()) {
+                    FileComponent fc = components.get(f);
+                    if (fc.isFileSelected()) {
+                        selectedFilesList.add(f);
                     }
                 }
             };
@@ -318,23 +293,17 @@ public class SwingFileBrowser extends JPanel {
 
         public void select() {
             //selected.set(true);
-            SwingUtilities.invokeLater(new Runnable() {
-                @Override
-                public void run() {
-                    setSelected(true);
-                    //setForeground(Color.RED);
-                }
+            SwingUtilities.invokeLater(() -> {
+                setSelected(true);
+                //setForeground(Color.RED);
             });
         }
 
         public void unselect() {
             //selected.set(false);
-            SwingUtilities.invokeLater(new Runnable() {
-                @Override
-                public void run() {
-                    setSelected(false);
-                    //setForeground(Color.BLACK);
-                }
+            SwingUtilities.invokeLater(() -> {
+                setSelected(false);
+                //setForeground(Color.BLACK);
             });
         }
 

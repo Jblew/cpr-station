@@ -28,13 +28,10 @@ public class Test {
             Thread.sleep(100);
         }
 
-        Collections.sort(list, new Comparator<Long>() {
-            @Override
-            public int compare(Long o1, Long o2) {
-                long lm1 = (long) o1;
-                long lm2 = (long) o2;
-                return (lm1 == lm2 ? 0 : (lm1 > lm2 ? 1 : 0));
-            }
+        Collections.sort(list, (Long o1, Long o2) -> {
+            long lm1 = (long) o1;
+            long lm2 = (long) o2;
+            return (lm1 == lm2 ? 0 : (lm1 > lm2 ? 1 : 0));
         });
         
         for(Long l : list) {

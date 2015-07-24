@@ -40,12 +40,9 @@ public class PhotoBrowser extends JPanel {
         setLayout(new BorderLayout());
 
         imagePanel = new ImagePanel();
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                imagePanel.setScaleType(t);
-                imagePanel.imageChanged();
-            }
+        SwingUtilities.invokeLater(() -> {
+            imagePanel.setScaleType(t);
+            imagePanel.imageChanged();
         });
 
         scrollPane = new JScrollPane(imagePanel);
@@ -53,11 +50,8 @@ public class PhotoBrowser extends JPanel {
     }
 
     public void setScaleType(final ScaleType t) {
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                imagePanel.setScaleType(t);
-            }
+        SwingUtilities.invokeLater(() -> {
+            imagePanel.setScaleType(t);
         });
 
     }
@@ -81,26 +75,19 @@ public class PhotoBrowser extends JPanel {
         }
 
         public void imageChanged() {
-            loaderExecutor.submit(new Runnable() {
-                @Override
-                public void run() {
-                    BufferedImage newImage = null;
-                    try {
-                        newImage = ImageIO.read(imageUrl.get());
-                    } catch (IOException ex) {
-                        Logger.getLogger(PhotoBrowser.class.getName()).log(Level.SEVERE, null, ex);
-                    }
-                    image.set(newImage);
-                    SwingUtilities.invokeLater(new Runnable() {
-                        @Override
-                        public void run() {
-                            updatePreferredSize();
-                            revalidate();
-                            repaint();
-                        }
-                    });
+            loaderExecutor.submit(() -> {
+                BufferedImage newImage = null;
+                try {
+                    newImage = ImageIO.read(imageUrl.get());
+                } catch (IOException ex) {
+                    Logger.getLogger(PhotoBrowser.class.getName()).log(Level.SEVERE, null, ex);
                 }
-
+                image.set(newImage);
+                SwingUtilities.invokeLater(() -> {
+                    updatePreferredSize();
+                    revalidate();
+                    repaint();
+                });
             });
 
             /*if (newImage == null) {

@@ -79,26 +79,19 @@ public class TreePanel extends JPanel {
         top.add(unsortedPhotosNode);
         
 
-        NodeChangeListener nodeChangeListener = new NodeChangeListener() {
-            @Override
-            public void nodeChanged(DefaultMutableTreeNode node) {
-                DefaultTreeModel model = (DefaultTreeModel) tree.getModel();
-                DefaultMutableTreeNode root = (DefaultMutableTreeNode) model.getRoot();
-                model.reload(node);
-
-                SwingUtilities.invokeLater(new Runnable() {
-                    @Override
-                    public void run() {
-                        tree.expandPath(new TreePath(devicesNode.getPath()));
-                        tree.expandPath(new TreePath(unsortedPhotosNode.getPath()));
-                        tree.expandPath(new TreePath(carriersNode.getPath()));
-                        tree.expandPath(new TreePath(sortedPhotosNode.getPath()));
-                        tree.revalidate();
-                        revalidate();
-                        repaint();
-                    }
-                });
-            }
+        NodeChangeListener nodeChangeListener = (DefaultMutableTreeNode node) -> {
+            DefaultTreeModel model = (DefaultTreeModel) tree.getModel();
+            DefaultMutableTreeNode root = (DefaultMutableTreeNode) model.getRoot();
+            model.reload(node);
+            SwingUtilities.invokeLater(() -> {
+                tree.expandPath(new TreePath(devicesNode.getPath()));
+                tree.expandPath(new TreePath(unsortedPhotosNode.getPath()));
+                tree.expandPath(new TreePath(carriersNode.getPath()));
+                tree.expandPath(new TreePath(sortedPhotosNode.getPath()));
+                tree.revalidate();
+                revalidate();
+                repaint();
+            });
         };
 
         devicesNode.addNodeChangeListener(nodeChangeListener);
@@ -167,24 +160,21 @@ public class TreePanel extends JPanel {
             }
         });
 
-        tree_.addTreeSelectionListener(new TreeSelectionListener() {
-            @Override
-            public void valueChanged(TreeSelectionEvent e) {
-                Object selected = e.getPath().getLastPathComponent();
-
-                if (selected instanceof SelectableIconTreeNode) {
-                    SelectableIconTreeNode selectableNode = (SelectableIconTreeNode) selected;
-                    selectableNode.nodeSelected(tree);
-                }
-
-                //TreePath devicesPath = new TreePath(devicesNode.getPath());
-                //if(devicesPath.isDescendant(e.getPath()) && !devicesPath.equals(e.getPath())) {
-                //    
-                //}
-                //if(devicesPath.isDescendant(devicesPath)) {
-                //    System.out.println("devicesNode is child of devicesNode");
-                //}
+        tree_.addTreeSelectionListener((TreeSelectionEvent e) -> {
+            Object selected = e.getPath().getLastPathComponent();
+            
+            if (selected instanceof SelectableIconTreeNode) {
+                SelectableIconTreeNode selectableNode = (SelectableIconTreeNode) selected;
+                selectableNode.nodeSelected(tree);
             }
+            
+            //TreePath devicesPath = new TreePath(devicesNode.getPath());
+            //if(devicesPath.isDescendant(e.getPath()) && !devicesPath.equals(e.getPath())) {
+            //
+            //}
+            //if(devicesPath.isDescendant(devicesPath)) {
+            //    System.out.println("devicesNode is child of devicesNode");
+            //}
         });
     }
 

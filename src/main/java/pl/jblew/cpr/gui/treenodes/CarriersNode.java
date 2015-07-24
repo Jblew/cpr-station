@@ -60,17 +60,14 @@ public class CarriersNode extends IconTreeNode implements StorageDevicePresenceL
         synchronized (connectedDevices) {
             connectedDevices.add(deviceName);
         }
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                synchronized (carriers) {
-                    for (Carrier c : carriers.keySet()) {
-                        if (c.getName().equals(deviceName)) {
-                            SelectableIconTreeNode node = carriers.get(c);
-                            node.setActive(true);
-                            fireNodeChanged();
-                            break;
-                        }
+        SwingUtilities.invokeLater(() -> {
+            synchronized (carriers) {
+                for (Carrier c : carriers.keySet()) {
+                    if (c.getName().equals(deviceName)) {
+                        SelectableIconTreeNode node = carriers.get(c);
+                        node.setActive(true);
+                        fireNodeChanged();
+                        break;
                     }
                 }
             }
@@ -82,17 +79,14 @@ public class CarriersNode extends IconTreeNode implements StorageDevicePresenceL
         synchronized (connectedDevices) {
             connectedDevices.remove(deviceName);
         }
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                synchronized (carriers) {
-                    for (Carrier c : carriers.keySet()) {
-                        if (c.getName().equals(deviceName)) {
-                            SelectableIconTreeNode node = carriers.get(c);
-                            node.setActive(false);
-                            fireNodeChanged();
-                            break;
-                        }
+        SwingUtilities.invokeLater(() -> {
+            synchronized (carriers) {
+                for (Carrier c : carriers.keySet()) {
+                    if (c.getName().equals(deviceName)) {
+                        SelectableIconTreeNode node = carriers.get(c);
+                        node.setActive(false);
+                        fireNodeChanged();
+                        break;
                     }
                 }
             }
@@ -100,41 +94,33 @@ public class CarriersNode extends IconTreeNode implements StorageDevicePresenceL
     }
 
     private void fireNodeChanged() {
-        listenersManager.callListeners(new ListenersManager.ListenerCaller<NodeChangeListener>() {
-            @Override
-            public void callListener(NodeChangeListener listener) {
-                listener.nodeChanged(me);
-            }
+        listenersManager.callListeners((NodeChangeListener listener) -> {
+            listener.nodeChanged(me);
         });
 
     }
 
     private void addCarrierNode(final Carrier c) {
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                System.out.println("Adding Carrier node: name = " + c.getName());
-                SelectableIconTreeNode node = new SelectableIconTreeNode(c.getName(), new ImageIcon(TreePanel.class.getClassLoader().getResource("images/dbsave16.png"))) {
-                    @Override
-                    public void nodeSelected(JTree tree) {
-                        SwingUtilities.invokeLater(new Runnable() {
-                            @Override
-                            public void run() {
-                                //onClick
-                            }
-                        });
-                    }
-                };
-                node.setActive(false);
-                synchronized (connectedDevices) {
-                    if (connectedDevices.contains(c.getName())) {
-                        node.setActive(true);
-                    }
+        SwingUtilities.invokeLater(() -> {
+            System.out.println("Adding Carrier node: name = " + c.getName());
+            SelectableIconTreeNode node = new SelectableIconTreeNode(c.getName(), new ImageIcon(TreePanel.class.getClassLoader().getResource("images/dbsave16.png"))) {
+                @Override
+                public void nodeSelected(JTree tree) {
+                    SwingUtilities.invokeLater(() -> {
+                        //onClick
+                        //onClick
+                    });
                 }
-                add(node);
-                synchronized (carriers) {
-                    carriers.put(c, node);
+            };
+            node.setActive(false);
+            synchronized (connectedDevices) {
+                if (connectedDevices.contains(c.getName())) {
+                    node.setActive(true);
                 }
+            }
+            add(node);
+            synchronized (carriers) {
+                carriers.put(c, node);
             }
         });
     }
@@ -142,23 +128,20 @@ public class CarriersNode extends IconTreeNode implements StorageDevicePresenceL
     @Subscribe
     public void carriersListChanged(CarriersListChanged evt) {
         System.out.println("Carriers list changed");
-        dbManager.executeInDBThread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    System.out.println("Adding carriers");
-                    removeAllChildren();
-                    synchronized (carriers) {
-                        carriers.clear();
-                        for (Carrier c : dbManager.getDaos().getCarrierDao().queryForAll()) {
-                            addCarrierNode(c);
-                        }
+        dbManager.executeInDBThread(() -> {
+            try {
+                System.out.println("Adding carriers");
+                removeAllChildren();
+                synchronized (carriers) {
+                    carriers.clear();
+                    for (Carrier c : dbManager.getDaos().getCarrierDao().queryForAll()) {
+                        addCarrierNode(c);
                     }
-
-                    fireNodeChanged();
-                } catch (SQLException ex) {
-                    Logger.getLogger(CarriersNode.class.getName()).log(Level.SEVERE, null, ex);
                 }
+                
+                fireNodeChanged();
+            } catch (SQLException ex) {
+                Logger.getLogger(CarriersNode.class.getName()).log(Level.SEVERE, null, ex);
             }
         });
     }

@@ -43,11 +43,8 @@ public class DevicesNode extends IconTreeNode implements StorageDevicePresenceLi
             MutableTreeNode node = new SelectableIconTreeNode("Katalog domowy", new ImageIcon(TreePanel.class.getClassLoader().getResource("images/pc16.gif"))) {
                 @Override
                 public void nodeSelected(JTree tree) {
-                    SwingUtilities.invokeLater(new Runnable() {
-                        @Override
-                        public void run() {
-                            context.eBus.post(new ChangeMainPanel(new DevicePanel(context, "Katalog domowy", homeFile)));
-                        }
+                    SwingUtilities.invokeLater(() -> {
+                        context.eBus.post(new ChangeMainPanel(new DevicePanel(context, "Katalog domowy", homeFile)));
                     });
                 }
             };
@@ -68,50 +65,37 @@ public class DevicesNode extends IconTreeNode implements StorageDevicePresenceLi
     @Override
     public void storageDeviceConnected(final File rootFile, final String deviceName) {
         //System.out.println("Adding device to tree");
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                if (!devices.containsKey(rootFile.getPath())) {
-                    MutableTreeNode node = new SelectableIconTreeNode(deviceName, new ImageIcon(TreePanel.class.getClassLoader().getResource("images/usb16.png"))) {
-                        @Override
-                        public void nodeSelected(JTree tree) {
-                            SwingUtilities.invokeLater(new Runnable() {
-                                @Override
-                                public void run() {
-                                    context.eBus.post(new ChangeMainPanel(new DevicePanel(context, deviceName, rootFile)));
-                                }
-                            });
-                        }
-                    };
-                    add(node);
-                    devices.put(rootFile.getPath(), node);
-                    fireNodeChanged();
-                }
+        SwingUtilities.invokeLater(() -> {
+            if (!devices.containsKey(rootFile.getPath())) {
+                MutableTreeNode node = new SelectableIconTreeNode(deviceName, new ImageIcon(TreePanel.class.getClassLoader().getResource("images/usb16.png"))) {
+                    @Override
+                    public void nodeSelected(JTree tree) {
+                        SwingUtilities.invokeLater(() -> {
+                            context.eBus.post(new ChangeMainPanel(new DevicePanel(context, deviceName, rootFile)));
+                        });
+                    }
+                };
+                add(node);
+                devices.put(rootFile.getPath(), node);
+                fireNodeChanged();
             }
         });
     }
 
     @Override
     public void storageDeviceDisconnected(final File rootFile, final String deviceName) {
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                if (devices.containsKey(rootFile.getPath())) {
-                    remove(devices.get(rootFile.getPath()));
-                    devices.remove(rootFile.getPath());
-                    fireNodeChanged();
-                }
+        SwingUtilities.invokeLater(() -> {
+            if (devices.containsKey(rootFile.getPath())) {
+                remove(devices.get(rootFile.getPath()));
+                devices.remove(rootFile.getPath());
+                fireNodeChanged();
             }
         });
     }
 
     private void fireNodeChanged() {
-        listenersManager.callListeners(new ListenersManager.ListenerCaller<NodeChangeListener>() {
-            @Override
-            public void callListener(NodeChangeListener listener) {
-                listener.nodeChanged(me);
-            }
-
+        listenersManager.callListeners((NodeChangeListener listener) -> {
+            listener.nodeChanged(me);
         });
     }
 }

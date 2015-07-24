@@ -107,19 +107,13 @@ public class MFileBrowser extends JPanel {
                 
             });
         });
-        singleViewButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                SwingUtilities.invokeLater(new Runnable() {
-                    @Override
-                    public void run() {
-                        tabbedPane.setSelectedIndex(1);
-                        for (MFileComponent mfc : components.values()) {
-                            singleBrowsingPanel.addMFileComponent(mfc);
-                        }
-                    }
-                });
-            }
+        singleViewButton.addActionListener((ActionEvent e) -> {
+            SwingUtilities.invokeLater(() -> {
+                tabbedPane.setSelectedIndex(1);
+                for (MFileComponent mfc : components.values()) {
+                    singleBrowsingPanel.addMFileComponent(mfc);
+                }
+            });
         });
 
         toolPanel = new JPanel();
@@ -264,60 +258,41 @@ public class MFileBrowser extends JPanel {
                 }
             });
 
-            loadingExecutor.submit(new Runnable() {
-                @Override
-                public void run() {
-                    context.dbManager.executeInDBThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            //System.out.println("Loading localizations (" + mfile.getName() + ")...");
-                            for (MFile_Localization localization : mfile.getLocalizations()) {
-                                //System.out.println("Checking localization " + localization.getPath());
-                                File f = localization.getFile(context);
-                                //System.out.println("Got file");
-                                if (f != null && f.canRead()) {
-                                    if (thumbnailLoader.canBeLoaded(f)) {
-                                        thumbnailLoader.loadImage(f, new ThumbnailLoader.LoadedListener() {
-                                            @Override
-                                            public void thumbnailLoaded(final ImageIcon img) {
-                                                SwingUtilities.invokeLater(new Runnable() {
-                                                    @Override
-                                                    public void run() {
-                                                        setIcon(img);
-                                                    }
-                                                });
-                                            }
-                                        });
-                                        break;
-                                    }
-                                }
+            loadingExecutor.submit(() -> {
+                context.dbManager.executeInDBThread(() -> {
+                    //System.out.println("Loading localizations (" + mfile.getName() + ")...");
+                    for (MFile_Localization localization : mfile.getLocalizations()) {
+                        //System.out.println("Checking localization " + localization.getPath());
+                        File f = localization.getFile(context);
+                        //System.out.println("Got file");
+                        if (f != null && f.canRead()) {
+                            if (thumbnailLoader.canBeLoaded(f)) {
+                                thumbnailLoader.loadImage(f, (final ImageIcon img) -> {
+                                    SwingUtilities.invokeLater(() -> {
+                                        setIcon(img);
+                                    });
+                                });
+                                break;
                             }
-
                         }
-                    });
-                }
+                    }
+                });
             });
         }
 
         public void select() {
             //selected.set(true);
-            SwingUtilities.invokeLater(new Runnable() {
-                @Override
-                public void run() {
-                    setSelected(true);
-                    //setForeground(Color.RED);
-                }
+            SwingUtilities.invokeLater(() -> {
+                setSelected(true);
+                //setForeground(Color.RED);
             });
         }
 
         public void unselect() {
             //selected.set(false);
-            SwingUtilities.invokeLater(new Runnable() {
-                @Override
-                public void run() {
-                    setSelected(false);
-                    //setForeground(Color.BLACK);
-                }
+            SwingUtilities.invokeLater(() -> {
+                setSelected(false);
+                //setForeground(Color.BLACK);
             });
         }
 
@@ -447,42 +422,33 @@ public class MFileBrowser extends JPanel {
 
         public void changeMFile(final MFile mfile, final MFileComponent mfc) {
             currentComponent.set(mfc);
-            context.dbManager.executeInDBThread(new Runnable() {
-                @Override
-                public void run() {
-                    for (MFile_Localization localization : mfile.getLocalizations()) {
-                        final File f = localization.getFile(context);
-                        if (f != null && f.canRead()) {
-                            SwingUtilities.invokeLater(new Runnable() {
-                                @Override
-                                public void run() {
-                                    if (browser.get() != null) {
-                                        remove(browser.get());
-                                        PhotoBrowser newBrowser = new PhotoBrowser(f, PhotoBrowser.ScaleType.FIT);
-                                        browser.set(newBrowser);
-                                        add(newBrowser, BorderLayout.CENTER);
-                                        revalidate();
-                                        repaint();
-                                    }
-                                }
-                            });
-                            break;
-                        }
+            context.dbManager.executeInDBThread(() -> {
+                for (MFile_Localization localization : mfile.getLocalizations()) {
+                    final File f = localization.getFile(context);
+                    if (f != null && f.canRead()) {
+                        SwingUtilities.invokeLater(() -> {
+                            if (browser.get() != null) {
+                                remove(browser.get());
+                                PhotoBrowser newBrowser = new PhotoBrowser(f, PhotoBrowser.ScaleType.FIT);
+                                browser.set(newBrowser);
+                                add(newBrowser, BorderLayout.CENTER);
+                                revalidate();
+                                repaint();
+                            }
+                        });
+                        break;
                     }
                 }
             });
 
-            SwingUtilities.invokeLater(new Runnable() {
-                @Override
-                public void run() {
-                    scrollSouthToCenter(mfc);
-                    mfc.select();
-                    for(Component c : southPanel.getComponents()) {
-                        if(c instanceof MFileComponent) {
-                            MFileComponent mfc_ = (MFileComponent)c;
-                            if(mfc_ != mfc) {
-                                mfc_.unselect();
-                            }
+            SwingUtilities.invokeLater(() -> {
+                scrollSouthToCenter(mfc);
+                mfc.select();
+                for(Component c : southPanel.getComponents()) {
+                    if(c instanceof MFileComponent) {
+                        MFileComponent mfc_ = (MFileComponent)c;
+                        if(mfc_ != mfc) {
+                            mfc_.unselect();
                         }
                     }
                 }

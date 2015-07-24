@@ -69,25 +69,22 @@ public class MFile_Localization {
     public File getFile(final Context context) {
         final AtomicReference<File> result = new AtomicReference<>(null);
         try {
-            context.dbManager.executeInDBThreadAndWait(new Runnable() {
-                @Override
-                public void run() {
-                    Carrier c = null;
-                    try {
-                        List<Carrier> res = context.dbManager.getDaos().getCarrierDao().queryForEq("id", getCarrierId());
-                        if (res.size() > 0) {
-                            c = res.get(0);
-                        }
-                    } catch (SQLException ex) {
-                        Logger.getLogger(MFileBrowser.class.getName()).log(Level.SEVERE, null, ex);
+            context.dbManager.executeInDBThreadAndWait(() -> {
+                Carrier c = null;
+                try {
+                    List<Carrier> res = context.dbManager.getDaos().getCarrierDao().queryForEq("id", getCarrierId());
+                    if (res.size() > 0) {
+                        c = res.get(0);
                     }
-                    if(c != null) {
-                        File root = context.deviceDetector.getDeviceRoot(c.getName());
-                        if(root != null) {
-                            File me = new File(root.getAbsolutePath()+File.separator+getPath());
-                            if(me.exists() && me.canRead()) {
-                                result.set(me);
-                            }
+                } catch (SQLException ex) {
+                    Logger.getLogger(MFileBrowser.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                if(c != null) {
+                    File root = context.deviceDetector.getDeviceRoot(c.getName());
+                    if(root != null) {
+                        File me = new File(root.getAbsolutePath()+File.separator+getPath());
+                        if(me.exists() && me.canRead()) {
+                            result.set(me);
                         }
                     }
                 }

@@ -92,20 +92,16 @@ public class DatabaseManager implements DatabaseDetectedListener {
     }
 
     private void simplyExecute(final Runnable r, final CountDownLatch latch) {
-        Runnable fullTask = new Runnable() {
-            @Override
-            public void run() {
-                int myNum = taskNum.incrementAndGet();
-                long s = System.currentTimeMillis();
-                if(DEBUG) System.out.println("<" + myNum + "> Starting task " + myNum);
-                
-                r.run();
-                
-                if(DEBUG) System.out.println("<" + myNum + "> Finished task " + myNum + ", Time: " + (System.currentTimeMillis() - s) + "ms");
-                
-                if(latch != null) latch.countDown();
-            }
-
+        Runnable fullTask = () -> {
+            int myNum = taskNum.incrementAndGet();
+            long s = System.currentTimeMillis();
+            if(DEBUG) System.out.println("<" + myNum + "> Starting task " + myNum);
+            
+            r.run();
+            
+            if(DEBUG) System.out.println("<" + myNum + "> Finished task " + myNum + ", Time: " + (System.currentTimeMillis() - s) + "ms");
+            
+            if(latch != null) latch.countDown();
         };
         if(Thread.currentThread().getName().startsWith("dbthread")) {
             if(DEBUG) System.out.println("Already in dbthread");

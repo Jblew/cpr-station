@@ -29,17 +29,14 @@ public class CarrierMaker {
             if(!c.dbManager.isConnected()) throw new NotConnectedToDatabaseException();
             
             final AtomicReference<Carrier> carrier = new AtomicReference<>(null);
-            c.dbManager.executeInDBThreadAndWait(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        List<Carrier> result = c.dbManager.getDaos().getCarrierDao().queryForEq("name", deviceName);
-                        if(result.size() > 0) {
-                            carrier.set(result.get(0));
-                        }
-                    } catch (SQLException ex) {
-                        Logger.getLogger(CarrierMaker.class.getName()).log(Level.SEVERE, null, ex);
+            c.dbManager.executeInDBThreadAndWait(() -> {
+                try {
+                    List<Carrier> result = c.dbManager.getDaos().getCarrierDao().queryForEq("name", deviceName);
+                    if(result.size() > 0) {
+                        carrier.set(result.get(0));
                     }
+                } catch (SQLException ex) {
+                    Logger.getLogger(CarrierMaker.class.getName()).log(Level.SEVERE, null, ex);
                 }
             });
             Carrier cr = carrier.get();
@@ -77,18 +74,14 @@ public class CarrierMaker {
         out.setType(Carrier.Type.UNKNOWN);
         
         try {
-            context.dbManager.executeInDBThreadAndWait(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        List<Carrier> result = context.dbManager.getDaos().getCarrierDao().queryForEq("name", deviceName);
-                        if(result.isEmpty()) context.dbManager.getDaos().getCarrierDao().createIfNotExists(out);
-                        carrierSaved.set(true);
-                    } catch (SQLException ex) {
-                        Logger.getLogger(CarrierMaker.class.getName()).log(Level.SEVERE, null, ex);
-                    }
+            context.dbManager.executeInDBThreadAndWait(() -> {
+                try {
+                    List<Carrier> result = context.dbManager.getDaos().getCarrierDao().queryForEq("name", deviceName);
+                    if(result.isEmpty()) context.dbManager.getDaos().getCarrierDao().createIfNotExists(out);
+                    carrierSaved.set(true);
+                } catch (SQLException ex) {
+                    Logger.getLogger(CarrierMaker.class.getName()).log(Level.SEVERE, null, ex);
                 }
-                
             });
             if(!carrierSaved.get()) throw new CannotSaveCarrierToDatabase();
             

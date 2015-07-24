@@ -112,46 +112,30 @@ public class ImportPanel extends MainPanel {
             devicesCombo.setSelectedIndex(selectedIndex);
         }
 
-        devicesCombo.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                SwingUtilities.invokeLater(new Runnable() {
-                    @Override
-                    public void run() {
-                        TwoTuple<String, File> device = devicesList.get(devicesCombo.getSelectedIndex());
-                        try {
-                            Importer.tryDevice(context, device.getA(), device.getB(), filesToImport);
-                            acceptButton.setEnabled(true);
-                            comboErrorLabel.setText("");
-                        } catch (Importer.DeviceNotWritableException ex) {
-                            SwingUtilities.invokeLater(new Runnable() {
-                                @Override
-                                public void run() {
-                                    acceptButton.setEnabled(false);
-                                    comboErrorLabel.setText("Urządzenie jest niezapisywalne.");
-                                }
-                            });
-                        } catch (Importer.NotACarrierException ex) {
-                            SwingUtilities.invokeLater(new Runnable() {
-                                @Override
-                                public void run() {
-                                    acceptButton.setEnabled(false);
-                                    comboErrorLabel.setText("Urządzenie nie jest nośnikiem (wejdź w panel urządzenia i kliknij \"Dodaj jako nośnik\", aby móc importować pliki na to urządzenie.");
-                                }
-                            });
-                        } catch (Importer.NotEnoughSpaceException ex) {
-                            SwingUtilities.invokeLater(new Runnable() {
-                                @Override
-                                public void run() {
-                                    acceptButton.setEnabled(false);
-                                    comboErrorLabel.setText("Zbyt mało miejsca na tym urządzeniu.");
-                                }
-                            });
-                        }
-                    }
-                });
-
-            }
+        devicesCombo.addActionListener((ActionEvent e) -> {
+            SwingUtilities.invokeLater(() -> {
+                TwoTuple<String, File> device = devicesList.get(devicesCombo.getSelectedIndex());
+                try {
+                    Importer.tryDevice(context, device.getA(), device.getB(), filesToImport);
+                    acceptButton.setEnabled(true);
+                    comboErrorLabel.setText("");
+                } catch (Importer.DeviceNotWritableException ex) {
+                    SwingUtilities.invokeLater(() -> {
+                        acceptButton.setEnabled(false);
+                        comboErrorLabel.setText("Urządzenie jest niezapisywalne.");
+                    });
+                } catch (Importer.NotACarrierException ex) {
+                    SwingUtilities.invokeLater(() -> {
+                        acceptButton.setEnabled(false);
+                        comboErrorLabel.setText("Urządzenie nie jest nośnikiem (wejdź w panel urządzenia i kliknij \"Dodaj jako nośnik\", aby móc importować pliki na to urządzenie.");
+                    });
+                } catch (Importer.NotEnoughSpaceException ex) {
+                    SwingUtilities.invokeLater(() -> {
+                        acceptButton.setEnabled(false);
+                        comboErrorLabel.setText("Zbyt mało miejsca na tym urządzeniu.");
+                    });
+                }
+            });
         });
 
         settingsGridPanel.add(devicesCombo);
@@ -174,28 +158,22 @@ public class ImportPanel extends MainPanel {
             acceptButton.setText("Brak urządzeń");
         }
 
-        acceptButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                SwingUtilities.invokeLater(new Runnable() {
-                    @Override
-                    public void run() {
-                        String msg = "Importowanie " + filesToImport.size() + " zdjęć z " + sources + ".\n"
-                                + "Pliki zostaną zaimportowane do katalogu /NIEPOSEGREGOWANE/" + nameField.getText() + " "
-                                + "na urządzeniu " + devicesCombo.getSelectedItem() + ".\n Kontynuować?";
-
-                        int n = JOptionPane.showConfirmDialog(context.frame,
-                                msg, "Importowanie zdjęć",
-                                JOptionPane.YES_NO_OPTION);
-                        if (n == JOptionPane.YES_OPTION) {
-                            acceptButton.setEnabled(false);
-                            showImportWindow(nameField.getText(), (String) devicesCombo.getSelectedItem(), devicesList.get(devicesCombo.getSelectedIndex()).getB());
-                        } else {
-
-                        }
-                    }
-                });
-            }
+        acceptButton.addActionListener((ActionEvent e) -> {
+            SwingUtilities.invokeLater(() -> {
+                String msg = "Importowanie " + filesToImport.size() + " zdjęć z " + sources + ".\n"
+                        + "Pliki zostaną zaimportowane do katalogu /NIEPOSEGREGOWANE/" + nameField.getText() + " "
+                        + "na urządzeniu " + devicesCombo.getSelectedItem() + ".\n Kontynuować?";
+                
+                int n = JOptionPane.showConfirmDialog(context.frame,
+                        msg, "Importowanie zdjęć",
+                        JOptionPane.YES_NO_OPTION);
+                if (n == JOptionPane.YES_OPTION) {
+                    acceptButton.setEnabled(false);
+                    showImportWindow(nameField.getText(), (String) devicesCombo.getSelectedItem(), devicesList.get(devicesCombo.getSelectedIndex()).getB());
+                } else {
+                    
+                }
+            });
         });
     }
 
@@ -228,21 +206,14 @@ public class ImportPanel extends MainPanel {
         contentPanel.add(progressBar, BorderLayout.CENTER);
         progressBar.setStringPainted(true);
 
-        Importer imp = new Importer(context, filesToImport, deviceName, deviceRoot, eventName, new ProgressChangedCallback() {
-            @Override
-            public void progressChanged(final int percent, final String msg) {
-                SwingUtilities.invokeLater(new Runnable() {
-                    @Override
-                    public void run() {
-                        progressBar.setValue(percent);
-                        progressBar.setString(msg);
-                        progressBar.revalidate();
-                        progressBar.repaint();
-                        //System.out.println("Updating progress bar: "+percent+"% ["+msg+"]");
-                    }
-                });
-                
-            }
+        Importer imp = new Importer(context, filesToImport, deviceName, deviceRoot, eventName, (final int percent, final String msg) -> {
+            SwingUtilities.invokeLater(() -> {
+                progressBar.setValue(percent);
+                progressBar.setString(msg);
+                progressBar.revalidate();
+                progressBar.repaint();
+                //System.out.println("Updating progress bar: "+percent+"% ["+msg+"]");
+            });
         });
         progressBar.setString("Ładowanie...");
         imp.startAsync();

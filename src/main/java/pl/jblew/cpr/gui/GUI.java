@@ -33,36 +33,28 @@ public class GUI {
     public GUI(Context context_) {
         context = context_;
 
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                setLookAndFeel();
-
-                window.set(new MainWindow(context));
-
-                treePanel.set(new TreePanel(context));
-                window.get().addTreePane(treePanel.get());
-
-                loaded.set(true);
-                while (true) {
-                    Runnable r = executeOnLoadQueue.poll();
-                    if (r == null) {
-                        break;
-                    } else {
-                        new Thread(r).start();
-                    }
+        SwingUtilities.invokeLater(() -> {
+            setLookAndFeel();
+            
+            window.set(new MainWindow(context));
+            
+            treePanel.set(new TreePanel(context));
+            window.get().addTreePane(treePanel.get());
+            
+            loaded.set(true);
+            while (true) {
+                Runnable r = executeOnLoadQueue.poll();
+                if (r == null) {
+                    break;
+                } else {
+                    new Thread(r).start();
                 }
             }
         });
     }
 
     public void start() {
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                window.get().show();
-            }
-        });
+        SwingUtilities.invokeLater(window.get()::show);
     }
 
     public void executeWhenLoaded(Runnable r) {

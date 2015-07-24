@@ -38,14 +38,10 @@ public class Bootstrap {
         final GUI gui = new GUI(context);
         gui.start();
         
-        gui.executeWhenLoaded(new Runnable() {
-            @Override
-            public void run() {
-                context.deviceDetector.addStorageDevicePresenceListener(gui.getTreePanel().getDevicesNode());
-                context.deviceDetector.addStorageDevicePresenceListener(gui.getTreePanel().getCarriersNode());
-                context.deviceDetector.start();
-            }
-        
+        gui.executeWhenLoaded(() -> {
+            context.deviceDetector.addStorageDevicePresenceListener(gui.getTreePanel().getDevicesNode());
+            context.deviceDetector.addStorageDevicePresenceListener(gui.getTreePanel().getCarriersNode());
+            context.deviceDetector.start();
         });
         
         

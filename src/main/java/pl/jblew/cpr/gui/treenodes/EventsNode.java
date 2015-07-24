@@ -60,11 +60,8 @@ public class EventsNode extends TreePanel.IconTreeNode implements TreePanel.AddT
     }
 
     private void fireNodeChanged() {
-        listenersManager.callListeners(new ListenersManager.ListenerCaller<NodeChangeListener>() {
-            @Override
-            public void callListener(NodeChangeListener listener) {
-                listener.nodeChanged(me);
-            }
+        listenersManager.callListeners((NodeChangeListener listener) -> {
+            listener.nodeChanged(me);
         });
 
     }
@@ -72,61 +69,55 @@ public class EventsNode extends TreePanel.IconTreeNode implements TreePanel.AddT
     @Subscribe
     public void eventsListChanged(EventsListChanged evt) {
         System.out.println("Events list changed");
-        context.dbManager.executeInDBThread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    final List<Event> result = context.dbManager.getDaos().getEventDao().queryForEq("type", eventType);
-
-                    removeAllChildren();
-                    synchronized (events) {
-                        events.clear();
-                        for (Event e : result) {
-                            addEventNode(e);
-                        }
+        context.dbManager.executeInDBThread(() -> {
+            try {
+                final List<Event> result = context.dbManager.getDaos().getEventDao().queryForEq("type", eventType);
+                
+                removeAllChildren();
+                synchronized (events) {
+                    events.clear();
+                    for (Event e : result) {
+                        addEventNode(e);
                     }
-                    /*if (eventType == Event.Type.SORTED) {
-                     final TreePanel.SelectableIconTreeNode node = new TreePanel.SelectableIconTreeNode("Dodaj wydarzenie", new ImageIcon(TreePanel.class.getClassLoader().getResource("images/add16.png"))) {
-                     @Override
-                     public void nodeSelected(JTree tree) {
-                     SwingUtilities.invokeLater(new Runnable() {
-                     @Override
-                     public void run() {
-                     }
-                     });
-                     }
-                     };
-                     SwingUtilities.invokeLater(new Runnable() {
-                     @Override
-                     public void run() {
-                     add(node);
-                     }
-                     });
-                     }*/
-
-                    fireNodeChanged();
-                } catch (SQLException ex) {
-                    Logger.getLogger(CarriersNode.class.getName()).log(Level.SEVERE, null, ex);
                 }
+                /*if (eventType == Event.Type.SORTED) {
+                final TreePanel.SelectableIconTreeNode node = new TreePanel.SelectableIconTreeNode("Dodaj wydarzenie", new ImageIcon(TreePanel.class.getClassLoader().getResource("images/add16.png"))) {
+                @Override
+                public void nodeSelected(JTree tree) {
+                SwingUtilities.invokeLater(new Runnable() {
+                @Override
+                public void run() {
+                }
+                });
+                }
+                };
+                SwingUtilities.invokeLater(new Runnable() {
+                @Override
+                public void run() {
+                add(node);
+                }
+                });
+                }*/
+                
+                fireNodeChanged();
+            } catch (SQLException ex) {
+                Logger.getLogger(CarriersNode.class.getName()).log(Level.SEVERE, null, ex);
             }
         });
     }
 
     private void addEventNode(final Event e) {
         System.out.println("Adding event node: " + e.getName());
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                TreePanel.SelectableIconTreeNode node = new TreePanel.SelectableIconTreeNode(e.getName(), new ImageIcon(TreePanel.class.getClassLoader().getResource("images/pc16.gif"))) {
-                    @Override
-                    public void nodeSelected(JTree tree) {
-                        context.eBus.post(new ChangeMainPanel(new EventPanel(context, e)));
-                    }
-                };
-                add(node);
-                synchronized (events) {
-                    events.put(e, node);
+        SwingUtilities.invokeLater(() -> {
+            TreePanel.SelectableIconTreeNode node = new TreePanel.SelectableIconTreeNode(e.getName(), new ImageIcon(TreePanel.class.getClassLoader().getResource("images/pc16.gif"))) {
+                @Override
+                public void nodeSelected(JTree tree) {
+                    context.eBus.post(new ChangeMainPanel(new EventPanel(context, e)));
                 }
+            };
+            add(node);
+            synchronized (events) {
+                events.put(e, node);
             }
         });
     }
