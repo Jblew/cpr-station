@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import pl.jblew.cpr.util.MessageToStatusBar;
+import pl.jblew.cpr.util.NamingThreadFactory;
 
 /**
  *
@@ -33,7 +34,7 @@ public class DatabaseManager implements DatabaseDetectedListener {
     private static final boolean DEBUG = true;
     private final AtomicInteger taskNum = new AtomicInteger(0);
     private final EventBus eBus;
-    private final ExecutorService dbExecutor = Executors.newSingleThreadExecutor();
+    private final ExecutorService dbExecutor = Executors.newSingleThreadExecutor(new NamingThreadFactory("dbthread"));
     private final BlockingQueue<Runnable> executeWhenDBConnected = new LinkedBlockingQueue<>();
     private final AtomicReference<ConnectionSource> connectionSourceRef = new AtomicReference<>(null);
     private final Daos daos;
@@ -90,54 +91,50 @@ public class DatabaseManager implements DatabaseDetectedListener {
         return (connectionSourceRef.get() != null);
     }
 
+    private void simplyExecute(final Runnable r, final CountDownLatch latch) {
+        Runnable fullTask = new Runnable() {
+            @Override
+            public void run() {
+                int myNum = taskNum.incrementAndGet();
+                long s = System.currentTimeMillis();
+                if(DEBUG) System.out.println("<" + myNum + "> Starting task " + myNum);
+                
+                r.run();
+                
+                System.out.println("<" + myNum + "> Finished task " + myNum + ", Time: " + (System.currentTimeMillis() - s) + "ms");
+                
+                if(latch != null) latch.countDown();
+            }
+
+        };
+        if(Thread.currentThread().getName().startsWith("dbthread")) {
+            if(DEBUG) System.out.println("Already in dbthread");
+            fullTask.run();
+        }
+        dbExecutor.execute(fullTask);
+    }
+
     public void executeInDBThread(final Runnable r) {
-        if(r == null) System.out.println("Initial execution in DB Thread");
-        else System.out.println("Execute in DB Thread");
-        
+        if (r == null) {
+            if(DEBUG) System.out.println("Initial execution in DB Thread");
+        } else {
+            if(DEBUG) System.out.println("Execute in DB Thread");
+        }
+
         if (isConnected()) {
             if (!executeWhenDBConnected.isEmpty()) {
                 while (!executeWhenDBConnected.isEmpty()) {
                     try {
-                        System.out.println("Executing task from queue");
-                        final Runnable takenTask = executeWhenDBConnected.take();
-                        if (DEBUG) {
-                            dbExecutor.execute(new Runnable() {
-                                @Override
-                                public void run() {
-                                    int myNum = taskNum.incrementAndGet();
-                                    long s = System.currentTimeMillis();
-                                    System.out.println("<" + myNum + "> Starting task " + myNum);
-                                    takenTask.run();
-                                    System.out.println("<" + myNum + "> Finished task " + myNum + ", Time: " + (System.currentTimeMillis() - s) + "ms");
+                        if(DEBUG) System.out.println("Executing task from queue");
+                        simplyExecute(executeWhenDBConnected.take(), null);
 
-                                }
-
-                            });
-                        } else {
-                            dbExecutor.execute(takenTask);
-                        }
                     } catch (InterruptedException ex) {
                         Logger.getLogger(DatabaseManager.class.getName()).log(Level.SEVERE, null, ex);
                     }
                 }
             }
             if (r != null) {
-                if (DEBUG) {
-                    dbExecutor.execute(new Runnable() {
-                        @Override
-                        public void run() {
-                            int myNum = taskNum.incrementAndGet();
-                            long s = System.currentTimeMillis();
-                            System.out.println("<" + myNum + "> Starting task " + myNum);
-                            r.run();
-                            System.out.println("<" + myNum + "> Finished task " + myNum + ", Time: " + (System.currentTimeMillis() - s) + "ms");
-
-                        }
-
-                    });
-                } else {
-                    dbExecutor.execute(r);
-                }
+                simplyExecute(r, null);
             }
         } else {
             try {
@@ -147,35 +144,23 @@ public class DatabaseManager implements DatabaseDetectedListener {
             }
         }
     }
-    
+
     public void executeInDBThreadAndWait(final Runnable r) throws InterruptedException {
-        if(!isConnected()) throw new DBNotConnectedException();
-        else {
-            final CountDownLatch countDownLatch = new CountDownLatch(1);
-            dbExecutor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    r.run();
-                    countDownLatch.countDown();
-                }
-            
-            });
+        if (!isConnected()) {
+            throw new DBNotConnectedException();
+        } else {
+            CountDownLatch countDownLatch = new CountDownLatch(1);
+            simplyExecute(r, countDownLatch);
             countDownLatch.await();
         }
     }
-    
+
     public void executeInDBThreadAndWait(TimeUnit u, long timeout, final Runnable r) throws InterruptedException {
-        if(!isConnected()) throw new DBNotConnectedException();
-        else {
-            final CountDownLatch countDownLatch = new CountDownLatch(1);
-            dbExecutor.execute(new Runnable() {
-                @Override
-                public void run() {
-                    r.run();
-                    countDownLatch.countDown();
-                }
-            
-            });
+        if (!isConnected()) {
+            throw new DBNotConnectedException();
+        } else {
+            CountDownLatch countDownLatch = new CountDownLatch(1);
+            simplyExecute(r, countDownLatch);
             countDownLatch.await(timeout, u);
         }
     }
@@ -187,6 +172,7 @@ public class DatabaseManager implements DatabaseDetectedListener {
     public void createAndConnect(File deviceRoot, String deviceName) {
         connect(new File(deviceRoot.getAbsoluteFile() + File.separator + DatabaseDetector.DB_FILE_NAME), deviceName);
     }
-    
-    public static class DBNotConnectedException extends RuntimeException{}
+
+    public static class DBNotConnectedException extends RuntimeException {
+    }
 }

@@ -38,7 +38,7 @@ public class MainWindow {
         context.eBus.register(mainContentPane);
 
         frame = context.frame;
-        frame.setSize(800, 600);
+        frame.setSize(1000, 800);
         
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         

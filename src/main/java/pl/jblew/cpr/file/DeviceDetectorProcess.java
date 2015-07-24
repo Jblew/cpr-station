@@ -120,4 +120,9 @@ public class DeviceDetectorProcess {
             return out;
         }
     }
+    
+    public File getDeviceRoot(String deviceName) {
+        if(devices.containsKey(deviceName)) return devices.get(deviceName);
+        else return null;
+    }
 }

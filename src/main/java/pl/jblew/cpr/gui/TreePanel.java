@@ -74,10 +74,9 @@ public class TreePanel extends JPanel {
 
     private void addMainNodesAndListeners(DefaultMutableTreeNode top) {
         top.add(devicesNode);
-        top.add(unsortedPhotosNode);
         top.add(carriersNode);
         top.add(sortedPhotosNode);
-        
+        top.add(unsortedPhotosNode);
         
 
         NodeChangeListener nodeChangeListener = new NodeChangeListener() {

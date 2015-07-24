@@ -27,6 +27,7 @@ import javax.swing.JProgressBar;
 import javax.swing.SwingUtilities;
 import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.db.DatabaseDetector;
+import pl.jblew.cpr.db.DatabaseManager;
 import pl.jblew.cpr.gui.ChangeMainPanel;
 import pl.jblew.cpr.gui.MainPanel;
 import pl.jblew.cpr.gui.components.SwingFileBrowser;
@@ -78,9 +79,11 @@ public class DevicePanel extends MainPanel {
         } catch (CarrierMaker.CarrierNotWritableException ex) {
             createStructureButton.setForeground(Color.RED);
             createStructureButton.setText("Dysk jest niezapisywalny");
-        } catch (CarrierMaker.NotConnectedToDatabaseException ex) {
+            createStructureButton.setEnabled(false);
+        } catch (CarrierMaker.NotConnectedToDatabaseException | DatabaseManager.DBNotConnectedException ex) {
             createStructureButton.setForeground(Color.RED);
             createStructureButton.setText("Nie połączono z bazą danych");
+            createStructureButton.setEnabled(false);
         }
 
         createStructureButton.addActionListener(new ActionListener() {

@@ -5,7 +5,9 @@
  */
 package pl.jblew.cpr.logic;
 
+import com.j256.ormlite.dao.ForeignCollection;
 import com.j256.ormlite.field.DatabaseField;
+import com.j256.ormlite.field.ForeignCollectionField;
 import com.j256.ormlite.table.DatabaseTable;
 import java.util.Date;
 
@@ -26,6 +28,9 @@ public class MFile {
     
     @DatabaseField(canBeNull = false)
     private java.util.Date date;
+    
+    @ForeignCollectionField(eager = false, foreignFieldName="mfile")
+    private ForeignCollection<MFile_Localization> localizations;
     
     public MFile() {
         
@@ -61,5 +66,13 @@ public class MFile {
 
     public void setDate(Date date) {
         this.date = date;
+    }
+
+    public ForeignCollection<MFile_Localization> getLocalizations() {
+        return localizations;
+    }
+
+    public void setLocalizations(ForeignCollection<MFile_Localization> localizations) {
+        this.localizations = localizations;
     }
 }

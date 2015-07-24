@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import pl.jblew.cpr.bootstrap.Context;
@@ -121,6 +122,7 @@ public class Importer {
 
                 progressChangedCallback.progressChanged(100, "Dodawanie do bazy danych");
 
+                final AtomicInteger numOfExistingFiles = new AtomicInteger(0);
                 if (filesOk) {
                     System.out.println("Entering DB Thread");
                     context.dbManager.executeInDBThread(new Runnable() {
@@ -147,26 +149,47 @@ public class Importer {
 
                                 for (File f : filesToImport) {
                                     File target = targetFiles.get(f);
-
-                                    MFile mf = new MFile();
-                                    mf.setName(target.getName());
-                                    mf.setDate(new Date(f.lastModified()));
                                     String md5 = md5sums.get(f);
-                                    if(!md5.isEmpty()) mf.setMd5(md5);
-                                    else mf.setMd5("-");
 
-                                    mfileDao.create(mf);
-                                    long mfId = mf.getId();
+                                    MFile mf = null;
+                                    if (!md5.isEmpty()) {
+                                        MFile probe = new MFile();
+                                        probe.setDate(new Date(f.lastModified()));
+                                        probe.setMd5(md5);
+                                        List<MFile> result = mfileDao.queryForMatching(probe);
+                                        if (result.size() > 0) {
+                                            mf = result.get(0);
+                                        }
+                                    }
+
+                                    long mfId;
+                                    if (mf != null) {
+                                        mfId = mf.getId();
+                                        numOfExistingFiles.incrementAndGet();
+                                    } else {
+                                        mf = new MFile();
+                                        mf.setName(target.getName());
+                                        mf.setDate(new Date(f.lastModified()));
+
+                                        if (!md5.isEmpty()) {
+                                            mf.setMd5(md5);
+                                        } else {
+                                            mf.setMd5("-");
+                                        }
+
+                                        mfileDao.create(mf);
+                                        mfId = mf.getId();
+                                    }
 
                                     MFile_Event mfe = new MFile_Event();
-                                    mfe.setEventId(eventId);
-                                    mfe.setFileId(mfId);
+                                    mfe.setEvent(e);
+                                    mfe.setMfile(mf);
 
                                     mfile_eventDao.create(mfe);
 
                                     MFile_Localization mfl = new MFile_Localization();
                                     mfl.setCarrierId(c.getId());
-                                    mfl.setFileId(mfId);
+                                    mfl.setMfile(mf);
                                     String relativePath = deviceRoot.toPath().relativize(target.toPath()).toString();
                                     mfl.setPath(relativePath);
 
@@ -175,7 +198,7 @@ public class Importer {
 
                                 context.eBus.post(new EventsNode.EventsListChanged());
 
-                                progressChangedCallback.progressChanged(100, "Gotowe!");
+                                progressChangedCallback.progressChanged(100, "Gotowe! Znaleziono "+numOfExistingFiles.get()+" duplikatów");
                             } catch (SQLException ex) {
                                 Logger.getLogger(Importer.class.getName()).log(Level.SEVERE, null, ex);
                             }

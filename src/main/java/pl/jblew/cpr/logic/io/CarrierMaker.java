@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import pl.jblew.cpr.bootstrap.Context;
+import pl.jblew.cpr.db.DatabaseManager;
 import pl.jblew.cpr.gui.treenodes.CarriersNode;
 import pl.jblew.cpr.logic.Carrier;
 
@@ -23,8 +24,10 @@ import pl.jblew.cpr.logic.Carrier;
 public class CarrierMaker {
     private CarrierMaker() {}
     
-    public static Carrier getAndCheckCarrier(final Context c, final String deviceName, File deviceRoot) throws BadFileStructureException, CarrierNotWritableException {
+    public static Carrier getAndCheckCarrier(final Context c, final String deviceName, File deviceRoot) throws BadFileStructureException, CarrierNotWritableException, NotConnectedToDatabaseException {
         try {
+            if(!c.dbManager.isConnected()) throw new NotConnectedToDatabaseException();
+            
             final AtomicReference<Carrier> carrier = new AtomicReference<>(null);
             c.dbManager.executeInDBThreadAndWait(new Runnable() {
                 @Override
@@ -49,6 +52,8 @@ public class CarrierMaker {
         } catch (InterruptedException ex) {
             Logger.getLogger(CarrierMaker.class.getName()).log(Level.SEVERE, null, ex);
             return null;
+        } catch(DatabaseManager.DBNotConnectedException ex) {
+            throw new NotConnectedToDatabaseException();
         }
     }
     
@@ -69,6 +74,7 @@ public class CarrierMaker {
         
         final Carrier out = new Carrier();
         out.setName(deviceName);
+        out.setType(Carrier.Type.UNKNOWN);
         
         try {
             context.dbManager.executeInDBThreadAndWait(new Runnable() {

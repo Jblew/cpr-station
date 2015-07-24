@@ -42,6 +42,7 @@ import javax.activation.MimetypesFileTypeMap;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.BevelBorder;
+import pl.jblew.cpr.logic.io.ThumbnailLoader;
 import pl.jblew.cpr.util.ThumbnailGenerator;
 import pl.jblew.cpr.util.TwoTuple;
 
@@ -339,120 +340,6 @@ public class SwingFileBrowser extends JPanel {
 
         public boolean isFileSelected() {
             return isSelected();
-        }
-    }
-
-    private static class ThumbnailLoader {
-        private final int numOfProcessingThreads = 3;
-        private final int maxSize;
-        private final ExecutorService executor = Executors.newFixedThreadPool(numOfProcessingThreads);
-        private final BlockingQueue<TwoTuple<File, LoadedListener>> loadingQueue = new LinkedBlockingQueue<>();
-        private final ProcessingThread[] processingThreads = new ProcessingThread[numOfProcessingThreads];
-        private final AtomicInteger numOfRunningThreads = new AtomicInteger(0);
-
-        public ThumbnailLoader(int maxSize) {
-            this.maxSize = maxSize;
-            for (int i = 0; i < numOfProcessingThreads; i++) {
-                processingThreads[i] = new ProcessingThread();
-            }
-        }
-
-        public boolean canBeLoaded(File f) {
-            String name = f.getName().toLowerCase();
-            return name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png")
-                    || name.endsWith(".gif") || name.endsWith(".tif") || name.endsWith(".bmp");
-        }
-
-        public void loadImage(File f, LoadedListener l) {
-            loadingQueue.add(new TwoTuple<>(f, l));
-            for (ProcessingThread pt : processingThreads) {
-                if (!pt.running.get()) {
-                    pt.running.set(true);
-                    System.out.println("Submit thumbnailLoader executor: " + numOfRunningThreads.incrementAndGet());
-                    executor.submit(pt);
-                }
-            }
-        }
-
-        public void stopAll() {
-            loadingQueue.clear();
-        }
-
-        public static interface LoadedListener {
-            public void thumbnailLoaded(ImageIcon img);
-        }
-
-        private class ProcessingThread implements Runnable {
-            public AtomicBoolean running = new AtomicBoolean(false);
-
-            public ProcessingThread() {
-
-            }
-
-            @Override
-            public void run() {
-                running.set(true);
-
-                try {
-                    TimeUnit.MILLISECONDS.sleep(250);
-                } catch (InterruptedException ex) {
-                }
-
-                long threadStartTime = System.currentTimeMillis();
-                int numOfLoadedImages = 0;
-
-                while (!loadingQueue.isEmpty()) {
-                    try {
-                        TwoTuple<File, LoadedListener> loadingTuple = loadingQueue.poll(500, TimeUnit.MILLISECONDS);
-                        if (loadingTuple == null) {
-                        } else {
-                            File f = loadingTuple.getA();
-                            if (canBeLoaded(f)) {
-                                try {
-                                    long t1 = System.currentTimeMillis();
-                                    BufferedImage loadedImage = ImageIO.read(f);
-                                    long t2 = System.currentTimeMillis();
-                                    BufferedImage scaled = scaleImage(loadedImage);
-                                    long t3 = System.currentTimeMillis();
-                                    ImageIcon icon = new ImageIcon(scaled);
-                                    long t4 = System.currentTimeMillis();
-                                    loadingTuple.getB().thumbnailLoaded(icon);
-                                    long t5 = System.currentTimeMillis();
-                                    numOfLoadedImages++;
-                                    //System.out.println("! [d1=" + (t2 - t1) + "ms, d2=" + (t3 - t2) + "ms, d3=" + (t4 - t3) + "ms d4=" + (t5 - t4) + "ms],"
-                                    //        + " speed: " + ((double) numOfLoadedImages / ((double) (System.currentTimeMillis() - threadStartTime) / 1000d)) + "z/s");
-
-                                } catch (Exception ex) {
-                                    Logger.getLogger(SwingFileBrowser.class.getName()).log(Level.SEVERE, null, ex);
-                                }
-                            }
-                        }
-                    } catch (InterruptedException ex) {
-                    }
-                }
-
-                running.set(false);
-                System.out.println("Quit thumbnail loader process: " + numOfRunningThreads.decrementAndGet());
-            }
-
-            private BufferedImage scaleImage(BufferedImage loadedImage) {
-                int newWidth;
-                int newHeight;
-                if (loadedImage.getWidth() > loadedImage.getHeight()) {
-                    newWidth = maxSize;
-                    newHeight = (int) Math.floor(128f * (float) loadedImage.getHeight() / (float) loadedImage.getWidth());
-                } else {
-                    newHeight = maxSize;
-                    newWidth = (int) Math.floor(128f * (float) loadedImage.getWidth() / (float) loadedImage.getHeight());
-                }
-
-                BufferedImage buffer = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_RGB);
-                Graphics2D g = buffer.createGraphics();
-                //g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_SPEED);
-                g.drawImage(loadedImage, 0, 0, newWidth, newHeight, null);
-                g.dispose();
-                return buffer;
-            }
         }
     }
 }

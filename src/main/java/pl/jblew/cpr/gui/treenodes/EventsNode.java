@@ -23,7 +23,9 @@ import javax.swing.event.RowSorterEvent;
 import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.db.DatabaseManager;
 import pl.jblew.cpr.file.StorageDevicePresenceListener;
+import pl.jblew.cpr.gui.ChangeMainPanel;
 import pl.jblew.cpr.gui.TreePanel;
+import pl.jblew.cpr.gui.panels.EventPanel;
 import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.Event;
 import pl.jblew.cpr.util.ListenersManager;
@@ -83,25 +85,24 @@ public class EventsNode extends TreePanel.IconTreeNode implements TreePanel.AddT
                             addEventNode(e);
                         }
                     }
-                    if (eventType == Event.Type.SORTED) {
-                        final TreePanel.SelectableIconTreeNode node = new TreePanel.SelectableIconTreeNode("Dodaj wydarzenie", new ImageIcon(TreePanel.class.getClassLoader().getResource("images/add16.png"))) {
-                            @Override
-                            public void nodeSelected(JTree tree) {
-                                SwingUtilities.invokeLater(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        //onClick
-                                    }
-                                });
-                            }
-                        };
-                        SwingUtilities.invokeLater(new Runnable() {
-                            @Override
-                            public void run() {
-                                add(node);
-                            }
-                        });
-                    }
+                    /*if (eventType == Event.Type.SORTED) {
+                     final TreePanel.SelectableIconTreeNode node = new TreePanel.SelectableIconTreeNode("Dodaj wydarzenie", new ImageIcon(TreePanel.class.getClassLoader().getResource("images/add16.png"))) {
+                     @Override
+                     public void nodeSelected(JTree tree) {
+                     SwingUtilities.invokeLater(new Runnable() {
+                     @Override
+                     public void run() {
+                     }
+                     });
+                     }
+                     };
+                     SwingUtilities.invokeLater(new Runnable() {
+                     @Override
+                     public void run() {
+                     add(node);
+                     }
+                     });
+                     }*/
 
                     fireNodeChanged();
                 } catch (SQLException ex) {
@@ -119,20 +120,9 @@ public class EventsNode extends TreePanel.IconTreeNode implements TreePanel.AddT
                 TreePanel.SelectableIconTreeNode node = new TreePanel.SelectableIconTreeNode(e.getName(), new ImageIcon(TreePanel.class.getClassLoader().getResource("images/pc16.gif"))) {
                     @Override
                     public void nodeSelected(JTree tree) {
-                        SwingUtilities.invokeLater(new Runnable() {
-                            @Override
-                            public void run() {
-                                //onClick
-                            }
-                        });
+                        context.eBus.post(new ChangeMainPanel(new EventPanel(context, e)));
                     }
                 };
-                //node.setActive(false);
-                //synchronized (connectedDevices) {
-                //if (connectedDevices.contains(e.getName())) {
-                //    node.setActive(true);
-                //}
-                //}
                 add(node);
                 synchronized (events) {
                     events.put(e, node);

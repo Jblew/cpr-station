@@ -17,11 +17,11 @@ public class MFile_Event {
     @DatabaseField(canBeNull = false, unique = true, generatedId = true)
     private long id;
     
-    @DatabaseField(canBeNull = false)
-    private long fileId;
+    @DatabaseField(columnName = "fileId", foreign = true, canBeNull = false)
+    private MFile mfile;
     
-    @DatabaseField(canBeNull = false)
-    private long eventId;
+    @DatabaseField(columnName = "eventId", foreign = true, canBeNull = false)
+    private Event event;
 
     public long getId() {
         return id;
@@ -31,19 +31,19 @@ public class MFile_Event {
         this.id = id;
     }
 
-    public long getFileId() {
-        return fileId;
+    public MFile getMfile() {
+        return mfile;
     }
 
-    public void setFileId(long fileId) {
-        this.fileId = fileId;
+    public void setMfile(MFile mfile) {
+        this.mfile = mfile;
     }
 
-    public long getEventId() {
-        return eventId;
+    public Event getEvent() {
+        return event;
     }
 
-    public void setEventId(long eventId) {
-        this.eventId = eventId;
+    public void setEvent(Event event) {
+        this.event = event;
     }
 }

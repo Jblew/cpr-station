@@ -8,8 +8,11 @@ package pl.jblew.cpr.gui.components;
 import java.awt.*;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
@@ -19,6 +22,7 @@ import java.util.logging.Logger;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import pl.jblew.cpr.util.MessageToStatusBar;
+import pl.jblew.cpr.util.NamingThreadFactory;
 
 /**
  *
@@ -27,11 +31,11 @@ import pl.jblew.cpr.util.MessageToStatusBar;
 public class PhotoBrowser extends JPanel {
     private final JScrollPane scrollPane;
     private final ImagePanel imagePanel;
-    private final AtomicReference<URL> imageUrl = new AtomicReference<>();
+    private final AtomicReference<File> imageUrl = new AtomicReference<>();
     private final PhotoBrowser parentPhotoBrowser = this;
 
-    public PhotoBrowser(URL imageUrl_) {
-        imageUrl.set(imageUrl_);
+    public PhotoBrowser(File f, final ScaleType t) {
+        imageUrl.set(f);
 
         setLayout(new BorderLayout());
 
@@ -39,6 +43,7 @@ public class PhotoBrowser extends JPanel {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
+                imagePanel.setScaleType(t);
                 imagePanel.imageChanged();
             }
         });
@@ -69,29 +74,40 @@ public class PhotoBrowser extends JPanel {
         private final AtomicReference<BufferedImage> image = new AtomicReference<>();
         private final AtomicReference<ScaleType> scaleType = new AtomicReference<>(ScaleType.FIT);
         private final AffineTransform transform = new AffineTransform();
+        private final ExecutorService loaderExecutor = Executors.newSingleThreadExecutor(new NamingThreadFactory("PhotoBrowser-loader"));
 
         public ImagePanel() {
 
         }
 
         public void imageChanged() {
-            BufferedImage newImage = null;
-            try {
-                newImage = ImageIO.read(imageUrl.get());
-            } catch (IOException ex) {
-                Logger.getLogger(PhotoBrowser.class.getName()).log(Level.SEVERE, null, ex);
-            }
-            image.set(newImage);
-            /*if (newImage == null) {
-                setPreferredSize(new Dimension(parentPhotoBrowser.getWidth(), parentPhotoBrowser.getHeight()));
-            } else {
-                setPreferredSize(new Dimension(newImage.getWidth(), newImage.getHeight()));
-            }*/
-            updatePreferredSize();
-            
-            System.out.println("image change finished, calling repaint");
+            loaderExecutor.submit(new Runnable() {
+                @Override
+                public void run() {
+                    BufferedImage newImage = null;
+                    try {
+                        newImage = ImageIO.read(imageUrl.get());
+                    } catch (IOException ex) {
+                        Logger.getLogger(PhotoBrowser.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                    image.set(newImage);
+                    SwingUtilities.invokeLater(new Runnable() {
+                        @Override
+                        public void run() {
+                            updatePreferredSize();
+                            revalidate();
+                            repaint();
+                        }
+                    });
+                }
 
-            repaint();
+            });
+
+            /*if (newImage == null) {
+             setPreferredSize(new Dimension(parentPhotoBrowser.getWidth(), parentPhotoBrowser.getHeight()));
+             } else {
+             setPreferredSize(new Dimension(newImage.getWidth(), newImage.getHeight()));
+             }*/
         }
 
         @Override
@@ -122,10 +138,9 @@ public class PhotoBrowser extends JPanel {
                 }
 
                 g.drawImage(imgSafe, transform, null);
-            }
-            else {
+            } else {
                 g.setColor(Color.RED);
-                g.drawString("Image not loaded (" + i.getAndIncrement()+")", getWidth() / 2, getHeight() / 2);
+                g.drawString("Image not loaded (" + i.getAndIncrement() + ")", getWidth() / 2, getHeight() / 2);
             }
 
             //g.setColor(Color.RED);

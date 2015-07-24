@@ -101,5 +101,6 @@ public class GUI {
         } catch (UnsupportedLookAndFeelException ex) {
             Logger.getLogger(GUI.class.getName()).log(Level.SEVERE, null, ex);
         }
+        System.setProperty("sun.java2d.noddraw", Boolean.TRUE.toString());
     }
 }
