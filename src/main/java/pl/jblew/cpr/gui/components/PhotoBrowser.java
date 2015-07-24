@@ -122,14 +122,15 @@ public class PhotoBrowser extends JPanel {
                     transform.setToIdentity();
                 } else if (scaleTypeSafe == ScaleType.FIT) {
                     transform.setToIdentity();
-                    float xRatio = parentPhotoBrowser.getWidth() / imgSafe.getWidth();
-                    float yRatio = parentPhotoBrowser.getHeight() / imgSafe.getHeight();
+                    float xRatio = (float) scrollPane.getViewport().getWidth() / (float) imgSafe.getWidth();
+                    float yRatio = (float) scrollPane.getViewport().getHeight() / (float) imgSafe.getHeight();
                     float scaleRatio = Math.min(xRatio, yRatio);
+                    //System.out.println("ScaleRatio="+scaleRatio);
                     transform.setToScale(scaleRatio, scaleRatio);
                 } else if (scaleTypeSafe == ScaleType.FILL) {
                     transform.setToIdentity();
-                    float xRatio = (float) parentPhotoBrowser.getWidth() / (float) imgSafe.getWidth();
-                    float yRatio = (float) parentPhotoBrowser.getHeight() / (float) imgSafe.getHeight();
+                    float xRatio = (float) scrollPane.getViewport().getWidth() / (float) imgSafe.getWidth();
+                    float yRatio = (float) scrollPane.getViewport().getHeight() / (float) imgSafe.getHeight();
                     float scaleRatio = Math.max(xRatio, yRatio);
                     transform.setToScale(scaleRatio, scaleRatio);
                     //System.out.println("scaleRatio="+scaleRatio+"; xRatio="+xRatio+"; yRatio="+yRatio
@@ -164,10 +165,11 @@ public class PhotoBrowser extends JPanel {
                     setPreferredSize(new Dimension(imgSafe.getWidth(), imgSafe.getHeight()));
                 }
             } else if (t == ScaleType.FIT) {
-                setPreferredSize(new Dimension(parentPhotoBrowser.getWidth(), parentPhotoBrowser.getHeight()));
+                setPreferredSize(new Dimension(scrollPane.getViewport().getWidth(), scrollPane.getViewport().getHeight()));
             } else if (t == ScaleType.FILL) {
-                setPreferredSize(new Dimension(parentPhotoBrowser.getWidth(), parentPhotoBrowser.getHeight()));
+                setPreferredSize(new Dimension(scrollPane.getViewport().getWidth(), scrollPane.getViewport().getHeight()));
             }
+            revalidate();
         }
     }
 
