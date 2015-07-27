@@ -8,7 +8,11 @@ package pl.jblew.cpr.logic;
 import com.j256.ormlite.field.DataType;
 import com.j256.ormlite.field.DatabaseField;
 import com.j256.ormlite.table.DatabaseTable;
+import java.sql.SQLException;
 import java.util.Date;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import pl.jblew.cpr.bootstrap.Context;
 
 /**
@@ -63,6 +67,44 @@ public class Carrier {
 
     public void setType(Type type) {
         this.type = type;
+    }
+    
+    public static Carrier [] getAllCarriers(Context c) {
+        AtomicReference<Carrier []> out = new AtomicReference<>(null);
+        try {
+            c.dbManager.executeInDBThreadAndWait(() -> {
+                try {
+                    out.set(c.dbManager.getDaos().getCarrierDao().queryForAll().toArray(new Carrier[] {}));
+                } catch (SQLException ex) {
+                    Logger.getLogger(Carrier.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            });
+        } catch (InterruptedException ex) {
+            Logger.getLogger(Carrier.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return out.get();
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 3;
+        hash = 53 * hash + this.id;
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final Carrier other = (Carrier) obj;
+        if (this.id != other.id) {
+            return false;
+        }
+        return true;
     }
     
     public static enum Type {

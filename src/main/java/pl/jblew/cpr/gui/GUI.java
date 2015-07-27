@@ -54,7 +54,7 @@ public class GUI {
     }
 
     public void start() {
-        SwingUtilities.invokeLater(window.get()::show);
+        executeWhenLoaded(() -> SwingUtilities.invokeLater(() -> {window.get().show();}));
     }
 
     public void executeWhenLoaded(Runnable r) {

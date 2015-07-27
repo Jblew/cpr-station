@@ -33,6 +33,7 @@ import pl.jblew.cpr.gui.MainPanel;
 import pl.jblew.cpr.gui.components.SwingFileBrowser;
 import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.io.CarrierMaker;
+import pl.jblew.cpr.util.FileSizeFormatter;
 
 /**
  *
@@ -211,29 +212,14 @@ public class DevicePanel extends MainPanel {
     private void updateFreeSpaceAsync() {
         freeSpaceUpdateExecutor.submit(() -> {
             try {
-                long totalSpaceB = root.getTotalSpace();
-                long freeSpaceB = root.getUsableSpace();
-                long usedSpaceB = totalSpaceB - freeSpaceB;
+                final long totalSpaceB = root.getTotalSpace();
+                final long freeSpaceB = root.getUsableSpace();
+                final long usedSpaceB = totalSpaceB - freeSpaceB;
                 int totalSpaceMB = (int) (totalSpaceB / 1024l / 1024l);
-                int freeSpaceMB = (int) (freeSpaceB / 1024l / 1024l);
                 int usedSpaceMB = (int) (usedSpaceB / 1024l / 1024l);
-                float totalSpaceGB = -1;
-                float freeSpaceGB = -1;
-                float usedSpaceGB = -1;
-                if (totalSpaceMB > 1024) {
-                    totalSpaceGB = ((float) totalSpaceMB) / 1024f;
-                }
-                if (freeSpaceMB > 1024) {
-                    freeSpaceGB = ((float) freeSpaceMB) / 1024f;
-                }
-                if (usedSpaceMB > 1024) {
-                    usedSpaceGB = ((float) usedSpaceMB) / 1024f;
-                }
+
                 final int totalSpaceMB_ = totalSpaceMB;
                 final int usedSpaceMB_ = usedSpaceMB;
-                final float totalSpaceGB_ = totalSpaceGB;
-                final int freeSpaceMB_ = freeSpaceMB;
-                final float freeSpaceGB_ = freeSpaceGB;
                 SwingUtilities.invokeLater(() -> {
                     freeSpaceBar.setMaximum(totalSpaceMB_);
                     freeSpaceBar.setValue(usedSpaceMB_);
@@ -241,8 +227,8 @@ public class DevicePanel extends MainPanel {
                     DecimalFormat df = new DecimalFormat("#.0");
                     
                     freeSpaceBar.setString("Wykorzystano: " + df.format(freeSpaceBar.getPercentComplete() * 100d) + "% "
-                            + "z " + (totalSpaceGB_ < 0 ? df.format(totalSpaceMB_) + "MB" : df.format(totalSpaceGB_) + "GB ")
-                            + "(Wolne: " + (freeSpaceGB_ < 0 ? df.format(freeSpaceMB_) + "MB" : df.format(freeSpaceGB_) + "GB ") + ")");
+                            + "z " + FileSizeFormatter.format(totalSpaceB)
+                            + "(Wolne: " + FileSizeFormatter.format(freeSpaceB) + ")");
                 });
             } catch (Exception e) {
                 SwingUtilities.invokeLater(() -> {

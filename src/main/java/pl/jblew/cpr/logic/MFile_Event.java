@@ -46,4 +46,28 @@ public class MFile_Event {
     public void setEvent(Event event) {
         this.event = event;
     }
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 79 * hash + (int) (this.id ^ (this.id >>> 32));
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final MFile_Event other = (MFile_Event) obj;
+        if (this.id != other.id) {
+            return false;
+        }
+        return true;
+    }
+    
+    
 }

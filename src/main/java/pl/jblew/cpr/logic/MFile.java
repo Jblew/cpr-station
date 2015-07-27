@@ -9,7 +9,13 @@ import com.j256.ormlite.dao.ForeignCollection;
 import com.j256.ormlite.field.DatabaseField;
 import com.j256.ormlite.field.ForeignCollectionField;
 import com.j256.ormlite.table.DatabaseTable;
+import java.io.File;
 import java.util.Date;
+import java.util.Optional;
+import java.util.stream.Stream;
+import javax.swing.ImageIcon;
+import javax.swing.SwingUtilities;
+import pl.jblew.cpr.bootstrap.Context;
 
 /**
  *
@@ -75,4 +81,36 @@ public class MFile {
     public void setLocalizations(ForeignCollection<MFile_Localization> localizations) {
         this.localizations = localizations;
     }
+
+    public File getAccessibleFile(Context c) {
+        if(localizations == null) throw new RuntimeException("Localizations not loaded! name="+name+", id="+id);
+        Stream<MFile_Localization> s = localizations.stream();
+        if(s == null) throw new RuntimeException("ForeignCollection returns nullStream");
+        Optional<File> res =  s.map((mfl) -> mfl.getFile(c)).filter((f) -> f != null && f.canRead()).findFirst();
+        return (res.isPresent()? res.get() : null);
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 67 * hash + (int) (this.id ^ (this.id >>> 32));
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final MFile other = (MFile) obj;
+        if (this.id != other.id) {
+            return false;
+        }
+        return true;
+    }
+    
+    
 }

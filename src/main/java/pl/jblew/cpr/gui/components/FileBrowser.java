@@ -32,6 +32,7 @@ import java.util.logging.Logger;
 import javax.activation.MimetypesFileTypeMap;
 import javax.imageio.ImageIO;
 import javax.swing.border.BevelBorder;
+import pl.jblew.cpr.Settings;
 
 /**
  *
@@ -339,7 +340,7 @@ public class FileBrowser extends JPanel {
                             fileNum = 0;
                             loadedImg = 0;
                             reloadThumbnails.set(false);
-                            
+
                             dataLock.lock();
                             try {
                                 childrenSafe = Arrays.copyOf(children, children.length);
@@ -357,11 +358,11 @@ public class FileBrowser extends JPanel {
                                     int newWidth = 0;
                                     int newHeight = 0;
                                     if (loadedImage.getWidth() > loadedImage.getHeight()) {
-                                        newWidth = 128;
-                                        newHeight = (int) Math.floor(128f * (float) loadedImage.getHeight() / (float) loadedImage.getWidth());
+                                        newWidth = Settings.THUMBNAIL_MAX_SIZE;
+                                        newHeight = (int) Math.floor((float) Settings.THUMBNAIL_MAX_SIZE * (float) loadedImage.getHeight() / (float) loadedImage.getWidth());
                                     } else {
-                                        newHeight = 128;
-                                        newWidth = (int) Math.floor(128f * (float) loadedImage.getWidth() / (float) loadedImage.getHeight());
+                                        newHeight = Settings.THUMBNAIL_MAX_SIZE;
+                                        newWidth = (int) Math.floor((float) Settings.THUMBNAIL_MAX_SIZE * (float) loadedImage.getWidth() / (float) loadedImage.getHeight());
                                     }
                                     dataLock.lock();
                                     try {
@@ -374,7 +375,7 @@ public class FileBrowser extends JPanel {
                                         SwingUtilities.invokeLater(this::repaint);
                                     }
                                 }
-                            }catch (IOException ex) {
+                            } catch (IOException ex) {
                                 Logger.getLogger(FileBrowser.class.getName()).log(Level.SEVERE, null, ex);
                             }
                             fileNum++;

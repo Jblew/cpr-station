@@ -42,6 +42,7 @@ import javax.activation.MimetypesFileTypeMap;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.BevelBorder;
+import pl.jblew.cpr.Settings;
 import pl.jblew.cpr.logic.io.ThumbnailLoader;
 import pl.jblew.cpr.util.ThumbnailGenerator;
 import pl.jblew.cpr.util.TwoTuple;
@@ -61,7 +62,7 @@ public class SwingFileBrowser extends JPanel {
     private final ImageIcon defaultImage;
     private final ImageIcon dirImage;
 
-    private final ThumbnailLoader thumbnailLoader = new ThumbnailLoader(128);
+    private final ThumbnailLoader thumbnailLoader = new ThumbnailLoader(Settings.THUMBNAIL_MAX_SIZE);
     private final Lock dataLock = new ReentrantLock();
     private File[] children;
     private final Map<File, FileComponent> components = new HashMap<>();

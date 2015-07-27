@@ -50,6 +50,7 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.border.BevelBorder;
 import javax.swing.plaf.basic.BasicTabbedPaneUI;
+import pl.jblew.cpr.Settings;
 import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.Event;
@@ -64,23 +65,23 @@ import pl.jblew.cpr.logic.io.ThumbnailLoader;
 public class MFileBrowser extends JPanel {
     private final Context context;
     private final Lock dataLock = new ReentrantLock();
-    private final List<MFile> mfiles;
+    private final MFile[] mfiles;
     private final Map<MFile, MFileComponent> components = new HashMap<>();
     private final JTabbedPane tabbedPane;
     private final Event event;
     private final SingleBrowsingPanel singleBrowsingPanel;
     private final GridBrowsingPanel gridBrowsingPanel;
-    private final ThumbnailLoader thumbnailLoader = new ThumbnailLoader(128, true);
+    private final ThumbnailLoader thumbnailLoader = new ThumbnailLoader(Settings.THUMBNAIL_MAX_SIZE, true);
 
     private final JPanel toolPanel;
     private final ImageIcon emptyImage;
     private final ExecutorService loadingExecutor = Executors.newSingleThreadExecutor();
 
-    //private final ThumbnailLoader thumbnailLoader = new ThumbnailLoader(128);
+    //private final ThumbnailLoader thumbnailLoader = new ThumbnailLoader(Settings.THUMBNAIL_MAX_SIZE);
     //private final Lock dataLock = new ReentrantLock();
     //private File[] children;
     //private final Map<File, FileComponent> components = new HashMap<>();
-    public MFileBrowser(Context context_, List<MFile> mfiles_, Event event_) {
+    public MFileBrowser(Context context_, MFile[] mfiles_, Event event_) {
         this.mfiles = mfiles_;
         this.event = event_;
         this.context = context_;
@@ -104,7 +105,7 @@ public class MFileBrowser extends JPanel {
                 for (MFileComponent mfc : components.values()) {
                     gridBrowsingPanel.addMFileComponent(mfc);
                 }
-                
+
             });
         });
         singleViewButton.addActionListener((ActionEvent e) -> {
@@ -128,7 +129,6 @@ public class MFileBrowser extends JPanel {
 
          add(browsingPanel.get().getWhole(), BorderLayout.CENTER);
          */
-        
         tabbedPane.setUI(new NoTabTabbedPaneUI());
         tabbedPane.addTab(null, gridBrowsingPanel.getWhole());
 
@@ -201,8 +201,8 @@ public class MFileBrowser extends JPanel {
                         int myIndex = 0;
                         dataLock.lock();
                         try {
-                            for (int i = 0; i < mfiles.size(); i++) {
-                                if (mfiles.get(i).equals(mfile)) {
+                            for (int i = 0; i < mfiles.length; i++) {
+                                if (mfiles[i].equals(mfile)) {
                                     myIndex = i;
                                     break;
                                 }
@@ -211,8 +211,8 @@ public class MFileBrowser extends JPanel {
                             for (MFile f : components.keySet()) {
                                 MFileComponent fc = components.get(f);
                                 if (fc.isFileSelected()) {
-                                    for (int i = 0; i < mfiles.size(); i++) {
-                                        if (mfiles.get(i).equals(f)) {
+                                    for (int i = 0; i < mfiles.length; i++) {
+                                        if (mfiles[i].equals(f)) {
                                             selectionStart = i;
                                             break;
                                         }
@@ -222,7 +222,7 @@ public class MFileBrowser extends JPanel {
                             }
 
                             for (int i = selectionStart; i <= myIndex; i++) {
-                                MFile f = mfiles.get(i);
+                                MFile f = mfiles[i];
                                 components.get(f).select();
                             }
                         } finally {
@@ -260,21 +260,13 @@ public class MFileBrowser extends JPanel {
 
             loadingExecutor.submit(() -> {
                 context.dbManager.executeInDBThread(() -> {
-                    //System.out.println("Loading localizations (" + mfile.getName() + ")...");
-                    for (MFile_Localization localization : mfile.getLocalizations()) {
-                        //System.out.println("Checking localization " + localization.getPath());
-                        File f = localization.getFile(context);
-                        //System.out.println("Got file");
-                        if (f != null && f.canRead()) {
-                            if (thumbnailLoader.canBeLoaded(f)) {
-                                thumbnailLoader.loadImage(f, (final ImageIcon img) -> {
-                                    SwingUtilities.invokeLater(() -> {
-                                        setIcon(img);
-                                    });
-                                });
-                                break;
-                            }
-                        }
+                    File f = mfile.getAccessibleFile(context);
+                    if (thumbnailLoader.canBeLoaded(f)) {
+                        thumbnailLoader.loadImage(f, (final ImageIcon img) -> {
+                            SwingUtilities.invokeLater(() -> {
+                                setIcon(img);
+                            });
+                        });
                     }
                 });
             });
@@ -394,29 +386,28 @@ public class MFileBrowser extends JPanel {
                     MFileComponent leftComponent = null;
                     MFileComponent rightComponent = null;
                     MFileComponent prev = null;
-                    for(Component c : southPanel.getComponents()) {
-                        if(c instanceof MFileComponent) {
-                            MFileComponent mfc = (MFileComponent)c;
-                            if(mfc==currentComponent.get()) {
+                    for (Component c : southPanel.getComponents()) {
+                        if (c instanceof MFileComponent) {
+                            MFileComponent mfc = (MFileComponent) c;
+                            if (mfc == currentComponent.get()) {
                                 leftComponent = prev;
                             }
-                            if(prev == currentComponent.get()) {
+                            if (prev == currentComponent.get()) {
                                 rightComponent = mfc;
                                 break;
                             }
                             prev = mfc;
-                            
+
                         }
                     }
-                    
-                    if(e.getKeyCode() == KeyEvent.VK_RIGHT) {
+
+                    if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
                         changeMFile(rightComponent.mfile, rightComponent);
-                    }
-                    else if(e.getKeyCode() == KeyEvent.VK_LEFT) {
+                    } else if (e.getKeyCode() == KeyEvent.VK_LEFT) {
                         changeMFile(leftComponent.mfile, leftComponent);
                     }
                 }
-            
+
             });
         }
 
@@ -444,10 +435,10 @@ public class MFileBrowser extends JPanel {
             SwingUtilities.invokeLater(() -> {
                 scrollSouthToCenter(mfc);
                 mfc.select();
-                for(Component c : southPanel.getComponents()) {
-                    if(c instanceof MFileComponent) {
-                        MFileComponent mfc_ = (MFileComponent)c;
-                        if(mfc_ != mfc) {
+                for (Component c : southPanel.getComponents()) {
+                    if (c instanceof MFileComponent) {
+                        MFileComponent mfc_ = (MFileComponent) c;
+                        if (mfc_ != mfc) {
                             mfc_.unselect();
                         }
                     }
