@@ -37,7 +37,7 @@ import pl.jblew.cpr.logic.io.Exporter;
 import pl.jblew.cpr.logic.io.Importer;
 import pl.jblew.cpr.util.FileSizeFormatter;
 import pl.jblew.cpr.util.NamingThreadFactory;
-import pl.jblew.cpr.util.PanelDisabler;
+import pl.jblew.cpr.gui.util.PanelDisabler;
 import pl.jblew.cpr.util.TwoTuple;
 
 /**

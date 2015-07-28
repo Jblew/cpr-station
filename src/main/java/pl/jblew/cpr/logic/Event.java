@@ -10,23 +10,21 @@ import com.j256.ormlite.field.DataType;
 import com.j256.ormlite.field.DatabaseField;
 import com.j256.ormlite.stmt.QueryBuilder;
 import com.j256.ormlite.table.DatabaseTable;
-import java.awt.BorderLayout;
 import java.io.File;
 import java.sql.SQLException;
-import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.SwingUtilities;
 import pl.jblew.cpr.bootstrap.Context;
-import pl.jblew.cpr.gui.components.MFileBrowser;
 import pl.jblew.cpr.gui.panels.EventPanel;
 import pl.jblew.cpr.logic.io.Exporter;
 
@@ -42,8 +40,8 @@ public class Event {
     @DatabaseField(canBeNull = false)
     private String name;
 
-    @DatabaseField(canBeNull = false)
-    private java.util.Date date;
+    @DatabaseField(canBeNull = false, dataType = DataType.LONG)
+    private long unixTime;
 
     @DatabaseField(canBeNull = false, dataType = DataType.ENUM_INTEGER)
     private Type type;
@@ -64,12 +62,12 @@ public class Event {
         this.name = name;
     }
 
-    public Date getDate() {
-        return date;
+    public LocalDateTime getDateTime() {
+        return LocalDateTime.ofEpochSecond(unixTime, 0, ZoneOffset.UTC);
     }
 
-    public void setDate(Date date) {
-        this.date = date;
+    public void setDateTime(LocalDateTime dateTime) {
+        this.unixTime = dateTime.toEpochSecond(ZoneOffset.UTC);
     }
 
     public Type getType() {
@@ -80,22 +78,19 @@ public class Event {
         this.type = type;
     }
 
-    public MFile [] getMFiles(Context c) {
+    public MFile [] getMFiles(Context context) {
         long sT = System.currentTimeMillis();
         final List<MFile> result = new LinkedList<>();
         try {
-            c.dbManager.executeInDBThreadAndWait(() -> {
+            context.dbManager.executeInDBThreadAndWait(() -> {
                 try {
-                    Dao<MFile, Integer> mfileDao = c.dbManager.getDaos().getMfileDao();
-                    List<MFile_Event> mfeL = c.dbManager.getDaos().getMfile_EventDao().queryForEq("eventId", getId());
-                    mfeL.stream().forEach(mfe -> {
-                        try {
-                            List<MFile> res = mfileDao.queryForEq("id", mfe.getId()+"");
-                            if(res.size() > 0) result.add(res.get(0));
-                        } catch (SQLException ex) {
-                            Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
-                        }
-                    });
+                    Dao<MFile, Integer> mfileDao = context.dbManager.getDaos().getMfileDao();// context.dbManager.getDaos().getMfile_EventDao().queryForEq("eventId", event.getId());
+                    Dao<MFile_Event, Integer> mfile_EventDao = context.dbManager.getDaos().getMfile_EventDao();
+                    
+                    QueryBuilder<MFile_Event, Integer> queryToJoin = mfile_EventDao.queryBuilder();
+                    queryToJoin.where().eq("eventId", getId());
+                    QueryBuilder<MFile, Integer> qb = mfileDao.queryBuilder().orderBy("unixTime", true).join(queryToJoin);
+                    result.addAll(qb.query());
                 } catch (SQLException ex) {
                     Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
                 }
@@ -110,11 +105,6 @@ public class Event {
         }
     }
     
-    /*
-    77-141
-    2000-x
-    x=2000*141/77
-    */
 
     public File[] getFiles(Context c) {
         return Arrays.stream(getMFiles(c)).map((mf) -> mf.getAccessibleFile(c)).filter((f) -> f != null).toArray(File[]::new);
@@ -127,19 +117,21 @@ public class Event {
                 try {
                     Dao<MFile, Integer> mfileDao = context.dbManager.getDaos().getMfileDao();// context.dbManager.getDaos().getMfile_EventDao().queryForEq("eventId", event.getId());
                     Dao<MFile_Event, Integer> mfile_EventDao = context.dbManager.getDaos().getMfile_EventDao();
+                    
                     QueryBuilder<MFile_Event, Integer> queryToJoin = mfile_EventDao.queryBuilder();
-                    queryToJoin.where().ge("eventId", getId());
-                    final List<MFile> mfiles = mfileDao.queryBuilder().query();
-
-                    Date earliestDate = null;
-                    Date latestDate = null;
+                    queryToJoin.where().eq("eventId", getId());
+                    QueryBuilder<MFile, Integer> qb = mfileDao.queryBuilder().orderBy("unixTime", true).join(queryToJoin);
+                    final List<MFile> mfiles = qb.query();
+                    
+                    LocalDateTime earliestDate = null;
+                    LocalDateTime latestDate = null;
                     int minRedundancy = Integer.MAX_VALUE;
                     int maxRedundancy = 0;
                     for (MFile mf : mfiles) {
-                        if (earliestDate == null || mf.getDate().before(earliestDate)) {
-                            earliestDate = mf.getDate();
-                        } else if (latestDate == null || mf.getDate().after(earliestDate)) {
-                            latestDate = mf.getDate();
+                        if (earliestDate == null || mf.getDateTime().isBefore(earliestDate)) {
+                            earliestDate = mf.getDateTime();
+                        } else if (latestDate == null || mf.getDateTime().isAfter(earliestDate)) {
+                            latestDate = mf.getDateTime();
                         }
 
                         int redundancy = 0;
@@ -190,16 +182,37 @@ public class Event {
         return true;
     }
     
-    
+    public static Event createEvent(Context c, Event.Type type, String name) {
+        try {
+            AtomicBoolean hasNewEvent = new AtomicBoolean(false);
+            final Event newEvent = new Event();
+            newEvent.setDateTime(LocalDateTime.now());
+            newEvent.setType(type);
+            newEvent.setName(name);
+            c.dbManager.executeInDBThreadAndWait(() -> {
+                try {
+                    c.dbManager.getDaos().getEventDao().create(newEvent);
+                    hasNewEvent.set(true);
+                } catch (SQLException ex) {
+                    Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            });
+            if(hasNewEvent.get()) return newEvent;
+            else return null;
+        } catch (InterruptedException ex) {
+            Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
+            return null;
+        }
+    }
 
     public static class FullEventData {
         public final int minRedundancy;
         public final int maxRedundancy;
-        public final Date startDate;
-        public final Date endDate;
+        public final LocalDateTime startDate;
+        public final LocalDateTime endDate;
         public final MFile[] mfiles;
 
-        public FullEventData(int minRedundancy, int maxRedundancy, Date startDate, Date endDate, MFile[] mfiles) {
+        public FullEventData(int minRedundancy, int maxRedundancy, LocalDateTime startDate, LocalDateTime endDate, MFile[] mfiles) {
             this.minRedundancy = minRedundancy;
             this.maxRedundancy = maxRedundancy;
             this.startDate = startDate;

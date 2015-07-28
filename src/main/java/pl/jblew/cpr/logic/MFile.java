@@ -6,10 +6,13 @@
 package pl.jblew.cpr.logic;
 
 import com.j256.ormlite.dao.ForeignCollection;
+import com.j256.ormlite.field.DataType;
 import com.j256.ormlite.field.DatabaseField;
 import com.j256.ormlite.field.ForeignCollectionField;
 import com.j256.ormlite.table.DatabaseTable;
 import java.io.File;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Date;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -22,24 +25,24 @@ import pl.jblew.cpr.bootstrap.Context;
  * @author teofil
  */
 @DatabaseTable(tableName = "mfiles")
-public class MFile {
+public class MFile implements Comparable<MFile> {
     @DatabaseField(canBeNull = false, unique = true, generatedId = true)
     private long id;
-    
+
     @DatabaseField(canBeNull = false)
     private String name;
-    
+
     @DatabaseField(canBeNull = false)
     private String md5;
-    
-    @DatabaseField(canBeNull = false)
-    private java.util.Date date;
-    
-    @ForeignCollectionField(eager = false, foreignFieldName="mfile")
+
+    @DatabaseField(canBeNull = false, dataType = DataType.LONG)
+    private long unixTime;
+
+    @ForeignCollectionField(eager = false, foreignFieldName = "mfile")
     private ForeignCollection<MFile_Localization> localizations;
-    
+
     public MFile() {
-        
+
     }
 
     public long getId() {
@@ -66,12 +69,12 @@ public class MFile {
         this.md5 = md5;
     }
 
-    public Date getDate() {
-        return date;
+    public LocalDateTime getDateTime() {
+        return LocalDateTime.ofEpochSecond(unixTime, 0, ZoneOffset.UTC);
     }
 
-    public void setDate(Date date) {
-        this.date = date;
+    public void setDateTime(LocalDateTime dateTime) {
+        this.unixTime = dateTime.toEpochSecond(ZoneOffset.UTC);
     }
 
     public ForeignCollection<MFile_Localization> getLocalizations() {
@@ -83,11 +86,15 @@ public class MFile {
     }
 
     public File getAccessibleFile(Context c) {
-        if(localizations == null) throw new RuntimeException("Localizations not loaded! name="+name+", id="+id);
+        if (localizations == null) {
+            throw new RuntimeException("Localizations not loaded! name=" + name + ", id=" + id);
+        }
         Stream<MFile_Localization> s = localizations.stream();
-        if(s == null) throw new RuntimeException("ForeignCollection returns nullStream");
-        Optional<File> res =  s.map((mfl) -> mfl.getFile(c)).filter((f) -> f != null && f.canRead()).findFirst();
-        return (res.isPresent()? res.get() : null);
+        if (s == null) {
+            throw new RuntimeException("ForeignCollection returns nullStream");
+        }
+        Optional<File> res = s.map((mfl) -> mfl.getFile(c)).filter((f) -> f != null && f.canRead()).findFirst();
+        return (res.isPresent() ? res.get() : null);
     }
 
     @Override
@@ -111,6 +118,16 @@ public class MFile {
         }
         return true;
     }
-    
-    
+
+    @Override
+    public int compareTo(MFile o) {
+        if (o.getDateTime() == null) {
+            return -1;
+        }
+        if (getDateTime() == null) {
+            return 0;
+        }
+        return getDateTime().compareTo(o.getDateTime());
+    }
+
 }

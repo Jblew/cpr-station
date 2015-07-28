@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -111,7 +113,7 @@ public class Importer {
 
                                 Event e = new Event();
                                 e.setName(eventName);
-                                e.setDate(new Date(filesToImport.get(0).lastModified()));
+                                e.setDateTime(LocalDateTime.ofEpochSecond(filesToImport.get(0).lastModified()/1000l, 0, ZoneOffset.UTC));
                                 e.setType(Event.Type.UNSORTED);
 
                                 Carrier c = carrierDao.queryForEq("name", deviceName).get(0);
@@ -127,7 +129,7 @@ public class Importer {
                                     MFile mf = null;
                                     if (!md5.isEmpty()) {
                                         MFile probe = new MFile();
-                                        probe.setDate(new Date(f.lastModified()));
+                                        probe.setDateTime(LocalDateTime.ofEpochSecond(f.lastModified()/1000l, 0, ZoneOffset.UTC));
                                         probe.setMd5(md5);
                                         List<MFile> result = mfileDao.queryForMatching(probe);
                                         if (result.size() > 0) {
@@ -142,7 +144,7 @@ public class Importer {
                                     } else {
                                         mf = new MFile();
                                         mf.setName(target.getName());
-                                        mf.setDate(new Date(f.lastModified()));
+                                        mf.setDateTime(LocalDateTime.ofEpochSecond(f.lastModified()/1000l, 0, ZoneOffset.UTC));
 
                                         if (!md5.isEmpty()) {
                                             mf.setMd5(md5);

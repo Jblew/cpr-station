@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package pl.jblew.cpr.util;
+package pl.jblew.cpr.gui.util;
 
 import java.awt.Container;
 import java.util.Arrays;

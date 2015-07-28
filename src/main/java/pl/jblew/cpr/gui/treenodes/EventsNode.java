@@ -9,6 +9,8 @@ import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import java.io.File;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -17,6 +19,7 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.ImageIcon;
+import javax.swing.JOptionPane;
 import javax.swing.JTree;
 import javax.swing.SwingUtilities;
 import javax.swing.event.RowSorterEvent;
@@ -72,33 +75,35 @@ public class EventsNode extends TreePanel.IconTreeNode implements TreePanel.AddT
         context.dbManager.executeInDBThread(() -> {
             try {
                 final List<Event> result = context.dbManager.getDaos().getEventDao().queryForEq("type", eventType);
-                
+
                 removeAllChildren();
                 synchronized (events) {
                     events.clear();
-                    for (Event e : result) {
-                        addEventNode(e);
-                    }
+                    result.stream().forEach((e) -> addEventNode(e));
                 }
-                /*if (eventType == Event.Type.SORTED) {
-                final TreePanel.SelectableIconTreeNode node = new TreePanel.SelectableIconTreeNode("Dodaj wydarzenie", new ImageIcon(TreePanel.class.getClassLoader().getResource("images/add16.png"))) {
-                @Override
-                public void nodeSelected(JTree tree) {
-                SwingUtilities.invokeLater(new Runnable() {
-                @Override
-                public void run() {
+                if (eventType == Event.Type.SORTED) {
+                    final TreePanel.SelectableIconTreeNode node = new TreePanel.SelectableIconTreeNode("Dodaj wydarzenie", new ImageIcon(TreePanel.class.getClassLoader().getResource("images/add16.png"))) {
+                        @Override
+                        public void nodeSelected(JTree tree) {
+                            SwingUtilities.invokeLater(() -> {
+                                String name = JOptionPane.showInputDialog("Podaj nazwę nowego wydarzenia", DateTimeFormatter.ofPattern("[YYYY.MM.dd] ").format(LocalDateTime.now()));
+                                if (name != null && !name.isEmpty()) {
+                                    Event newEvent = Event.createEvent(context, Event.Type.SORTED, name);
+                                    if (newEvent == null) {
+                                        JOptionPane.showMessageDialog(tree, "Błąd podczas tworzenia wydarzenia!");
+                                    } else {
+                                        context.eBus.post(new ChangeMainPanel(new EventPanel(context, newEvent)));
+                                        fireNodeChanged();
+                                    }
+                                }
+                            });
+                        }
+                    };
+                    SwingUtilities.invokeLater(() -> {
+                        add(node);
+                    });
                 }
-                });
-                }
-                };
-                SwingUtilities.invokeLater(new Runnable() {
-                @Override
-                public void run() {
-                add(node);
-                }
-                });
-                }*/
-                
+
                 fireNodeChanged();
             } catch (SQLException ex) {
                 Logger.getLogger(CarriersNode.class.getName()).log(Level.SEVERE, null, ex);

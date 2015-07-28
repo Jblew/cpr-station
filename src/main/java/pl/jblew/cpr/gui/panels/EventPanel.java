@@ -5,24 +5,45 @@
  */
 package pl.jblew.cpr.gui.panels;
 
+import com.j256.ormlite.dao.Dao;
+import com.j256.ormlite.stmt.DeleteBuilder;
 import java.awt.BorderLayout;
+import java.awt.Dialog;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
+import java.sql.SQLException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JComponent;
+import javax.swing.JDialog;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.gui.ChangeMainPanel;
 import pl.jblew.cpr.gui.MainPanel;
 import pl.jblew.cpr.gui.components.MFileBrowser;
+import pl.jblew.cpr.gui.treenodes.EventsNode;
 import pl.jblew.cpr.logic.Event;
+import pl.jblew.cpr.logic.MFile;
+import pl.jblew.cpr.logic.MFile_Event;
+import pl.jblew.cpr.logic.MFile_Localization;
 
 /**
  *
@@ -35,18 +56,31 @@ public class EventPanel extends MainPanel {
     private final JLabel numOfCopiesLabel;
     private final JPanel browserPanel;
     private final JLabel numOfPhotosLabel;
+    private final JButton moveSelectedToEventButton;
+    private final JButton moveAllToEventButton;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
-    //private final MFileBrowser browser;
+    private MFileBrowser browser;
 
     public EventPanel(Context context_, final Event event_) {
         this.context = context_;
         this.event = event_;
 
+        this.moveSelectedToEventButton = new JButton("Przenieś zaznaczone");
+        this.moveAllToEventButton = new JButton("Przenieś wszystkie");
+
+        moveSelectedToEventButton.addActionListener((evt) -> {
+            moveMFilesToEvent(browser.getSelectedMFiles());
+        });
+
+        moveAllToEventButton.addActionListener((evt) -> {
+            moveMFilesToEvent(browser.getAllMFiles());
+        });
+
         setLayout(new BorderLayout());
 
-        timespanLabel = new JLabel("...");
-        numOfCopiesLabel = new JLabel("...");
-        numOfPhotosLabel = new JLabel("...");
+        this.timespanLabel = new JLabel("...");
+        this.numOfCopiesLabel = new JLabel("...");
+        this.numOfPhotosLabel = new JLabel("...");
 
         JPanel gridPanel = new JPanel();
         gridPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
@@ -85,7 +119,7 @@ public class EventPanel extends MainPanel {
         makeCopyButton.addActionListener((ActionEvent e) -> {
             context.eBus.post(new ChangeMainPanel(new ExportPanel(context, event)));
         });
-        
+
         browserPanel = new JPanel();
         browserPanel.setLayout(new BorderLayout());
         browserPanel.add(new JLabel("..."), BorderLayout.CENTER);
@@ -115,29 +149,153 @@ public class EventPanel extends MainPanel {
 
     private void asyncLoadData() {
         Event.FullEventData fed = event.getFullEventData(context);
-        if(fed != null) {
-                SwingUtilities.invokeLater(() -> {
-                    numOfPhotosLabel.setText(fed.mfiles.length + "");
+        if (fed != null) {
+            SwingUtilities.invokeLater(() -> {
+                numOfPhotosLabel.setText(fed.mfiles.length + "");
 
-                    if (fed.startDate != null) {
-                        SimpleDateFormat f = new SimpleDateFormat("yyyy.MM.dd");
-                        String timeSpan = f.format(fed.startDate) + " - " + f.format(fed.endDate);
-                        timespanLabel.setText(timeSpan);
-                    } else {
-                        timespanLabel.setText("");
-                        
+                if (fed.startDate != null) {
+                    DateTimeFormatter f = DateTimeFormatter.ofPattern("YYYY.MM.dd HH:ss");
+                    String timeSpan = f.format(fed.startDate) + " - " + f.format(fed.endDate);
+                    timespanLabel.setText(timeSpan);
+                } else {
+                    timespanLabel.setText("");
+
+                }
+                String warn = "";
+                if (fed.minRedundancy < 2) {
+                    warn = " (Koniecznie wykonaj dodatkową kopię na innym nośniku)";
+                }
+                numOfCopiesLabel.setText((fed.minRedundancy == fed.maxRedundancy ? fed.minRedundancy + "" : fed.minRedundancy + " - " + fed.maxRedundancy) + warn);
+
+                browserPanel.removeAll();
+
+                browser = new MFileBrowser(context, fed.mfiles, event);
+                browser.addComponentToToolPanel(moveSelectedToEventButton);
+                browser.addComponentToToolPanel(moveAllToEventButton);
+                browserPanel.add(browser, BorderLayout.CENTER);
+                browserPanel.revalidate();
+                browserPanel.repaint();
+            });
+        }
+    }
+
+    private void moveMFilesToEvent(MFile[] mfilesToMove) {
+        if (mfilesToMove != null && mfilesToMove.length > 0) {
+            JDialog dialog = new JDialog(context.frame, "", Dialog.ModalityType.DOCUMENT_MODAL);
+            dialog.setSize(400, 200);
+            dialog.setTitle("Przenoszenie plików do innego wydarzenia");
+
+            JPanel contentPanel = new JPanel();
+            contentPanel.setBorder(BorderFactory.createEmptyBorder(25, 25, 25, 25));
+            contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.PAGE_AXIS));
+
+            JComboBox eventTypeSelection = new JComboBox(new String[]{"Wybierz typ...", "POSEGREGOWANE", "NIEPOSEGREGOWANE"});
+            contentPanel.add(eventTypeSelection);
+
+            DefaultComboBoxModel eventSelectionModel = new DefaultComboBoxModel(new String[]{"Najpierw wybierz typ..."});
+            JComboBox eventSelection = new JComboBox(eventSelectionModel);
+
+            eventSelection.setEnabled(false);
+            contentPanel.add(eventSelection);
+
+            JPanel buttonPanel = new JPanel(new FlowLayout());
+
+            JButton cancelButton = new JButton("Anuluj");
+            buttonPanel.add(cancelButton);
+
+            JButton proceedButton = new JButton("Przenieś");
+            buttonPanel.add(proceedButton);
+            proceedButton.setEnabled(false);
+
+            contentPanel.add(buttonPanel);
+
+            final AtomicReference<Event> selectedEvent = new AtomicReference<>(null);
+
+            eventTypeSelection.addActionListener((evt) -> {
+                if (eventTypeSelection.getSelectedIndex() == 0) {//if user selected label
+                    eventSelection.setEnabled(false);
+                    proceedButton.setEnabled(false);
+                    return;
+                }
+
+                Event.Type eventType_ = Event.Type.UNSORTED;
+                if (eventTypeSelection.getSelectedIndex() == 1) {
+                    eventType_ = Event.Type.SORTED;
+                }
+                final Event.Type eventType = eventType_;
+                context.dbManager.executeInDBThread(() -> {
+                    try {
+                        final List<Event> result = context.dbManager.getDaos().getEventDao().queryForEq("type", eventType);
+                        SwingUtilities.invokeLater(() -> {
+                            eventSelectionModel.removeAllElements();
+                            result.stream().forEach((e) -> {
+                                eventSelectionModel.addElement(e.getName());
+                            });
+                            eventSelectionModel.addElement("[+] Utwórz nowe wydarzenie");
+                            Arrays.stream(eventSelection.getActionListeners()).forEach(listener -> eventSelection.removeActionListener(listener));
+                            eventSelection.addActionListener((evt2) -> {
+                                if (eventSelection.getSelectedIndex() == result.size()) {
+                                    String name = JOptionPane.showInputDialog("Podaj nazwę nowego wydarzenia", DateTimeFormatter.ofPattern("[YYYY.MM.dd] ").format(LocalDateTime.now()));
+                                    if (name != null && !name.isEmpty()) {
+                                        Event newEvent = Event.createEvent(context, Event.Type.SORTED, name);
+                                        if (newEvent == null) {
+                                            JOptionPane.showMessageDialog(dialog, "Błąd podczas tworzenia wydarzenia!");
+                                        } else {
+                                            eventSelection.setEnabled(false);
+                                            selectedEvent.set(newEvent);
+                                            context.eBus.post(new EventsNode.EventsListChanged());
+                                        }
+                                    }
+                                } else if (eventSelection.getSelectedIndex() > 0 && eventSelection.getSelectedIndex() < result.size()) {
+                                    selectedEvent.set(result.get(eventSelection.getSelectedIndex()));
+                                }
+                            });
+                            eventSelection.setEnabled(true);
+                            proceedButton.setEnabled(true);
+                        });
+                    } catch (SQLException ex) {
+                        Logger.getLogger(EventPanel.class.getName()).log(Level.SEVERE, null, ex);
                     }
-                    String warn = "";
-                    if(fed.minRedundancy < 2) {
-                        warn = " (Koniecznie wykonaj dodatkową kopię na innym nośniku)";
-                    }
-                    numOfCopiesLabel.setText((fed.minRedundancy==fed.maxRedundancy? fed.minRedundancy+"" : fed.minRedundancy+" - "+fed.maxRedundancy)+warn);
-                    
-                    browserPanel.removeAll();
-                    browserPanel.add(new MFileBrowser(context, fed.mfiles, event), BorderLayout.CENTER);
-                    browserPanel.revalidate();
-                    browserPanel.repaint();
                 });
+            });
+
+            cancelButton.addActionListener((evt) -> dialog.setVisible(false));
+
+            proceedButton.addActionListener((evt) -> {
+                Event targetEvent = selectedEvent.get();
+                if (targetEvent == null) {
+                    JOptionPane.showMessageDialog(dialog, "Nie wybrałeś wydarzenia!");
+                } else {
+                    if (targetEvent.getId() != event.getId()) {
+                        context.dbManager.executeInDBThread(() -> {
+                            Dao<Event, Integer> eventDao = context.dbManager.getDaos().getEventDao();
+                            Dao<MFile, Integer> mfileDao = context.dbManager.getDaos().getMfileDao();
+                            Dao<MFile_Event, Integer> mfile_eventDao = context.dbManager.getDaos().getMfile_EventDao();
+                            
+                            Arrays.stream(mfilesToMove).forEach(mf -> {
+                                try {
+                                    MFile_Event newMfe = new MFile_Event();
+                                    newMfe.setEvent(targetEvent);
+                                    newMfe.setMfile(mf);
+                                    mfile_eventDao.create(newMfe);
+                                    DeleteBuilder<MFile_Event, Integer> deleteBuilder = mfile_eventDao.deleteBuilder();
+                                    deleteBuilder.where().eq("fileId", mf.getId()).and().eq("eventId", event.getId());
+                                    deleteBuilder.delete();
+                                } catch (SQLException ex) {
+                                    Logger.getLogger(EventPanel.class.getName()).log(Level.SEVERE, null, ex);
+                                }
+                            });
+                            context.eBus.post(new ChangeMainPanel(new EventPanel(context, targetEvent)));
+                        });
+                        dialog.setVisible(false);
+                    }
+                }
+            });
+
+            dialog.setContentPane(contentPanel);
+            dialog.setVisible(true);
+
+            System.out.println("Dialog finished");
         }
     }
 }
