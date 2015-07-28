@@ -5,6 +5,7 @@
  */
 package pl.jblew.cpr.gui.panels;
 
+import com.google.common.io.Files;
 import com.j256.ormlite.dao.Dao;
 import com.j256.ormlite.stmt.DeleteBuilder;
 import java.awt.BorderLayout;
@@ -13,6 +14,11 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.io.File;
+import java.io.IOException;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
@@ -37,9 +43,12 @@ import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.gui.ChangeMainPanel;
+import pl.jblew.cpr.gui.IconLoader;
 import pl.jblew.cpr.gui.MainPanel;
 import pl.jblew.cpr.gui.components.MFileBrowser;
+import pl.jblew.cpr.gui.components.modal.CreateEventModal;
 import pl.jblew.cpr.gui.treenodes.EventsNode;
+import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.Event;
 import pl.jblew.cpr.logic.MFile;
 import pl.jblew.cpr.logic.MFile_Event;
@@ -88,7 +97,23 @@ public class EventPanel extends MainPanel {
         gridLayout.setHgap(10);
         gridLayout.setVgap(10);
         gridPanel.setLayout(gridLayout);
-        prepareGridRow(gridPanel, "Nazwa: ", new JLabel(event.getName()));
+
+        JLabel nameLabel = new JLabel(event.getName());
+        nameLabel.setIcon(IconLoader.EDIT_16.load());
+        nameLabel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (e.getButton() == MouseEvent.BUTTON1) {
+                    String newName = JOptionPane.showInputDialog("Podaj nową nazwę:", event.getName());
+                    if (newName != null && !newName.isEmpty()) {
+                        Event renamedEvent = event.rename(context, newName);
+                        context.eBus.post(new EventsNode.EventsListChanged());
+                        context.eBus.post(new ChangeMainPanel(new EventPanel(context, renamedEvent)));
+                    }
+                }
+            }
+        });
+        prepareGridRow(gridPanel, "Nazwa: ", nameLabel);
         prepareGridRow(gridPanel, "Zakres czasu: ", timespanLabel);
         prepareGridRow(gridPanel, "Ilość kopii: ", numOfCopiesLabel);
         prepareGridRow(gridPanel, "Ilość plików: ", numOfPhotosLabel);
@@ -194,9 +219,13 @@ public class EventPanel extends MainPanel {
 
             DefaultComboBoxModel eventSelectionModel = new DefaultComboBoxModel(new String[]{"Najpierw wybierz typ..."});
             JComboBox eventSelection = new JComboBox(eventSelectionModel);
-
             eventSelection.setEnabled(false);
             contentPanel.add(eventSelection);
+
+            DefaultComboBoxModel deviceSelectionModel = new DefaultComboBoxModel(new String[]{"Najpierw wybierz wydarzenie..."});
+            JComboBox deviceSelection = new JComboBox(deviceSelectionModel);
+            deviceSelection.setEnabled(false);
+            contentPanel.add(deviceSelection);
 
             JPanel buttonPanel = new JPanel(new FlowLayout());
 
@@ -210,10 +239,12 @@ public class EventPanel extends MainPanel {
             contentPanel.add(buttonPanel);
 
             final AtomicReference<Event> selectedEvent = new AtomicReference<>(null);
+            final AtomicReference<Carrier> selectedCarrier = new AtomicReference<>(null);
 
             eventTypeSelection.addActionListener((evt) -> {
                 if (eventTypeSelection.getSelectedIndex() == 0) {//if user selected label
                     eventSelection.setEnabled(false);
+                    deviceSelection.setEnabled(false);
                     proceedButton.setEnabled(false);
                     return;
                 }
@@ -227,6 +258,7 @@ public class EventPanel extends MainPanel {
                     try {
                         final List<Event> result = context.dbManager.getDaos().getEventDao().queryForEq("type", eventType);
                         SwingUtilities.invokeLater(() -> {
+                            eventSelection.setEnabled(true);
                             eventSelectionModel.removeAllElements();
                             result.stream().forEach((e) -> {
                                 eventSelectionModel.addElement(e.getName());
@@ -235,23 +267,30 @@ public class EventPanel extends MainPanel {
                             Arrays.stream(eventSelection.getActionListeners()).forEach(listener -> eventSelection.removeActionListener(listener));
                             eventSelection.addActionListener((evt2) -> {
                                 if (eventSelection.getSelectedIndex() == result.size()) {
-                                    String name = JOptionPane.showInputDialog("Podaj nazwę nowego wydarzenia", DateTimeFormatter.ofPattern("[YYYY.MM.dd] ").format(LocalDateTime.now()));
-                                    if (name != null && !name.isEmpty()) {
-                                        Event newEvent = Event.createEvent(context, Event.Type.SORTED, name);
-                                        if (newEvent == null) {
-                                            JOptionPane.showMessageDialog(dialog, "Błąd podczas tworzenia wydarzenia!");
-                                        } else {
-                                            eventSelection.setEnabled(false);
-                                            selectedEvent.set(newEvent);
-                                            context.eBus.post(new EventsNode.EventsListChanged());
-                                        }
+                                    Event newEvent = CreateEventModal.showCreateEventModal(dialog, context);
+                                    if (newEvent != null) {
+                                        eventSelection.setEnabled(false);
+                                        selectedEvent.set(newEvent);
                                     }
-                                } else if (eventSelection.getSelectedIndex() > 0 && eventSelection.getSelectedIndex() < result.size()) {
+                                } else if (eventSelection.getSelectedIndex() >= 0 && eventSelection.getSelectedIndex() < result.size()) {
                                     selectedEvent.set(result.get(eventSelection.getSelectedIndex()));
                                 }
+                                
+                                if(selectedEvent.get() != null) {
+                                    Arrays.stream(deviceSelection.getActionListeners()).forEach(listener -> deviceSelection.removeActionListener(listener));
+                                    deviceSelectionModel.removeAllElements();
+                                    Carrier [] connectedCarriersSorted = context.deviceDetector.getConnectedCarriers(Carrier.getCarriersSortedByNumOfMFiles(context, selectedEvent.get().getMFiles(context)));
+                                    Arrays.stream(connectedCarriersSorted).forEachOrdered(carrier -> deviceSelectionModel.addElement(carrier.getName()));
+                                    deviceSelection.setEnabled(true);
+                                    deviceSelection.addActionListener(evt3 -> {
+                                        if(deviceSelection.getSelectedIndex() >= 0 && deviceSelection.getSelectedIndex() < connectedCarriersSorted.length) {
+                                            Carrier c = connectedCarriersSorted[deviceSelection.getSelectedIndex()];
+                                            selectedCarrier.set(c);
+                                            proceedButton.setEnabled(true);
+                                        }
+                                    });
+                                }
                             });
-                            eventSelection.setEnabled(true);
-                            proceedButton.setEnabled(true);
                         });
                     } catch (SQLException ex) {
                         Logger.getLogger(EventPanel.class.getName()).log(Level.SEVERE, null, ex);
@@ -263,31 +302,68 @@ public class EventPanel extends MainPanel {
 
             proceedButton.addActionListener((evt) -> {
                 Event targetEvent = selectedEvent.get();
-                if (targetEvent == null) {
-                    JOptionPane.showMessageDialog(dialog, "Nie wybrałeś wydarzenia!");
+                Carrier targetCarrier = selectedCarrier.get();
+                if (targetEvent == null || targetCarrier == null) {
+                    JOptionPane.showMessageDialog(dialog, "Nie wybrałeś wydarzenia lub urządzenia!");
                 } else {
+                    File targetDeviceRoot = context.deviceDetector.getDeviceRoot(targetCarrier.getName());
+                    
                     if (targetEvent.getId() != event.getId()) {
-                        context.dbManager.executeInDBThread(() -> {
-                            Dao<Event, Integer> eventDao = context.dbManager.getDaos().getEventDao();
-                            Dao<MFile, Integer> mfileDao = context.dbManager.getDaos().getMfileDao();
-                            Dao<MFile_Event, Integer> mfile_eventDao = context.dbManager.getDaos().getMfile_EventDao();
-                            
+                        Executors.newSingleThreadExecutor().submit(() -> {
+                            SwingUtilities.invokeLater(() -> {
+                                cancelButton.setEnabled(false);
+                                proceedButton.setEnabled(false);
+                                cancelButton.setText("Proszę czekać");
+                                proceedButton.setText("Przenoszenie...");
+                            });
                             Arrays.stream(mfilesToMove).forEach(mf -> {
                                 try {
-                                    MFile_Event newMfe = new MFile_Event();
-                                    newMfe.setEvent(targetEvent);
-                                    newMfe.setMfile(mf);
-                                    mfile_eventDao.create(newMfe);
-                                    DeleteBuilder<MFile_Event, Integer> deleteBuilder = mfile_eventDao.deleteBuilder();
-                                    deleteBuilder.where().eq("fileId", mf.getId()).and().eq("eventId", event.getId());
-                                    deleteBuilder.delete();
-                                } catch (SQLException ex) {
+                                    File source = mf.getAccessibleFile(context);
+                                    File targetFile = new File(mf.getProperPath(targetDeviceRoot, event));
+                                    Files.copy(source, targetFile);
+                                    
+                                    context.dbManager.executeInDBThread(() -> {
+                                        Dao<MFile_Event, Integer> mfile_eventDao = context.dbManager.getDaos().getMfile_EventDao();
+                                        Dao<MFile_Localization, Integer> mfile_localizationDao = context.dbManager.getDaos().getMfile_Localization();
+                                        try {
+                                            /*CREATE MFile-Event*/
+                                            MFile_Event newMfe = new MFile_Event();
+                                            newMfe.setEvent(targetEvent);
+                                            newMfe.setMfile(mf);
+                                            mfile_eventDao.create(newMfe);
+                                            
+                                            /*DELETE old MFile-Event*/
+                                            DeleteBuilder<MFile_Event, Integer> mfeDeleteBuilder = mfile_eventDao.deleteBuilder();
+                                            mfeDeleteBuilder.where().eq("fileId", mf.getId()).and().eq("eventId", event.getId());
+                                            mfeDeleteBuilder.delete();
+                                            
+                                            /*CREATE MFile-localization*/
+                                            MFile_Localization newMfl = new MFile_Localization();
+                                            newMfl.setCarrierId(targetCarrier.getId());
+                                            newMfl.setMfile(mf);
+                                            newMfl.setPath(targetDeviceRoot.toPath().relativize(targetFile.toPath()).toString());
+                                            mfile_localizationDao.create(newMfl);
+                                            
+                                            /*DELETE old Mfile-localization*/
+                                            DeleteBuilder<MFile_Localization, Integer> mflDeleteBuilder = mfile_localizationDao.deleteBuilder();
+                                            ****mflDeleteBuilder.where().eq("fileId", mf.getId()).and().eq("carrierId", carrier.getId());
+                                            ****mflDeleteBuilder.delete();
+                                            **Którą lokalizację usunąć?
+                                        } catch (SQLException ex) {
+                                            Logger.getLogger(EventPanel.class.getName()).log(Level.SEVERE, null, ex);
+                                        }
+                                    });
+                                } catch (IOException ex) {
                                     Logger.getLogger(EventPanel.class.getName()).log(Level.SEVERE, null, ex);
                                 }
                             });
                             context.eBus.post(new ChangeMainPanel(new EventPanel(context, targetEvent)));
+                            SwingUtilities.invokeLater(() -> {
+                                dialog.setVisible(false);
+                            });
+
                         });
-                        dialog.setVisible(false);
+
                     }
                 }
             });

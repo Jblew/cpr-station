@@ -13,7 +13,7 @@ import javax.swing.ImageIcon;
  * @author teofil
  */
 public enum IconLoader {
-    OK_16("ok16.png"), ERROR_16("error16.png");
+    OK_16("ok16.png"), ERROR_16("error16.png"), EDIT_16("edit16.png");
     private static final HashMap<IconLoader, ImageIcon> loaded = new HashMap<>();
     private final String filename;
     private IconLoader(String filename) {

@@ -28,6 +28,7 @@ import pl.jblew.cpr.db.DatabaseManager;
 import pl.jblew.cpr.file.StorageDevicePresenceListener;
 import pl.jblew.cpr.gui.ChangeMainPanel;
 import pl.jblew.cpr.gui.TreePanel;
+import pl.jblew.cpr.gui.components.modal.CreateEventModal;
 import pl.jblew.cpr.gui.panels.EventPanel;
 import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.Event;
@@ -85,18 +86,7 @@ public class EventsNode extends TreePanel.IconTreeNode implements TreePanel.AddT
                     final TreePanel.SelectableIconTreeNode node = new TreePanel.SelectableIconTreeNode("Dodaj wydarzenie", new ImageIcon(TreePanel.class.getClassLoader().getResource("images/add16.png"))) {
                         @Override
                         public void nodeSelected(JTree tree) {
-                            SwingUtilities.invokeLater(() -> {
-                                String name = JOptionPane.showInputDialog("Podaj nazwę nowego wydarzenia", DateTimeFormatter.ofPattern("[YYYY.MM.dd] ").format(LocalDateTime.now()));
-                                if (name != null && !name.isEmpty()) {
-                                    Event newEvent = Event.createEvent(context, Event.Type.SORTED, name);
-                                    if (newEvent == null) {
-                                        JOptionPane.showMessageDialog(tree, "Błąd podczas tworzenia wydarzenia!");
-                                    } else {
-                                        context.eBus.post(new ChangeMainPanel(new EventPanel(context, newEvent)));
-                                        fireNodeChanged();
-                                    }
-                                }
-                            });
+                            CreateEventModal.showCreateEventModal(tree, context);
                         }
                     };
                     SwingUtilities.invokeLater(() -> {
@@ -112,7 +102,6 @@ public class EventsNode extends TreePanel.IconTreeNode implements TreePanel.AddT
     }
 
     private void addEventNode(final Event e) {
-        System.out.println("Adding event node: " + e.getName());
         SwingUtilities.invokeLater(() -> {
             TreePanel.SelectableIconTreeNode node = new TreePanel.SelectableIconTreeNode(e.getName(), new ImageIcon(TreePanel.class.getClassLoader().getResource("images/pc16.gif"))) {
                 @Override

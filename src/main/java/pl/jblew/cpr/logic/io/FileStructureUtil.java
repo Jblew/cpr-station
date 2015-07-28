@@ -6,14 +6,12 @@
 package pl.jblew.cpr.logic.io;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.List;
 
 /**
  *
  * @author teofil
  */
-class FileStructureUtil {
+public class FileStructureUtil {
     public static final String PATH_SORTED = "POSEGREGOWANE";
     public static final String PATH_SORTED_PHOTOS = PATH_SORTED + File.separator + "Zdjęcia";
     public static final String PATH_SORTED_PHOTOS_THUMBNAILS = PATH_SORTED_PHOTOS + File.separator + ".thumb";

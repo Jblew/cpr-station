@@ -11,6 +11,7 @@ import com.j256.ormlite.field.DatabaseField;
 import com.j256.ormlite.field.ForeignCollectionField;
 import com.j256.ormlite.table.DatabaseTable;
 import java.io.File;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Date;
@@ -19,6 +20,7 @@ import java.util.stream.Stream;
 import javax.swing.ImageIcon;
 import javax.swing.SwingUtilities;
 import pl.jblew.cpr.bootstrap.Context;
+import pl.jblew.cpr.logic.io.FileStructureUtil;
 
 /**
  *
@@ -95,6 +97,10 @@ public class MFile implements Comparable<MFile> {
         }
         Optional<File> res = s.map((mfl) -> mfl.getFile(c)).filter((f) -> f != null && f.canRead()).findFirst();
         return (res.isPresent() ? res.get() : null);
+    }
+
+    public String getProperPath(File deviceRoot, Event e) {
+        return e.getProperPath(deviceRoot) + File.separator + getName();
     }
 
     @Override

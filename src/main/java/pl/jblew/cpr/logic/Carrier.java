@@ -9,10 +9,14 @@ import com.j256.ormlite.field.DataType;
 import com.j256.ormlite.field.DatabaseField;
 import com.j256.ormlite.table.DatabaseTable;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 import pl.jblew.cpr.bootstrap.Context;
 
 /**
@@ -83,6 +87,23 @@ public class Carrier {
             Logger.getLogger(Carrier.class.getName()).log(Level.SEVERE, null, ex);
         }
         return out.get();
+    }
+    
+    public static Carrier [] getCarriersSortedByNumOfMFiles(Context context, MFile [] mfiles) {
+        final HashMap<Carrier, Integer> out = new HashMap<>();
+        Arrays.stream(mfiles).flatMap(mf -> mf.getLocalizations().stream()).forEach(mfl -> {
+            Carrier c = mfl.getCarrier(context);
+            if (c != null) {
+                if (out.containsKey(c)) {
+                    out.put(c, out.get(c) + 1);
+                } else {
+                    out.put(c, 1);
+                }
+            }
+        });
+
+        return out.entrySet().stream().sorted((entry1, entry2) -> -Integer.compare(entry1.getValue(), entry2.getValue()))
+                .map(entry -> entry.getKey()).toArray(Carrier[]::new);
     }
 
     @Override

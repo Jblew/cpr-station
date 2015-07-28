@@ -8,6 +8,7 @@ package pl.jblew.cpr.file;
 import com.google.common.eventbus.EventBus;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -17,6 +18,7 @@ import net.samuelcampos.usbdrivedectector.USBStorageDevice;
 import net.samuelcampos.usbdrivedectector.events.DeviceEventType;
 import net.samuelcampos.usbdrivedectector.events.IUSBDriveListener;
 import net.samuelcampos.usbdrivedectector.events.USBStorageEvent;
+import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.util.TwoTuple;
 
 /**
@@ -112,6 +114,10 @@ public class DeviceDetectorProcess {
             
             return out;
         }
+    }
+    
+    public Carrier [] getConnectedCarriers(Carrier [] carrierList) {
+        return Arrays.stream(carrierList).filter(carrier -> (getDeviceRoot(carrier.getName()) != null)).toArray(Carrier[]::new);
     }
     
     public File getDeviceRoot(String deviceName) {

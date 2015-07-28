@@ -15,7 +15,6 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -27,6 +26,7 @@ import java.util.logging.Logger;
 import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.gui.panels.EventPanel;
 import pl.jblew.cpr.logic.io.Exporter;
+import pl.jblew.cpr.logic.io.FileStructureUtil;
 
 /**
  *
@@ -158,6 +158,28 @@ public class Event {
             Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
         }
         return out.get();
+    }
+    
+    public Event rename(Context c, String newName) {
+        setName(newName);
+        final Event me = this;
+        try {
+            c.dbManager.executeInDBThreadAndWait(() -> {
+                try {
+                    c.dbManager.getDaos().getEventDao().update(me);
+                } catch (SQLException ex) {
+                    Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            });
+        } catch (InterruptedException ex) {
+            Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return this;
+    }
+    
+    public String getProperPath(File deviceRoot) {
+        String sortedPath = (getType() == Event.Type.SORTED ? FileStructureUtil.PATH_SORTED_PHOTOS : FileStructureUtil.PATH_UNSORTED_PHOTOS);
+        return deviceRoot.getAbsolutePath() + File.separator + sortedPath + File.separator + getName();
     }
 
     @Override
