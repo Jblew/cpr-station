@@ -70,7 +70,6 @@ public class FileBrowser extends JPanel {
         });
 
         dirNameLabel.setText("/" + root.toPath().relativize(cwd.get().toPath()).toString());
-        //System.out.println("Relative path: "+relativePath);
 
         toolPanel = new JPanel();
         toolPanel.setLayout(new FlowLayout(FlowLayout.LEFT));

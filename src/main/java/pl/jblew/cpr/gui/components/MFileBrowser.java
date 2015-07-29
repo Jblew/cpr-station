@@ -9,26 +9,24 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.IntStream;
 import javax.swing.*;
 import javax.swing.border.*;
 import pl.jblew.cpr.Settings;
 import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.logic.Event;
 import pl.jblew.cpr.logic.MFile;
-import pl.jblew.cpr.logic.MFile_Localization;
 import pl.jblew.cpr.logic.io.ThumbnailLoader;
 import pl.jblew.cpr.gui.util.*;
 
@@ -39,8 +37,8 @@ import pl.jblew.cpr.gui.util.*;
 public class MFileBrowser extends JPanel {
     private final Context context;
     private final Lock dataLock = new ReentrantLock();
-    private final MFile[] mfiles;
-    private final Map<MFile, MFileComponent> components = new HashMap<>();
+    private final MFile.Localized[] localizedMFiles;
+    private final Map<MFile.Localized, MFileComponent> components = new HashMap<>();
     private final JTabbedPane tabbedPane;
     private final Event event;
     private final SingleBrowsingPanel singleBrowsingPanel;
@@ -51,8 +49,8 @@ public class MFileBrowser extends JPanel {
     private final ImageIcon emptyImage;
     private final ExecutorService loadingExecutor = Executors.newSingleThreadExecutor();
 
-    public MFileBrowser(Context context_, MFile[] mfiles_, Event event_) {
-        this.mfiles = Arrays.stream(mfiles_).sorted().toArray(MFile[]::new);
+    public MFileBrowser(Context context_, MFile.Localized[] localizedMFiles, Event event_) {
+        this.localizedMFiles = localizedMFiles;
         this.event = event_;
         this.context = context_;
         tabbedPane = new JTabbedPane();
@@ -123,65 +121,64 @@ public class MFileBrowser extends JPanel {
         dataLock.lock();
         try {
             components.clear();
-            for (MFile mf : mfiles) {
-                MFileComponent component = new MFileComponent(mf, thumbnailLoader);
-
+            for (int i = 0;i < localizedMFiles.length;i++) {
+                MFile.Localized mfl = localizedMFiles[i];
+                MFileComponent component = new MFileComponent(mfl, thumbnailLoader);
+                
                 gridBrowsingPanel.addMFileComponent(component);
-                components.put(mf, component);
-                //System.out.println("Added mf component");
+                components.put(mfl, component);
             }
 
             gridBrowsingPanel.revalidate();
             gridBrowsingPanel.repaint();
-
         } finally {
             dataLock.unlock();
         }
     }
 
-    public MFile[] getSelectedMFiles() {
+    public MFile.Localized[] getSelectedLocalizedMFiles() {
         try {
-            LinkedList<MFile> result = new LinkedList<>();
+            LinkedList<MFile.Localized> result = new LinkedList<>();
             if (SwingUtilities.isEventDispatchThread()) {
                 components.values().stream().forEach((mfc) -> {
                     if (mfc.isFileSelected()) {
-                        result.add(mfc.mfile);
+                        result.add(mfc.localizedMFile);
                     }
                 });
             } else {
                 SwingUtilities.invokeAndWait(() -> {
                     components.values().stream().forEach((mfc) -> {
                         if (mfc.isFileSelected()) {
-                            result.add(mfc.mfile);
+                            result.add(mfc.localizedMFile);
                         }
                     });
                 });
             }
-            return result.toArray(new MFile[]{});
+            return result.toArray(new MFile.Localized[]{});
         } catch (InterruptedException | InvocationTargetException ex) {
             Logger.getLogger(MFileBrowser.class.getName()).log(Level.SEVERE, null, ex);
             return null;
         }
     }
 
-    public MFile[] getAllMFiles() {
-        return mfiles;
+    public MFile.Localized[] getAllLocalizedMFiles() {
+        return localizedMFiles;
     }
 
     private class MFileComponent extends JButton implements Comparable<MFileComponent> {
-        private final MFile mfile;
+        private final MFile.Localized localizedMFile;
         private final ThumbnailLoader thumbnailLoader;
         private final AtomicReference<OpenMFileCallback> callback = new AtomicReference<>();
         private final MFileComponent me = this;
         private final AtomicBoolean selected = new AtomicBoolean(false);
         //private final AtomicBoolean marked = new AtomicBoolean(false);
 
-        public MFileComponent(MFile file_, ThumbnailLoader thumbnailLoader_) {
+        public MFileComponent(MFile.Localized file_, ThumbnailLoader thumbnailLoader_) {
             super();
-            this.mfile = file_;
+            this.localizedMFile = file_;
             this.thumbnailLoader = thumbnailLoader_;
 
-            setText(mfile.getName());
+            setText(localizedMFile.getMFile().getName());
             setIcon(emptyImage);
             setVerticalTextPosition(SwingConstants.BOTTOM);
             setHorizontalTextPosition(SwingConstants.CENTER);
@@ -212,39 +209,21 @@ public class MFileBrowser extends JPanel {
                         int myIndex = 0;
                         dataLock.lock();
                         try {
-                            for (int i = 0; i < mfiles.length; i++) {
-                                if (mfiles[i].equals(mfile)) {
-                                    myIndex = i;
-                                    break;
-                                }
+                            myIndex = IntStream.range(0, localizedMFiles.length).filter(i -> localizedMFiles[i].equals(localizedMFile)).findFirst().orElse(0);
+
+                            MFileComponent firstSelected = components.values().stream().filter((MFileComponent mfc) -> mfc.isFileSelected()).findFirst().orElse(null);
+                            if (firstSelected != null) {
+                                selectionStart = IntStream.range(0, localizedMFiles.length).filter(i -> localizedMFiles[i].equals(firstSelected.localizedMFile)).findFirst().orElse(0);
                             }
 
-                            for (MFile f : components.keySet()) {
-                                MFileComponent fc = components.get(f);
-                                if (fc.isFileSelected()) {
-                                    for (int i = 0; i < mfiles.length; i++) {
-                                        if (mfiles[i].equals(f)) {
-                                            selectionStart = i;
-                                            break;
-                                        }
-                                    }
-                                    break;
-                                }
-                            }
-
-                            for (int i = selectionStart; i <= myIndex; i++) {
-                                MFile f = mfiles[i];
-                                components.get(f).select();
-                            }
+                            IntStream.range(Math.min(selectionStart, myIndex), Math.max(selectionStart, myIndex)).forEach(i -> components.get(localizedMFiles[i]).select());
                         } finally {
                             dataLock.unlock();
                         }
                     } else {
                         dataLock.lock();
                         try {
-                            for (MFileComponent fc : components.values()) {
-                                fc.unselect();
-                            }
+                            components.values().stream().forEach((fc) -> fc.unselect());
                         } finally {
                             dataLock.unlock();
                         }
@@ -255,14 +234,16 @@ public class MFileBrowser extends JPanel {
 
             loadingExecutor.submit(() -> {
                 context.dbManager.executeInDBThread(() -> {
-                    File f = mfile.getAccessibleFile(context);
-                    if (ThumbnailLoader.canBeLoaded(f)) {
-                        thumbnailLoader.loadImage(f, (final ImageIcon img) -> {
-                            SwingUtilities.invokeLater(() -> {
-                                setIcon(img);
-                                setDisabledIcon(img);
+                    File f = localizedMFile.getFile();
+                    if (f != null) {
+                        if (ThumbnailLoader.canBeLoaded(f)) {
+                            thumbnailLoader.loadImage(f, (final ImageIcon img) -> {
+                                SwingUtilities.invokeLater(() -> {
+                                    setIcon(img);
+                                    setDisabledIcon(img);
+                                });
                             });
-                        });
+                        }
                     }
                 });
             });
@@ -287,7 +268,6 @@ public class MFileBrowser extends JPanel {
                     setForeground(Color.BLACK);
                     setEnabled(false);
                 }
-                //setBorder(BorderFactory.createEmptyBorder());
             });
         }
 
@@ -301,7 +281,7 @@ public class MFileBrowser extends JPanel {
 
         @Override
         public int compareTo(MFileComponent cmp) {
-            return mfile.compareTo(cmp.mfile);
+            return localizedMFile.compareTo(cmp.localizedMFile);
         }
     }
 
@@ -351,7 +331,7 @@ public class MFileBrowser extends JPanel {
             components.values().stream().forEach((mfc) -> {
                 singleBrowsingPanel.addMFileComponent(mfc);
             });
-            singleBrowsingPanel.changeMFile(cmp.mfile, cmp);
+            singleBrowsingPanel.changeMFile(cmp.localizedMFile, cmp);
         }
 
     }
@@ -411,37 +391,29 @@ public class MFileBrowser extends JPanel {
                     }
 
                     if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
-                        changeMFile(rightComponent.mfile, rightComponent);
+                        changeMFile(rightComponent.localizedMFile, rightComponent);
                     } else if (e.getKeyCode() == KeyEvent.VK_LEFT) {
-                        changeMFile(leftComponent.mfile, leftComponent);
+                        changeMFile(leftComponent.localizedMFile, leftComponent);
                     }
                 }
 
             });
         }
 
-        public void changeMFile(final MFile mfile, final MFileComponent mfc) {
+        public void changeMFile(final MFile.Localized localizedMFile, final MFileComponent mfc) {
             currentComponent.set(mfc);
-            context.dbManager.executeInDBThread(() -> {
-                for (MFile_Localization localization : mfile.getLocalizations()) {
-                    final File f = localization.getFile(context);
-                    if (f != null && f.canRead()) {
-                        SwingUtilities.invokeLater(() -> {
-                            if (browser.get() != null) {
-                                remove(browser.get());
-                                PhotoBrowser newBrowser = new PhotoBrowser(f, PhotoBrowser.ScaleType.FIT);
-                                browser.set(newBrowser);
-                                add(newBrowser, BorderLayout.CENTER);
-                                revalidate();
-                                repaint();
-                            }
-                        });
-                        break;
+            SwingUtilities.invokeLater(() -> {
+                if (localizedMFile.getFile() != null) {
+                    if (browser.get() != null) {
+                        remove(browser.get());
+                        PhotoBrowser newBrowser = new PhotoBrowser(localizedMFile.getFile(), PhotoBrowser.ScaleType.FIT);
+                        browser.set(newBrowser);
+                        add(newBrowser, BorderLayout.CENTER);
+                        revalidate();
+                        repaint();
                     }
                 }
-            });
 
-            SwingUtilities.invokeLater(() -> {
                 scrollSouthToCenter(mfc);
             });
 
@@ -481,7 +453,7 @@ public class MFileBrowser extends JPanel {
 
         @Override
         public void clickedOpen(MFileComponent cmp) {
-            changeMFile(cmp.mfile, cmp);
+            changeMFile(cmp.localizedMFile, cmp);
         }
     }
 }

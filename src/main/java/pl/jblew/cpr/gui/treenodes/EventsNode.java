@@ -72,7 +72,6 @@ public class EventsNode extends TreePanel.IconTreeNode implements TreePanel.AddT
 
     @Subscribe
     public void eventsListChanged(EventsListChanged evt) {
-        System.out.println("Events list changed");
         context.dbManager.executeInDBThread(() -> {
             try {
                 final List<Event> result = context.dbManager.getDaos().getEventDao().queryForEq("type", eventType);

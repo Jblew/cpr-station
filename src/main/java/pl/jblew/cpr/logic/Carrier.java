@@ -12,11 +12,9 @@ import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Stream;
 import pl.jblew.cpr.bootstrap.Context;
 
 /**
@@ -89,7 +87,7 @@ public class Carrier {
         return out.get();
     }
     
-    public static Carrier [] getCarriersSortedByNumOfMFiles(Context context, MFile [] mfiles) {
+    /*public static Carrier [] getCarriersSortedByNumOfMFiles(Context context, MFile [] mfiles) {
         final HashMap<Carrier, Integer> out = new HashMap<>();
         Arrays.stream(mfiles).flatMap(mf -> mf.getLocalizations().stream()).forEach(mfl -> {
             Carrier c = mfl.getCarrier(context);
@@ -104,7 +102,7 @@ public class Carrier {
 
         return out.entrySet().stream().sorted((entry1, entry2) -> -Integer.compare(entry1.getValue(), entry2.getValue()))
                 .map(entry -> entry.getKey()).toArray(Carrier[]::new);
-    }
+    }*/
 
     @Override
     public int hashCode() {

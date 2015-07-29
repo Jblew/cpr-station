@@ -5,38 +5,19 @@
  */
 package pl.jblew.cpr.gui.panels;
 
-import com.google.common.io.Files;
-import com.j256.ormlite.dao.Dao;
-import com.j256.ormlite.stmt.DeleteBuilder;
 import java.awt.BorderLayout;
-import java.awt.Dialog;
-import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.io.File;
-import java.io.IOException;
-import java.sql.SQLException;
-import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
-import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
-import javax.swing.JComboBox;
 import javax.swing.JComponent;
-import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -46,13 +27,9 @@ import pl.jblew.cpr.gui.ChangeMainPanel;
 import pl.jblew.cpr.gui.IconLoader;
 import pl.jblew.cpr.gui.MainPanel;
 import pl.jblew.cpr.gui.components.MFileBrowser;
-import pl.jblew.cpr.gui.components.modal.CreateEventModal;
 import pl.jblew.cpr.gui.treenodes.EventsNode;
-import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.Event;
 import pl.jblew.cpr.logic.MFile;
-import pl.jblew.cpr.logic.MFile_Event;
-import pl.jblew.cpr.logic.MFile_Localization;
 
 /**
  *
@@ -65,8 +42,8 @@ public class EventPanel extends MainPanel {
     private final JLabel numOfCopiesLabel;
     private final JPanel browserPanel;
     private final JLabel numOfPhotosLabel;
-    private final JButton moveSelectedToEventButton;
-    private final JButton moveAllToEventButton;
+    //private final JButton moveSelectedToEventButton;
+    //private final JButton moveAllToEventButton;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private MFileBrowser browser;
 
@@ -74,16 +51,18 @@ public class EventPanel extends MainPanel {
         this.context = context_;
         this.event = event_;
 
+        /*
+        TRZEBA ZROBIĆ ASYSTENTA PRZENOSZENIA NA WIELU DYSKACH
         this.moveSelectedToEventButton = new JButton("Przenieś zaznaczone");
         this.moveAllToEventButton = new JButton("Przenieś wszystkie");
 
         moveSelectedToEventButton.addActionListener((evt) -> {
-            moveMFilesToEvent(browser.getSelectedMFiles());
+            moveMFilesToEvent(browser.getSelectedLocalizedMFiles());
         });
 
         moveAllToEventButton.addActionListener((evt) -> {
-            moveMFilesToEvent(browser.getAllMFiles());
-        });
+            moveMFilesToEvent(browser.getAllLocalizedMFiles());
+        });*/
 
         setLayout(new BorderLayout());
 
@@ -173,37 +152,38 @@ public class EventPanel extends MainPanel {
     }
 
     private void asyncLoadData() {
-        Event.FullEventData fed = event.getFullEventData(context);
-        if (fed != null) {
+        executor.submit(() -> {
+        MFile.Localized [] mfiles = event.getLocalizedMFiles(context);
+        int redundancy = event.getRedundancy();
+        if(mfiles.length > 0) {
             SwingUtilities.invokeLater(() -> {
-                numOfPhotosLabel.setText(fed.mfiles.length + "");
-
-                if (fed.startDate != null) {
+                numOfPhotosLabel.setText(mfiles.length + "");
+                    LocalDateTime earliesDT = mfiles[0].getMFile().getDateTime();
+                    LocalDateTime latestDT = mfiles[mfiles.length-1].getMFile().getDateTime();
                     DateTimeFormatter f = DateTimeFormatter.ofPattern("YYYY.MM.dd HH:ss");
-                    String timeSpan = f.format(fed.startDate) + " - " + f.format(fed.endDate);
+                    String timeSpan = f.format(earliesDT) + (earliesDT.equals(latestDT)? "": " - " + f.format(latestDT));
                     timespanLabel.setText(timeSpan);
-                } else {
                     timespanLabel.setText("");
-
-                }
                 String warn = "";
-                if (fed.minRedundancy < 2) {
+                
+                if (redundancy < 2) {
                     warn = " (Koniecznie wykonaj dodatkową kopię na innym nośniku)";
                 }
-                numOfCopiesLabel.setText((fed.minRedundancy == fed.maxRedundancy ? fed.minRedundancy + "" : fed.minRedundancy + " - " + fed.maxRedundancy) + warn);
+                numOfCopiesLabel.setText(redundancy + warn);
 
                 browserPanel.removeAll();
 
-                browser = new MFileBrowser(context, fed.mfiles, event);
-                browser.addComponentToToolPanel(moveSelectedToEventButton);
-                browser.addComponentToToolPanel(moveAllToEventButton);
+                browser = new MFileBrowser(context, mfiles, event);
+                //browser.addComponentToToolPanel(moveSelectedToEventButton);
+                //browser.addComponentToToolPanel(moveAllToEventButton);
                 browserPanel.add(browser, BorderLayout.CENTER);
                 browserPanel.revalidate();
                 browserPanel.repaint();
             });
-        }
+        }});
     }
 
+    /** TRZEBA ZROBIĆ PANEL PRZENOSZENIA
     private void moveMFilesToEvent(MFile[] mfilesToMove) {
         if (mfilesToMove != null && mfilesToMove.length > 0) {
             JDialog dialog = new JDialog(context.frame, "", Dialog.ModalityType.DOCUMENT_MODAL);
@@ -324,27 +304,27 @@ public class EventPanel extends MainPanel {
                                     
                                     context.dbManager.executeInDBThread(() -> {
                                         Dao<MFile_Event, Integer> mfile_eventDao = context.dbManager.getDaos().getMfile_EventDao();
-                                        Dao<MFile_Localization, Integer> mfile_localizationDao = context.dbManager.getDaos().getMfile_Localization();
+                                        Dao<MFile_Localization, Integer> mfile_localizationDao = context.dbManager.getDaos().getEvent_LocalizationDao();
                                         try {
-                                            /*CREATE MFile-Event*/
+                                            /*CREATE MFile-Event*
                                             MFile_Event newMfe = new MFile_Event();
                                             newMfe.setEvent(targetEvent);
                                             newMfe.setMfile(mf);
                                             mfile_eventDao.create(newMfe);
                                             
-                                            /*DELETE old MFile-Event*/
+                                            /*DELETE old MFile-Event*
                                             DeleteBuilder<MFile_Event, Integer> mfeDeleteBuilder = mfile_eventDao.deleteBuilder();
                                             mfeDeleteBuilder.where().eq("fileId", mf.getId()).and().eq("eventId", event.getId());
                                             mfeDeleteBuilder.delete();
                                             
-                                            /*CREATE MFile-localization*/
+                                            /*CREATE MFile-localization*
                                             MFile_Localization newMfl = new MFile_Localization();
                                             newMfl.setCarrierId(targetCarrier.getId());
                                             newMfl.setMfile(mf);
                                             newMfl.setPath(targetDeviceRoot.toPath().relativize(targetFile.toPath()).toString());
                                             mfile_localizationDao.create(newMfl);
                                             
-                                            /*DELETE old Mfile-localization*/
+                                            /*DELETE old Mfile-localization*
                                             DeleteBuilder<MFile_Localization, Integer> mflDeleteBuilder = mfile_localizationDao.deleteBuilder();
                                             ****mflDeleteBuilder.where().eq("fileId", mf.getId()).and().eq("carrierId", carrier.getId());
                                             ****mflDeleteBuilder.delete();
@@ -371,7 +351,6 @@ public class EventPanel extends MainPanel {
             dialog.setContentPane(contentPanel);
             dialog.setVisible(true);
 
-            System.out.println("Dialog finished");
         }
-    }
+    }*/
 }

@@ -64,7 +64,6 @@ public class DevicesNode extends IconTreeNode implements StorageDevicePresenceLi
 
     @Override
     public void storageDeviceConnected(final File rootFile, final String deviceName) {
-        //System.out.println("Adding device to tree");
         SwingUtilities.invokeLater(() -> {
             if (!devices.containsKey(rootFile.getPath())) {
                 MutableTreeNode node = new SelectableIconTreeNode(deviceName, new ImageIcon(TreePanel.class.getClassLoader().getResource("images/usb16.png"))) {

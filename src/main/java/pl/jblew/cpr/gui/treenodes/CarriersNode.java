@@ -102,7 +102,6 @@ public class CarriersNode extends IconTreeNode implements StorageDevicePresenceL
 
     private void addCarrierNode(final Carrier c) {
         SwingUtilities.invokeLater(() -> {
-            System.out.println("Adding Carrier node: name = " + c.getName());
             SelectableIconTreeNode node = new SelectableIconTreeNode(c.getName(), new ImageIcon(TreePanel.class.getClassLoader().getResource("images/dbsave16.png"))) {
                 @Override
                 public void nodeSelected(JTree tree) {
@@ -127,10 +126,8 @@ public class CarriersNode extends IconTreeNode implements StorageDevicePresenceL
 
     @Subscribe
     public void carriersListChanged(CarriersListChanged evt) {
-        System.out.println("Carriers list changed");
         dbManager.executeInDBThread(() -> {
             try {
-                System.out.println("Adding carriers");
                 removeAllChildren();
                 synchronized (carriers) {
                     carriers.clear();

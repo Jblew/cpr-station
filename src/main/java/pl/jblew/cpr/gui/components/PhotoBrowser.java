@@ -10,18 +10,14 @@ import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.imageio.ImageIO;
 import javax.swing.*;
-import pl.jblew.cpr.util.MessageToStatusBar;
 import pl.jblew.cpr.util.NamingThreadFactory;
 
 /**
@@ -112,7 +108,6 @@ public class PhotoBrowser extends JPanel {
                     float xRatio = (float) scrollPane.getViewport().getWidth() / (float) imgSafe.getWidth();
                     float yRatio = (float) scrollPane.getViewport().getHeight() / (float) imgSafe.getHeight();
                     float scaleRatio = Math.min(xRatio, yRatio);
-                    //System.out.println("ScaleRatio="+scaleRatio);
                     transform.setToScale(scaleRatio, scaleRatio);
                 } else if (scaleTypeSafe == ScaleType.FILL) {
                     transform.setToIdentity();
@@ -120,9 +115,6 @@ public class PhotoBrowser extends JPanel {
                     float yRatio = (float) scrollPane.getViewport().getHeight() / (float) imgSafe.getHeight();
                     float scaleRatio = Math.max(xRatio, yRatio);
                     transform.setToScale(scaleRatio, scaleRatio);
-                    //System.out.println("scaleRatio="+scaleRatio+"; xRatio="+xRatio+"; yRatio="+yRatio
-                    //        +"; parentPhotoBrowser.getWidth()="+parentPhotoBrowser.getWidth()
-                    //        +"; imgSafe.getWidth()="+imgSafe.getWidth());
                 }
 
                 g.drawImage(imgSafe, transform, null);

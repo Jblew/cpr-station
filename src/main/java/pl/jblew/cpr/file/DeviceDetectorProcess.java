@@ -39,11 +39,11 @@ public class DeviceDetectorProcess {
             USBDeviceDetectorManager detectorManager = new USBDeviceDetectorManager(2 * 1000);
             for (USBStorageDevice device : detectorManager.getRemovableDevices()) {
                 System.out.println("USB device detected: \"" + device.getDeviceName() + "\". Writable: " + device.getRootDirectory().canWrite());
-                
-                synchronized(devices) {
+
+                synchronized (devices) {
                     devices.put(device.getDeviceName(), device.getRootDirectory());
                 }
-                
+
                 StorageDevicePresenceListener[] tmpList;
                 synchronized (listeners) {
                     tmpList = listeners.toArray(new StorageDevicePresenceListener[]{});
@@ -54,16 +54,16 @@ public class DeviceDetectorProcess {
             }
             detectorManager.addDriveListener((USBStorageEvent usbse) -> {
                 StorageDevicePresenceListener[] tmpList;
-                
-                synchronized(devices) {
+
+                synchronized (devices) {
                     if (usbse.getEventType() == DeviceEventType.CONNECTED) {
                         devices.put(usbse.getStorageDevice().getDeviceName(), usbse.getStorageDevice().getRootDirectory());
                     } else if (usbse.getEventType() == DeviceEventType.REMOVED) {
                         devices.remove(usbse.getStorageDevice().getDeviceName());
                     }
-                    
+
                 }
-                
+
                 synchronized (listeners) {
                     tmpList = listeners.toArray(new StorageDevicePresenceListener[]{});
                 }
@@ -93,6 +93,22 @@ public class DeviceDetectorProcess {
         }
     }
 
+    public void addStorageDeviceChangeListener(StorageDeviceChangeListener l) {
+        synchronized (listeners) {
+            listeners.add(new StorageDevicePresenceListener() {
+                @Override
+                public void storageDeviceConnected(File rootFile, String deviceName) {
+                    l.apply();
+                }
+
+                @Override
+                public void storageDeviceDisconnected(File rootFile, String deviceName) {
+                    l.apply();
+                }
+            });
+        }
+    }
+
     public void removeStorageDevicePresenceListener(StorageDevicePresenceListener l) {
         synchronized (listeners) {
             listeners.remove(l);
@@ -102,26 +118,29 @@ public class DeviceDetectorProcess {
     public void stop() {
 
     }
-    
+
     public List<TwoTuple<String, File>> getConnectedDevices() {
-        synchronized(devices) {
+        synchronized (devices) {
             List<TwoTuple<String, File>> out = new LinkedList<>();
-            
-            for(String deviceName : devices.keySet()) {
+
+            for (String deviceName : devices.keySet()) {
                 File rootFile = devices.get(deviceName);
                 out.add(new TwoTuple<>(deviceName, rootFile));
             }
-            
+
             return out;
         }
     }
-    
-    public Carrier [] getConnectedCarriers(Carrier [] carrierList) {
+
+    public Carrier[] getConnectedCarriers(Carrier[] carrierList) {
         return Arrays.stream(carrierList).filter(carrier -> (getDeviceRoot(carrier.getName()) != null)).toArray(Carrier[]::new);
     }
-    
+
     public File getDeviceRoot(String deviceName) {
-        if(devices.containsKey(deviceName)) return devices.get(deviceName);
-        else return null;
+        if (devices.containsKey(deviceName)) {
+            return devices.get(deviceName);
+        } else {
+            return null;
+        }
     }
 }

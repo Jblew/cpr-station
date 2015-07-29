@@ -70,7 +70,6 @@ public class SwingFileBrowser extends JPanel {
         });
 
         dirNameLabel = new JLabel("/" + root.toPath().relativize(cwd.get().toPath()).toString());
-        //System.out.println("Relative path: "+relativePath);
 
         toolPanel = new JPanel();
         toolPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
@@ -127,10 +126,6 @@ public class SwingFileBrowser extends JPanel {
                     } else if (thumbnailLoader.canBeLoaded(child)) {
                         thumbnailLoader.loadImage(child, (final ImageIcon img) -> {
                             SwingUtilities.invokeLater(() -> {
-                                //long s = System.currentTimeMillis();
-                                //ImageIcon icon = new ImageIcon(img);
-                                //System.out.println("Icon creation time: "+(System.currentTimeMillis()-s)+"ms");
-                                //cmp.setImage(img);
                                 cmp.setIcon(img);
                             });
                         });

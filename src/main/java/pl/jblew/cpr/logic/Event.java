@@ -6,25 +6,22 @@
 package pl.jblew.cpr.logic;
 
 import com.j256.ormlite.dao.Dao;
+import com.j256.ormlite.dao.ForeignCollection;
 import com.j256.ormlite.field.DataType;
 import com.j256.ormlite.field.DatabaseField;
+import com.j256.ormlite.field.ForeignCollectionField;
 import com.j256.ormlite.stmt.QueryBuilder;
 import com.j256.ormlite.table.DatabaseTable;
 import java.io.File;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import pl.jblew.cpr.bootstrap.Context;
-import pl.jblew.cpr.gui.panels.EventPanel;
 import pl.jblew.cpr.logic.io.Exporter;
 import pl.jblew.cpr.logic.io.FileStructureUtil;
 
@@ -45,6 +42,9 @@ public class Event {
 
     @DatabaseField(canBeNull = false, dataType = DataType.ENUM_INTEGER)
     private Type type;
+
+    @ForeignCollectionField(eager = false, foreignFieldName = "event")
+    private ForeignCollection<Event_Localization> localizations;
 
     public long getId() {
         return id;
@@ -78,19 +78,33 @@ public class Event {
         this.type = type;
     }
 
-    public MFile [] getMFiles(Context context) {
+    public MFile.Localized[] getLocalizedMFiles(Context context) {
         long sT = System.currentTimeMillis();
-        final List<MFile> result = new LinkedList<>();
+
+        File accessibleEventDir = getAccessibleDir(context);
+        final List<MFile.Localized> result = new LinkedList<>();
         try {
             context.dbManager.executeInDBThreadAndWait(() -> {
                 try {
                     Dao<MFile, Integer> mfileDao = context.dbManager.getDaos().getMfileDao();// context.dbManager.getDaos().getMfile_EventDao().queryForEq("eventId", event.getId());
                     Dao<MFile_Event, Integer> mfile_EventDao = context.dbManager.getDaos().getMfile_EventDao();
-                    
+
                     QueryBuilder<MFile_Event, Integer> queryToJoin = mfile_EventDao.queryBuilder();
                     queryToJoin.where().eq("eventId", getId());
                     QueryBuilder<MFile, Integer> qb = mfileDao.queryBuilder().orderBy("unixTime", true).join(queryToJoin);
-                    result.addAll(qb.query());
+                    List<MFile> mfiles = qb.query();
+                    
+                    mfiles.stream().map(mf -> {
+                        if (accessibleEventDir == null) {
+                            return new MFile.Localized(mf, null);
+                        }
+                        File potentialFile = new File(accessibleEventDir.getAbsolutePath() + File.separator + mf.getName());
+                        if (potentialFile.exists() && !potentialFile.isDirectory() && potentialFile.canRead()) {
+                            return new MFile.Localized(mf, potentialFile);
+                        }
+                        return new MFile.Localized(mf, null);
+                    }).forEach(mfl -> result.add(mfl));
+                    
                 } catch (SQLException ex) {
                     Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
                 }
@@ -99,67 +113,25 @@ public class Event {
             Logger.getLogger(Exporter.class.getName()).log(Level.SEVERE, null, ex);
         }
         try {
-        return result.stream().toArray(MFile[]::new);
+            return result.stream().sorted().toArray(MFile.Localized[]::new);
+
         } finally {
-            System.out.println("t(getMFiles)="+(System.currentTimeMillis()-sT)+"ms");
+            System.out.println("t(getMFiles)=" + (System.currentTimeMillis() - sT) + "ms");
         }
     }
-    
 
-    public File[] getFiles(Context c) {
-        return Arrays.stream(getMFiles(c)).map((mf) -> mf.getAccessibleFile(c)).filter((f) -> f != null).toArray(File[]::new);
+    public int getRedundancy() {
+        return getLocalizations().size();
     }
 
-    public FullEventData getFullEventData(Context context) {
-        final AtomicReference<FullEventData> out = new AtomicReference<>(null);
-        try {
-            context.dbManager.executeInDBThreadAndWait(() -> {
-                try {
-                    Dao<MFile, Integer> mfileDao = context.dbManager.getDaos().getMfileDao();// context.dbManager.getDaos().getMfile_EventDao().queryForEq("eventId", event.getId());
-                    Dao<MFile_Event, Integer> mfile_EventDao = context.dbManager.getDaos().getMfile_EventDao();
-                    
-                    QueryBuilder<MFile_Event, Integer> queryToJoin = mfile_EventDao.queryBuilder();
-                    queryToJoin.where().eq("eventId", getId());
-                    QueryBuilder<MFile, Integer> qb = mfileDao.queryBuilder().orderBy("unixTime", true).join(queryToJoin);
-                    final List<MFile> mfiles = qb.query();
-                    
-                    LocalDateTime earliestDate = null;
-                    LocalDateTime latestDate = null;
-                    int minRedundancy = Integer.MAX_VALUE;
-                    int maxRedundancy = 0;
-                    for (MFile mf : mfiles) {
-                        if (earliestDate == null || mf.getDateTime().isBefore(earliestDate)) {
-                            earliestDate = mf.getDateTime();
-                        } else if (latestDate == null || mf.getDateTime().isAfter(earliestDate)) {
-                            latestDate = mf.getDateTime();
-                        }
-
-                        int redundancy = 0;
-                        Set<String> carrierIds = new HashSet<>();
-                        for (MFile_Localization mfl : mf.getLocalizations()) {
-                            if (!carrierIds.contains(mfl.getCarrierId() + "")) {
-                                redundancy++;
-                                carrierIds.add(mfl.getCarrierId() + "");
-                            }
-                        }
-                        if (redundancy < minRedundancy) {
-                            minRedundancy = redundancy;
-                        }
-                        if (redundancy > maxRedundancy) {
-                            maxRedundancy = redundancy;
-                        }
-                    }
-                    out.set(new FullEventData(minRedundancy, maxRedundancy, earliestDate, latestDate, mfiles.toArray(new MFile [] {})));
-                } catch (SQLException ex) {
-                    Logger.getLogger(EventPanel.class.getName()).log(Level.SEVERE, null, ex);
-                }
-            });
-        } catch (InterruptedException ex) {
-            Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        return out.get();
+    public ForeignCollection<Event_Localization> getLocalizations() {
+        return localizations;
     }
-    
+
+    public void setLocalizations(ForeignCollection<Event_Localization> localizations) {
+        this.localizations = localizations;
+    }
+
     public Event rename(Context c, String newName) {
         setName(newName);
         final Event me = this;
@@ -176,10 +148,16 @@ public class Event {
         }
         return this;
     }
-    
+
     public String getProperPath(File deviceRoot) {
         String sortedPath = (getType() == Event.Type.SORTED ? FileStructureUtil.PATH_SORTED_PHOTOS : FileStructureUtil.PATH_UNSORTED_PHOTOS);
         return deviceRoot.getAbsolutePath() + File.separator + sortedPath + File.separator + getName();
+    }
+
+    public File getAccessibleDir(Context context) {
+        return getLocalizations().stream().map(el -> el.getCarrier(context)).filter(carrier -> carrier != null)
+                .map(carrier -> new File(getProperPath(context.deviceDetector.getDeviceRoot(carrier.getName()))))
+                .filter(dir -> dir != null && dir.exists() && dir.isDirectory()).findFirst().orElse(null);
     }
 
     @Override
@@ -198,12 +176,9 @@ public class Event {
             return false;
         }
         final Event other = (Event) obj;
-        if (this.id != other.id) {
-            return false;
-        }
-        return true;
+        return this.id == other.id;
     }
-    
+
     public static Event createEvent(Context c, Event.Type type, String name) {
         try {
             AtomicBoolean hasNewEvent = new AtomicBoolean(false);
@@ -219,29 +194,15 @@ public class Event {
                     Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
                 }
             });
-            if(hasNewEvent.get()) return newEvent;
-            else return null;
+            if (hasNewEvent.get()) {
+                return newEvent;
+            } else {
+                return null;
+            }
         } catch (InterruptedException ex) {
             Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
             return null;
         }
-    }
-
-    public static class FullEventData {
-        public final int minRedundancy;
-        public final int maxRedundancy;
-        public final LocalDateTime startDate;
-        public final LocalDateTime endDate;
-        public final MFile[] mfiles;
-
-        public FullEventData(int minRedundancy, int maxRedundancy, LocalDateTime startDate, LocalDateTime endDate, MFile[] mfiles) {
-            this.minRedundancy = minRedundancy;
-            this.maxRedundancy = maxRedundancy;
-            this.startDate = startDate;
-            this.endDate = endDate;
-            this.mfiles = mfiles;
-        }
-
     }
 
     public static enum Type {

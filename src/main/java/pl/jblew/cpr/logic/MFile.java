@@ -5,22 +5,13 @@
  */
 package pl.jblew.cpr.logic;
 
-import com.j256.ormlite.dao.ForeignCollection;
 import com.j256.ormlite.field.DataType;
 import com.j256.ormlite.field.DatabaseField;
-import com.j256.ormlite.field.ForeignCollectionField;
 import com.j256.ormlite.table.DatabaseTable;
 import java.io.File;
-import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.Date;
-import java.util.Optional;
-import java.util.stream.Stream;
-import javax.swing.ImageIcon;
-import javax.swing.SwingUtilities;
-import pl.jblew.cpr.bootstrap.Context;
-import pl.jblew.cpr.logic.io.FileStructureUtil;
+import java.util.Objects;
 
 /**
  *
@@ -39,9 +30,6 @@ public class MFile implements Comparable<MFile> {
 
     @DatabaseField(canBeNull = false, dataType = DataType.LONG)
     private long unixTime;
-
-    @ForeignCollectionField(eager = false, foreignFieldName = "mfile")
-    private ForeignCollection<MFile_Localization> localizations;
 
     public MFile() {
 
@@ -77,26 +65,6 @@ public class MFile implements Comparable<MFile> {
 
     public void setDateTime(LocalDateTime dateTime) {
         this.unixTime = dateTime.toEpochSecond(ZoneOffset.UTC);
-    }
-
-    public ForeignCollection<MFile_Localization> getLocalizations() {
-        return localizations;
-    }
-
-    public void setLocalizations(ForeignCollection<MFile_Localization> localizations) {
-        this.localizations = localizations;
-    }
-
-    public File getAccessibleFile(Context c) {
-        if (localizations == null) {
-            throw new RuntimeException("Localizations not loaded! name=" + name + ", id=" + id);
-        }
-        Stream<MFile_Localization> s = localizations.stream();
-        if (s == null) {
-            throw new RuntimeException("ForeignCollection returns nullStream");
-        }
-        Optional<File> res = s.map((mfl) -> mfl.getFile(c)).filter((f) -> f != null && f.canRead()).findFirst();
-        return (res.isPresent() ? res.get() : null);
     }
 
     public String getProperPath(File deviceRoot, Event e) {
@@ -136,4 +104,58 @@ public class MFile implements Comparable<MFile> {
         return getDateTime().compareTo(o.getDateTime());
     }
 
+    public static class Localized implements Comparable<MFile.Localized> {
+        private final MFile mfile;
+        private final File file;
+
+        public Localized(MFile mfile, File file) {
+            this.mfile = mfile;
+            this.file = file;
+        }
+
+        public MFile getMFile() {
+            return mfile;
+        }
+
+        public File getFile() {
+            return file;
+        }
+
+        @Override
+        public int compareTo(MFile.Localized o) {
+            if (o.getMFile() == null) {
+                return -1;
+            }
+            if (getMFile() == null) {
+                return 0;
+            }
+            return getMFile().compareTo(o.getMFile());
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 7;
+            hash = 29 * hash + Objects.hashCode(this.mfile);
+            hash = 29 * hash + Objects.hashCode(this.file);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final Localized other = (Localized) obj;
+            if (!Objects.equals(this.mfile, other.mfile)) {
+                return false;
+            }
+            if (!Objects.equals(this.file.toPath(), other.file.toPath())) {
+                return false;
+            }
+            return true;
+        }
+    }
 }

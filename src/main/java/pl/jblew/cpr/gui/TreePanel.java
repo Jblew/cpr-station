@@ -149,14 +149,10 @@ public class TreePanel extends JPanel {
 
             @Override
             public void treeCollapsed(TreeExpansionEvent event) {
-                //System.out.println("Collapsed path count: "+);
                 if (event.getPath().getPathCount() == 2) {
                     tree_.expandPath(event.getPath());
                 }
 
-                //for(Object o : event.getPath().getPath()) {
-                //    System.out.println("elem: "+o);
-                //}
             }
         });
 
@@ -167,14 +163,6 @@ public class TreePanel extends JPanel {
                 SelectableIconTreeNode selectableNode = (SelectableIconTreeNode) selected;
                 selectableNode.nodeSelected(tree);
             }
-            
-            //TreePath devicesPath = new TreePath(devicesNode.getPath());
-            //if(devicesPath.isDescendant(e.getPath()) && !devicesPath.equals(e.getPath())) {
-            //
-            //}
-            //if(devicesPath.isDescendant(devicesPath)) {
-            //    System.out.println("devicesNode is child of devicesNode");
-            //}
         });
     }
 
@@ -195,11 +183,6 @@ public class TreePanel extends JPanel {
         }
 
         public Icon getIcon() {
-            //ClassLoader cl = TreePanel.class.getClassLoader();
-            //URL resource = cl.getResource("images/"+iconName+".png");
-            //System.out.println(resource);
-            //ImageIcon icon = new ImageIcon(resource);
-            //if(icon == null) throw new RuntimeException("Could not find icon at: "+resource);
             return icon;
         }
     }

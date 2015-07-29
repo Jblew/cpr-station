@@ -40,17 +40,16 @@ public class MD5Util {
             try (InputStream is = Files.newInputStream(f.toPath())) {
                 DigestInputStream dis = new DigestInputStream(is, md5Digest);
                 int numBytes;
-                byte [] bytes = new byte[2048];
-		while ((numBytes = dis.read(bytes)) != -1) {
-			
-		}
+                byte [] bytes = new byte[1024*5];
+                dis.read(bytes);
+                dis.close();
+                is.close();
             } catch (IOException ex) {
                 Logger.getLogger(Importer.class.getName()).log(Level.SEVERE, null, ex);
                 return "";
             }
             byte[] digest = md5Digest.digest();
             String out =  bytesToHex(digest);
-            //System.out.println("MD5 for "+f.getAbsolutePath()+" = "+out);
             return out;
         } catch (NoSuchAlgorithmException ex) {
             Logger.getLogger(Importer.class.getName()).log(Level.SEVERE, null, ex);

@@ -11,13 +11,10 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.File;
 import java.text.DecimalFormat;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComponent;
@@ -26,7 +23,6 @@ import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.SwingUtilities;
 import pl.jblew.cpr.bootstrap.Context;
-import pl.jblew.cpr.db.DatabaseDetector;
 import pl.jblew.cpr.db.DatabaseManager;
 import pl.jblew.cpr.gui.ChangeMainPanel;
 import pl.jblew.cpr.gui.MainPanel;
@@ -52,8 +48,6 @@ public class DevicePanel extends MainPanel {
         this.deviceName = deviceName;
         this.root = root_;
         this.browser = new SwingFileBrowser(root);
-
-        System.out.println("Changing main panel");
 
         setLayout(new BorderLayout());
 
@@ -153,14 +147,14 @@ public class DevicePanel extends MainPanel {
             SwingUtilities.invokeLater(() -> {
                 File[] selectedFiles = browser.getSelectedFiles();
                 if (selectedFiles.length > 0) {
-                    context.eBus.post(new ChangeMainPanel(new ImportPanel(context, selectedFiles, deviceName, root)));
+                    context.eBus.post(new ChangeMainPanel(new ImportPanel(context, selectedFiles)));
                 }
             });
         });
         JButton importDirButton = new JButton("Importuj katalog i podkatalogi");
         importDirButton.addActionListener((ActionEvent e) -> {
             SwingUtilities.invokeLater(() -> {
-                context.eBus.post(new ChangeMainPanel(new ImportPanel(context, new File[]{browser.getCWD()}, deviceName, root)));
+                context.eBus.post(new ChangeMainPanel(new ImportPanel(context, new File[]{browser.getCWD()})));
             });
         });
 
@@ -187,7 +181,6 @@ public class DevicePanel extends MainPanel {
         add(freeSpacePanel, BorderLayout.SOUTH);
 
         updateFreeSpaceAsync();
-        System.out.println("carrier panel ready");
     }
 
     @Override

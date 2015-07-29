@@ -15,9 +15,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.Event;
+import pl.jblew.cpr.logic.Event_Localization;
 import pl.jblew.cpr.logic.MFile;
 import pl.jblew.cpr.logic.MFile_Event;
-import pl.jblew.cpr.logic.MFile_Localization;
 
 /**
  *
@@ -28,7 +28,7 @@ public class Daos {
     private final AtomicReference<Dao<Event, Integer>> eventDao = new AtomicReference<>(null);
     private final AtomicReference<Dao<MFile, Integer>> mfileDao = new AtomicReference<>(null);
     private final AtomicReference<Dao<MFile_Event, Integer>> mfile_EventDao = new AtomicReference<>(null);
-    private final AtomicReference<Dao<MFile_Localization, Integer>> mfile_LocalizationDao = new AtomicReference<>(null);
+    private final AtomicReference<Dao<Event_Localization, Integer>> event_LocalizationDao = new AtomicReference<>(null);
 
     Daos(DatabaseManager mgr) {
 
@@ -39,14 +39,14 @@ public class Daos {
         eventDao.set(initDao(Event.class, connectionSource));
         mfileDao.set(initDao(MFile.class, connectionSource));
         mfile_EventDao.set(initDao(MFile_Event.class, connectionSource));
-        mfile_LocalizationDao.set(initDao(MFile_Localization.class, connectionSource));
+        event_LocalizationDao.set(initDao(Event_Localization.class, connectionSource));
     }
     
     private <A> Dao<A, Integer> initDao(Class<A> clazz, ConnectionSource connectionSource) {
         try {
             Dao<A, Integer> dao = DaoManager.createDao(connectionSource, clazz);
             if (!dao.isTableExists()) {
-                Logger.getLogger(getClass().getName()).info("Creating table for "+clazz.getName());
+                Logger.getLogger(getClass().getName()).log(Level.INFO, "Creating table for {0}", clazz.getName());
                 TableUtils.createTable(connectionSource, clazz);
             }
             dao.setAutoCommit(connectionSource.getReadWriteConnection(), true);
@@ -81,9 +81,9 @@ public class Daos {
         return ret;
     }
 
-    public Dao<MFile_Localization, Integer> getMfile_Localization() {
-        Dao<MFile_Localization, Integer> ret = mfile_LocalizationDao.get();
-        if(ret == null) throw new RuntimeException("MFile_Localization DAO not loaded");
+    public Dao<Event_Localization, Integer> getEvent_LocalizationDao() {
+        Dao<Event_Localization, Integer> ret = event_LocalizationDao.get();
+        if(ret == null) throw new RuntimeException("Event_Localization DAO not loaded");
         return ret;
     }
     

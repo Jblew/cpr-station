@@ -8,14 +8,16 @@ package pl.jblew.cpr.gui.panels;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FlowLayout;
-import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.IntStream;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -34,7 +36,6 @@ import pl.jblew.cpr.gui.MainPanel;
 import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.Event;
 import pl.jblew.cpr.logic.io.Exporter;
-import pl.jblew.cpr.logic.io.Importer;
 import pl.jblew.cpr.util.FileSizeFormatter;
 import pl.jblew.cpr.util.NamingThreadFactory;
 import pl.jblew.cpr.gui.util.PanelDisabler;
@@ -76,22 +77,21 @@ public class ExportPanel extends MainPanel {
         add(finishPanel);
 
         Exporter exporter = new Exporter(context, event);
-        final int numOfFiles = event.getFiles(context).length;
 
         /**
          * ACCESSIBILITY PANEL*
          */
         fileAccessibilityPanel.setLayout(new BoxLayout(fileAccessibilityPanel, BoxLayout.PAGE_AXIS));
-        JLabel accessibilityLabel = new JLabel("Eksportujesz " + numOfFiles + " plików. \n"
+        JLabel accessibilityLabel = new JLabel("Eksportujesz " + exporter.getNumOfFiles() + " plików. \n"
                 + "Sprawdzam, czy wszystkie z nich są dostępne na podłączonych urządzeniach.");
 
         fileAccessibilityPanel.add(accessibilityLabel);
 
-        checkFileAccessibility(exporter, numOfFiles, accessibilityLabel);
+        checkFileAccessibility(exporter, exporter.getNumOfFiles(), accessibilityLabel);
         context.deviceDetector.addStorageDevicePresenceListener(new StorageDevicePresenceListener() {
             @Override
             public void storageDeviceConnected(File rootFile, String deviceName) {
-                checkFileAccessibility(exporter, numOfFiles, accessibilityLabel);
+                checkFileAccessibility(exporter, exporter.getNumOfFiles(), accessibilityLabel);
             }
 
             @Override
@@ -133,9 +133,9 @@ public class ExportPanel extends MainPanel {
                     enableNext = false;
                     comboErrorLabel.setText("Wydarzenie już zapisano na tym nośniku.");
                 }
-                
+
                 if (enableNext) {
-                    confirmationLabel.setText("Zapisujesz " + numOfFiles + " plików (" + FileSizeFormatter.format(exporter.getSize()) + ") na "
+                    confirmationLabel.setText("Zapisujesz " + exporter.getNumOfFiles() + " plików (" + FileSizeFormatter.format(exporter.getSize()) + ") na "
                             + device.getA() + ". Kontynuować?");
                     //PanelDisabler.setEnabled(destinationSelectionPanel, false);
                     PanelDisabler.setEnabled(confirmationPanel, true);
@@ -147,7 +147,7 @@ public class ExportPanel extends MainPanel {
         devicesCombo.addActionListener(l);
 
         destinationSelectionPanel.add(devicesCombo);
-        
+
         destinationSelectionPanel.add(comboErrorLabel);
 
         /**
@@ -155,7 +155,7 @@ public class ExportPanel extends MainPanel {
          */
         confirmationPanel.setLayout(new FlowLayout());
         confirmationPanel.add(confirmationLabel);
-        confirmationLabel.setText("Zapisujesz " + numOfFiles + " plików. Kontynuować?");
+        confirmationLabel.setText("Zapisujesz " + exporter.getNumOfFiles() + " plików. Kontynuować?");
 
         JButton confirmationButton = new JButton("Zapisz pliki na urządzeniu");
         confirmationPanel.add(confirmationButton);
@@ -163,28 +163,32 @@ public class ExportPanel extends MainPanel {
             PanelDisabler.setEnabled(destinationSelectionPanel, false);
             PanelDisabler.setEnabled(confirmationPanel, false);
             PanelDisabler.setEnabled(progressPanel, true);
-            
+
             exporter.startAsync();
         });
-        
-        /** PROGRESS PANEL **/
+
+        /**
+         * PROGRESS PANEL *
+         */
         progressPanel.setLayout(new BorderLayout());
         progressPanel.setBorder(BorderFactory.createEmptyBorder(50, 50, 50, 50));
         JProgressBar progressBar = new JProgressBar(0, 100);
         progressBar.setStringPainted(true);
         progressBar.setString("Ładowanie...");
         progressPanel.add(progressBar, BorderLayout.CENTER);
-        
+
         exporter.setProgressChangedCallback((percent, msg) -> {
             progressBar.setString(msg);
             progressBar.setValue(percent);
-            
-            if(percent == 100) {
+
+            if (percent == 100) {
                 PanelDisabler.setEnabled(progressPanel, false);
-        PanelDisabler.setEnabled(finishPanel, true);
+                PanelDisabler.setEnabled(finishPanel, true);
             }
         });
-        /** FINISH PANEL **/
+        /**
+         * FINISH PANEL *
+         */
         finishPanel.setLayout(new FlowLayout());
         finishPanel.add(new JLabel("Gotowe!"));
 
@@ -205,31 +209,38 @@ public class ExportPanel extends MainPanel {
 
     private void checkFileAccessibility(Exporter exporter, int numOfFiles, JLabel accessibilityLabel) {
         asyncExecutor.submit(() -> {
-            Map<Carrier, Integer> availableCarriers = exporter.checkFileAccessibilityAndGetMissingCarriers();
-            SwingUtilities.invokeLater(() -> {
-                final StringBuilder msg = new StringBuilder("Eksportujesz " + numOfFiles + " plików\n");
-                if (availableCarriers.isEmpty()) {
-                    msg.append("Wszystkie są dostępne na urządzeniach.\n");
-                    PanelDisabler.setEnabled(fileAccessibilityPanel, false);
-                    PanelDisabler.setEnabled(destinationSelectionPanel, true);
-                    accessibilityLabel.setIcon(IconLoader.OK_16.load());
+            try {
+                Carrier[] availableCarriers = exporter.checkFileAccessibilityAndGetMissingCarriers();
+                SwingUtilities.invokeLater(() -> {
+                    final StringBuilder msg = new StringBuilder("Eksportujesz " + numOfFiles + " plików\n");
+                    if (availableCarriers == null) {
+                        msg.append("Wszystkie są dostępne na urządzeniach.\n");
+                        PanelDisabler.setEnabled(fileAccessibilityPanel, false);
+                        PanelDisabler.setEnabled(destinationSelectionPanel, true);
+                        accessibilityLabel.setIcon(IconLoader.OK_16.load());
 
-                    asyncExecutor.submit(() -> {
-                        final long size = exporter.calculateSize();
-                        SwingUtilities.invokeLater(() -> {
-                            destinationSelectionLabel.setText("Na jakim urządzeniu zapisać? (" + FileSizeFormatter.format(size) + ")");
+                        asyncExecutor.submit(() -> {
+                            final long size = exporter.calculateSize();
+                            SwingUtilities.invokeLater(() -> {
+                                destinationSelectionLabel.setText("Na jakim urządzeniu zapisać? (" + FileSizeFormatter.format(size) + ")");
+                            });
                         });
-                    });
-                } else {
-                    msg.append("Musisz podłączyć któreś z poniższych urządzeń: \n");
-                    availableCarriers.forEach((c, num) -> {
-                        msg.append("#> " + c.getName() + " (" + (num < 0 ? "Wszystkie pliki" : num + " plików") + ")\n");
-                    });
-                    accessibilityLabel.setIcon(IconLoader.ERROR_16.load());
-                }
-                accessibilityLabel.setText(msg.toString());
+                    } else {
+                        msg.append("Musisz podłączyć któreś z poniższych urządzeń: \n");
+                        IntStream.range(0, availableCarriers.length).forEach(i -> {
+                            msg.append(i + ". " + availableCarriers[i].getName() + "\n");
+                        });
+                        accessibilityLabel.setIcon(IconLoader.ERROR_16.load());
+                    }
+                    accessibilityLabel.setText(msg.toString());
 
-            });
+                });
+            } catch (Exporter.MissingFilesException ex) {
+                Logger.getLogger(ExportPanel.class.getName()).log(Level.SEVERE, null, ex);
+                SwingUtilities.invokeLater(() -> {
+                    accessibilityLabel.setText("Błąd: w folderze tego wydarzenia na podłączonym dysku brakuje plików: " + ex.getDirectory().getAbsolutePath());
+                });
+            }
         });
     }
 

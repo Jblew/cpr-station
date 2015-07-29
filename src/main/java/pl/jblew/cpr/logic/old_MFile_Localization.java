@@ -21,8 +21,8 @@ import pl.jblew.cpr.gui.components.MFileBrowser;
  * @author teofil
  */
 @DatabaseTable(tableName = "mfile_localization")
-public class MFile_Localization {
-    @DatabaseField(canBeNull = false, unique = true, generatedId = true)
+class old_MFile_Localization {
+    /*@DatabaseField(canBeNull = false, unique = true, generatedId = true)
     private long id;
 
     @DatabaseField(canBeNull = false, foreign = true, columnName = "fileId")
@@ -33,7 +33,7 @@ public class MFile_Localization {
 
     @DatabaseField(canBeNull = false)
     private String path;
-
+    
     public long getId() {
         return id;
     }
@@ -137,5 +137,5 @@ public class MFile_Localization {
         return true;
     }
     
-    
+    */
 }
