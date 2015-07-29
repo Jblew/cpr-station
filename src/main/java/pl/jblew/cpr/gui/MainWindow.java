@@ -9,12 +9,14 @@ import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dimension;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
 import pl.jblew.cpr.bootstrap.Context;
@@ -54,7 +56,9 @@ public class MainWindow {
     //}
 
     void addTreePane(JPanel treePane) {
-        mainContentPane.add(treePane, BorderLayout.WEST);
+        JScrollPane sp = new JScrollPane(treePane);
+        sp.setPreferredSize(new Dimension(300, 900));
+        mainContentPane.add(sp, BorderLayout.WEST);
     }
 
     private class MainContentPane extends JPanel {

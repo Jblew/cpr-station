@@ -12,6 +12,7 @@ import java.io.File;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Objects;
+import pl.jblew.cpr.bootstrap.Context;
 
 /**
  *
@@ -102,6 +103,15 @@ public class MFile implements Comparable<MFile> {
             return 0;
         }
         return getDateTime().compareTo(o.getDateTime());
+    }
+
+    @Override
+    public String toString() {
+        return "MFile{" + "id=" + id + ", name=" + name + '}';
+    }
+    
+    public File getFile(Context context, Event event, Event_Localization eventLocalization) {
+        return new File(event.getProperPath(context.deviceDetector.getDeviceRoot(eventLocalization.getCarrier(context).getName()))+File.separator+this.getName());
     }
 
     public static class Localized implements Comparable<MFile.Localized> {

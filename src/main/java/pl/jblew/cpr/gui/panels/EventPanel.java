@@ -13,6 +13,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import javax.swing.BorderFactory;
@@ -42,8 +43,8 @@ public class EventPanel extends MainPanel {
     private final JLabel numOfCopiesLabel;
     private final JPanel browserPanel;
     private final JLabel numOfPhotosLabel;
-    //private final JButton moveSelectedToEventButton;
-    //private final JButton moveAllToEventButton;
+    private final JButton moveSelectedToEventButton;
+    private final JButton moveAllToEventButton;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private MFileBrowser browser;
 
@@ -51,18 +52,16 @@ public class EventPanel extends MainPanel {
         this.context = context_;
         this.event = event_;
 
-        /*
-        TRZEBA ZROBIĆ ASYSTENTA PRZENOSZENIA NA WIELU DYSKACH
         this.moveSelectedToEventButton = new JButton("Przenieś zaznaczone");
         this.moveAllToEventButton = new JButton("Przenieś wszystkie");
 
         moveSelectedToEventButton.addActionListener((evt) -> {
-            moveMFilesToEvent(browser.getSelectedLocalizedMFiles());
+            moveMFilesToEvent(Arrays.stream(browser.getSelectedLocalizedMFiles()).map(mfl -> mfl.getMFile()).toArray(MFile[]::new));
         });
 
         moveAllToEventButton.addActionListener((evt) -> {
-            moveMFilesToEvent(browser.getAllLocalizedMFiles());
-        });*/
+            moveMFilesToEvent(Arrays.stream(browser.getAllLocalizedMFiles()).map(mfl -> mfl.getMFile()).toArray(MFile[]::new));
+        });
 
         setLayout(new BorderLayout());
 
@@ -96,6 +95,7 @@ public class EventPanel extends MainPanel {
         prepareGridRow(gridPanel, "Zakres czasu: ", timespanLabel);
         prepareGridRow(gridPanel, "Ilość kopii: ", numOfCopiesLabel);
         prepareGridRow(gridPanel, "Ilość plików: ", numOfPhotosLabel);
+        prepareGridRow(gridPanel, "Nośniki: ", new JLabel(event.getLocalizations().stream().map(el -> el.getCarrier(context).getName()).reduce("", (a,b) -> a+", "+b)));
 
         final JButton showSelectiveEventButton = new JButton("Pokaż WYBRANE");
         final JButton makeSelectiveEventButton = new JButton("Stwórz WYBRANE");
@@ -174,8 +174,8 @@ public class EventPanel extends MainPanel {
                 browserPanel.removeAll();
 
                 browser = new MFileBrowser(context, mfiles, event);
-                //browser.addComponentToToolPanel(moveSelectedToEventButton);
-                //browser.addComponentToToolPanel(moveAllToEventButton);
+                browser.addComponentToToolPanel(moveSelectedToEventButton);
+               browser.addComponentToToolPanel(moveAllToEventButton);
                 browserPanel.add(browser, BorderLayout.CENTER);
                 browserPanel.revalidate();
                 browserPanel.repaint();
@@ -183,9 +183,11 @@ public class EventPanel extends MainPanel {
         }});
     }
 
-    /** TRZEBA ZROBIĆ PANEL PRZENOSZENIA
+    
     private void moveMFilesToEvent(MFile[] mfilesToMove) {
         if (mfilesToMove != null && mfilesToMove.length > 0) {
+            context.eBus.post(new ChangeMainPanel(new MovePanel(context, event, mfilesToMove)));
+            /*
             JDialog dialog = new JDialog(context.frame, "", Dialog.ModalityType.DOCUMENT_MODAL);
             dialog.setSize(400, 200);
             dialog.setTitle("Przenoszenie plików do innego wydarzenia");
@@ -350,7 +352,7 @@ public class EventPanel extends MainPanel {
 
             dialog.setContentPane(contentPanel);
             dialog.setVisible(true);
-
+*/
         }
-    }*/
+    }
 }

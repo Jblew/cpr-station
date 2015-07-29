@@ -70,6 +70,11 @@ public class Carrier {
     public void setType(Type type) {
         this.type = type;
     }
+
+    @Override
+    public String toString() {
+        return "Carrier{" + "id=" + id + ", name=" + name + ", type=" + type + '}';
+    }
     
     public static Carrier [] getAllCarriers(Context c) {
         AtomicReference<Carrier []> out = new AtomicReference<>(null);

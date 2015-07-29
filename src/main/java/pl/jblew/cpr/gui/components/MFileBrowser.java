@@ -216,7 +216,7 @@ public class MFileBrowser extends JPanel {
                                 selectionStart = IntStream.range(0, localizedMFiles.length).filter(i -> localizedMFiles[i].equals(firstSelected.localizedMFile)).findFirst().orElse(0);
                             }
 
-                            IntStream.range(Math.min(selectionStart, myIndex), Math.max(selectionStart, myIndex)).forEach(i -> components.get(localizedMFiles[i]).select());
+                            IntStream.rangeClosed(Math.min(selectionStart, myIndex), Math.max(selectionStart, myIndex)).forEach(i -> components.get(localizedMFiles[i]).select());
                         } finally {
                             dataLock.unlock();
                         }

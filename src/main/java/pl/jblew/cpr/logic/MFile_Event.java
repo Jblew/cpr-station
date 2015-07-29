@@ -13,7 +13,7 @@ import com.j256.ormlite.table.DatabaseTable;
  * @author teofil
  */
 @DatabaseTable(tableName = "mfile_event")
-public class MFile_Event {
+public class MFile_Event implements Comparable<MFile_Event> {
     @DatabaseField(canBeNull = false, unique = true, generatedId = true)
     private long id;
     
@@ -31,11 +31,11 @@ public class MFile_Event {
         this.id = id;
     }
 
-    public MFile getMfile() {
+    public MFile getMFile() {
         return mfile;
     }
 
-    public void setMfile(MFile mfile) {
+    public void setMFile(MFile mfile) {
         this.mfile = mfile;
     }
 
@@ -68,6 +68,14 @@ public class MFile_Event {
         }
         return true;
     }
-    
-    
+
+    @Override
+    public int compareTo(MFile_Event o) {
+        return getMFile().compareTo(o.getMFile());
+    }
+
+    @Override
+    public String toString() {
+        return "MFile_Event{" + "id=" + id + ", mfile=" + mfile + ", event=" + event + '}';
+    }
 }

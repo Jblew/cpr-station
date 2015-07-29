@@ -58,9 +58,9 @@ public class Event_Localization {
         this.carrierId = carrierId;
     }
 
-    public String getPath() {
-        return path;
-    }
+    //public String getPath() {
+    //    return path;
+    //}
 
     public void setPath(String path) {
         this.path = path;
@@ -136,6 +136,9 @@ public class Event_Localization {
         }
         return true;
     }
-    
-    
+
+    @Override
+    public String toString() {
+        return "Event_Localization{" + "id=" + id + ", event=" + event + ", carrierId=" + carrierId + ", path=" + path + '}';
+    }
 }

@@ -13,11 +13,18 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import net.samuelcampos.usbdrivedectector.USBDeviceDetectorManager;
 import net.samuelcampos.usbdrivedectector.USBStorageDevice;
 import net.samuelcampos.usbdrivedectector.events.DeviceEventType;
 import net.samuelcampos.usbdrivedectector.events.IUSBDriveListener;
 import net.samuelcampos.usbdrivedectector.events.USBStorageEvent;
+import pl.jblew.cpr.db.DatabaseManager;
 import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.util.TwoTuple;
 
@@ -29,6 +36,8 @@ public class DeviceDetectorProcess {
     private final EventBus eBus;
     private final ArrayList<StorageDevicePresenceListener> listeners = new ArrayList<>();
     private final Map<String, File> devices = new HashMap<>();
+    private final BlockingQueue<Runnable> executeOnDevicesChange = new LinkedBlockingQueue<>();
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     public DeviceDetectorProcess(EventBus eBus_) {
         eBus = eBus_;
@@ -74,6 +83,16 @@ public class DeviceDetectorProcess {
                         listener.storageDeviceDisconnected(usbse.getStorageDevice().getRootDirectory(), usbse.getStorageDevice().getDeviceName());
                     }
                 }
+
+                if (!executeOnDevicesChange.isEmpty()) {
+                    while (!executeOnDevicesChange.isEmpty()) {
+                        try {
+                            executor.submit(executeOnDevicesChange.take());
+                        } catch (InterruptedException ex) {
+                            Logger.getLogger(DatabaseManager.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+                    }
+                }
             });
         }).start();
         /*File[] roots = File.listRoots();
@@ -113,6 +132,10 @@ public class DeviceDetectorProcess {
         synchronized (listeners) {
             listeners.remove(l);
         }
+    }
+    
+    public void executeOnDevicesChange(Runnable r) {
+        executeOnDevicesChange.add(r);
     }
 
     public void stop() {

@@ -7,6 +7,7 @@ package pl.jblew.cpr.gui;
 
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.swing.BorderFactory;
@@ -53,6 +54,8 @@ public class TreePanel extends JPanel {
         unsortedPhotosNode = new EventsNode(context, Event.Type.UNSORTED);
 
         addMainNodesAndListeners(top);
+        
+        this.setMaximumSize(new Dimension(300, Integer.MAX_VALUE));
 
         tree = new JTree(top);
         tree.putClientProperty("JTree.lineStyle", "Angled");

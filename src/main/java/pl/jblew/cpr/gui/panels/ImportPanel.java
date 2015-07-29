@@ -65,6 +65,7 @@ public class ImportPanel extends MainPanel {
         /**
          * DEVICE SELECTION PANEL *
          */
+        deviceSelectionPanel.add(new JLabel("Wybierz urządzenie: "));
         JLabel deviceSelectionErrorLabel = new JLabel();
         deviceSelectionErrorLabel.setForeground(Color.RED);
         final AtomicReference<String[]> devices = new AtomicReference<>(Arrays.stream(context.deviceDetector.getConnectedCarriers(Carrier.getAllCarriers(context))).map(c -> c.getName()).toArray(String[]::new));

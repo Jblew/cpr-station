@@ -281,7 +281,7 @@ public class Importer {
 
                     MFile_Event mfe = new MFile_Event();
                     mfe.setEvent(event);
-                    mfe.setMfile(mf);
+                    mfe.setMFile(mf);
                     mfile_eventDao.create(mfe);
 
                 }

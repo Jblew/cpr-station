@@ -5,32 +5,21 @@
  */
 package pl.jblew.cpr.gui.treenodes;
 
-import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
-import java.io.File;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.ImageIcon;
-import javax.swing.JOptionPane;
 import javax.swing.JTree;
 import javax.swing.SwingUtilities;
-import javax.swing.event.RowSorterEvent;
 import pl.jblew.cpr.bootstrap.Context;
-import pl.jblew.cpr.db.DatabaseManager;
-import pl.jblew.cpr.file.StorageDevicePresenceListener;
 import pl.jblew.cpr.gui.ChangeMainPanel;
 import pl.jblew.cpr.gui.TreePanel;
 import pl.jblew.cpr.gui.components.modal.CreateEventModal;
 import pl.jblew.cpr.gui.panels.EventPanel;
-import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.Event;
 import pl.jblew.cpr.util.ListenersManager;
 import pl.jblew.cpr.util.PrintableBusMessage;
@@ -75,25 +64,27 @@ public class EventsNode extends TreePanel.IconTreeNode implements TreePanel.AddT
         context.dbManager.executeInDBThread(() -> {
             try {
                 final List<Event> result = context.dbManager.getDaos().getEventDao().queryForEq("type", eventType);
-
-                removeAllChildren();
-                synchronized (events) {
-                    events.clear();
-                    result.stream().forEach((e) -> addEventNode(e));
-                }
-                if (eventType == Event.Type.SORTED) {
-                    final TreePanel.SelectableIconTreeNode node = new TreePanel.SelectableIconTreeNode("Dodaj wydarzenie", new ImageIcon(TreePanel.class.getClassLoader().getResource("images/add16.png"))) {
-                        @Override
-                        public void nodeSelected(JTree tree) {
-                            CreateEventModal.showCreateEventModal(tree, context);
-                        }
-                    };
-                    SwingUtilities.invokeLater(() -> {
+                SwingUtilities.invokeLater(() -> {
+                    removeAllChildren();
+                    synchronized (events) {
+                        events.clear();
+                        result.stream().forEach((e) -> addEventNode(e));
+                    }
+                    if (eventType == Event.Type.SORTED) {
+                        final TreePanel.SelectableIconTreeNode node = new TreePanel.SelectableIconTreeNode("Dodaj wydarzenie", new ImageIcon(TreePanel.class.getClassLoader().getResource("images/add16.png"))) {
+                            @Override
+                            public void nodeSelected(JTree tree) {
+                                tree.setSelectionRow(0);
+                                CreateEventModal.showCreateEventModal(tree, context, true);
+                            }
+                        };
                         add(node);
-                    });
-                }
 
-                fireNodeChanged();
+                    }
+
+                    fireNodeChanged();
+                });
+
             } catch (SQLException ex) {
                 Logger.getLogger(CarriersNode.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -101,18 +92,16 @@ public class EventsNode extends TreePanel.IconTreeNode implements TreePanel.AddT
     }
 
     private void addEventNode(final Event e) {
-        SwingUtilities.invokeLater(() -> {
-            TreePanel.SelectableIconTreeNode node = new TreePanel.SelectableIconTreeNode(e.getName(), new ImageIcon(TreePanel.class.getClassLoader().getResource("images/pc16.gif"))) {
-                @Override
-                public void nodeSelected(JTree tree) {
-                    context.eBus.post(new ChangeMainPanel(new EventPanel(context, e)));
-                }
-            };
-            add(node);
-            synchronized (events) {
-                events.put(e, node);
+        TreePanel.SelectableIconTreeNode node = new TreePanel.SelectableIconTreeNode(e.getName(), new ImageIcon(TreePanel.class.getClassLoader().getResource("images/pc16.gif"))) {
+            @Override
+            public void nodeSelected(JTree tree) {
+                context.eBus.post(new ChangeMainPanel(new EventPanel(context, e)));
             }
-        });
+        };
+        add(node);
+        synchronized (events) {
+            events.put(e, node);
+        }
     }
 
     public static class EventsListChanged implements PrintableBusMessage {

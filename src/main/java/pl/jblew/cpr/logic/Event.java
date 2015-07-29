@@ -19,6 +19,7 @@ import java.time.ZoneOffset;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import pl.jblew.cpr.bootstrap.Context;
@@ -79,9 +80,17 @@ public class Event {
     }
 
     public MFile.Localized[] getLocalizedMFiles(Context context) {
+        return getLocalizedMFiles(context, getAccessibleDir(context));
+    }
+    
+    public MFile.Localized[] getLocalizedMFiles(Context context, Event_Localization localization) {
+        return getLocalizedMFiles(context, new File(getProperPath(context.deviceDetector.getDeviceRoot(localization.getCarrier(context).getName()))));
+    }
+    
+    private MFile.Localized[] getLocalizedMFiles(Context context, File accessibleEventDir) {
         long sT = System.currentTimeMillis();
 
-        File accessibleEventDir = getAccessibleDir(context);
+        //File accessibleEventDir = new File(getProperPath(context.deviceDetector.getDeviceRoot(carrier.getName())
         final List<MFile.Localized> result = new LinkedList<>();
         try {
             context.dbManager.executeInDBThreadAndWait(() -> {
@@ -118,6 +127,25 @@ public class Event {
         } finally {
             System.out.println("t(getMFiles)=" + (System.currentTimeMillis() - sT) + "ms");
         }
+    }
+    
+    public MFile_Event [] getMFileLinks(Context context) {
+        final List<MFile_Event> result = new LinkedList<>();
+        try {
+            context.dbManager.executeInDBThreadAndWait(() -> {
+                try {
+                    Dao<MFile_Event, Integer> mfile_EventDao = context.dbManager.getDaos().getMfile_EventDao();
+
+                    result.addAll(mfile_EventDao.queryForEq("eventId", this.getId()));
+                } catch (SQLException ex) {
+                    Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            });
+        } catch (InterruptedException ex) {
+            Logger.getLogger(Exporter.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        return result.stream().sorted().toArray(MFile_Event[]::new);
     }
 
     public int getRedundancy() {
@@ -179,7 +207,12 @@ public class Event {
         return this.id == other.id;
     }
 
-    public static Event createEvent(Context c, Event.Type type, String name) {
+    @Override
+    public String toString() {
+        return "Event{" + "id=" + id + ", name=" + name + ", type=" + type + '}';
+    }
+
+    public static Event createEvent(Context c, Event.Type type, String name, Carrier carrier) {
         try {
             AtomicBoolean hasNewEvent = new AtomicBoolean(false);
             final Event newEvent = new Event();
@@ -189,6 +222,14 @@ public class Event {
             c.dbManager.executeInDBThreadAndWait(() -> {
                 try {
                     c.dbManager.getDaos().getEventDao().create(newEvent);
+                    
+                    Event_Localization el = new Event_Localization();
+                    el.setEvent(newEvent);
+                    el.setCarrierId(carrier.getId());
+                    el.setPath("");
+                    
+                    c.dbManager.getDaos().getEvent_LocalizationDao().create(el);
+
                     hasNewEvent.set(true);
                 } catch (SQLException ex) {
                     Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
@@ -203,6 +244,22 @@ public class Event {
             Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
             return null;
         }
+    }
+    
+    public static Event [] getAllEvents(Context c, Event.Type type) {
+        AtomicReference<Event []> out = new AtomicReference<>(null);
+        try {
+            c.dbManager.executeInDBThreadAndWait(() -> {
+                try {
+                    out.set(c.dbManager.getDaos().getEventDao().queryForEq("type", type).toArray(new Event[] {}));
+                } catch (SQLException ex) {
+                    Logger.getLogger(Carrier.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            });
+        } catch (InterruptedException ex) {
+            Logger.getLogger(Carrier.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return out.get();
     }
 
     public static enum Type {
