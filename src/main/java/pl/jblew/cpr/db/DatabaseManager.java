@@ -31,7 +31,7 @@ import pl.jblew.cpr.util.NamingThreadFactory;
  * @author teofil
  */
 public class DatabaseManager implements DatabaseDetectedListener {
-    private static final boolean DEBUG = false;
+    private static final boolean DEBUG = true;
     private final AtomicInteger taskNum = new AtomicInteger(0);
     private final EventBus eBus;
     private final ExecutorService dbExecutor = Executors.newSingleThreadExecutor(new NamingThreadFactory("dbthread"));

@@ -84,6 +84,7 @@ public class MainWindow {
 
         public void setMainPanel(final MainPanel newMainPanel) {
             SwingUtilities.invokeLater(() -> {
+                long sT = System.currentTimeMillis();
                 MainPanel prevMainPanel = mainPanel;
                 prevMainPanel.inactivate();
                 
@@ -93,9 +94,12 @@ public class MainWindow {
                 mainPanel = newMainPanel;
                 mainPanel.activate();
                 
+                revalidate();
                 repaint();
-                setVisible(false);
-                setVisible(true);
+                
+                System.out.println("Changing main panel: "+(System.currentTimeMillis()-sT)+"ms");
+                //setVisible(false);
+                //setVisible(true);
                 //frame.repaint();
             });
         }

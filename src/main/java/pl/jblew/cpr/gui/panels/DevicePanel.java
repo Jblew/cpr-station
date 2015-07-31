@@ -27,6 +27,7 @@ import pl.jblew.cpr.db.DatabaseManager;
 import pl.jblew.cpr.gui.ChangeMainPanel;
 import pl.jblew.cpr.gui.MainPanel;
 import pl.jblew.cpr.gui.components.SwingFileBrowser;
+import pl.jblew.cpr.gui.util.CPRProgressBarUI;
 import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.io.CarrierMaker;
 import pl.jblew.cpr.util.FileSizeFormatter;
@@ -169,6 +170,7 @@ public class DevicePanel extends MainPanel {
         add(browserPanel, BorderLayout.CENTER);
 
         freeSpaceBar = new JProgressBar(0, 100);
+        freeSpaceBar.setUI(new CPRProgressBarUI());
         freeSpaceBar.setPreferredSize(new Dimension(1, 45));
         freeSpaceBar.setStringPainted(true);
         freeSpaceBar.setString("Odczytywanie ilości wolnego miejsca");

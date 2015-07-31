@@ -5,6 +5,7 @@
  */
 package pl.jblew.cpr.gui.util;
 
+import java.awt.Component;
 import java.awt.Container;
 import java.util.Arrays;
 import javax.swing.JComponent;
@@ -19,10 +20,12 @@ public class PanelDisabler {
     }
 
     public static void setEnabled(Container panel, boolean enabled) {
-        Arrays.stream(panel.getComponents()).filter(c -> (c instanceof JComponent)).forEach(c -> {
-            JComponent jc = (JComponent) c;
-            jc.setEnabled(enabled);
-            setEnabled(jc, enabled);
-        });
+        for (Component c : panel.getComponents()) {
+            if (c instanceof JComponent) {
+                JComponent jc = (JComponent) c;
+                jc.setEnabled(enabled);
+                setEnabled(jc, enabled);
+            }
+        }
     }
 }

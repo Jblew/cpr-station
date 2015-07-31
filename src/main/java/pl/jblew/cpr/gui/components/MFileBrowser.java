@@ -54,6 +54,8 @@ public class MFileBrowser extends JPanel {
         this.event = event_;
         this.context = context_;
         tabbedPane = new JTabbedPane();
+        
+        System.out.println("Created browser");
 
         emptyImage = new ImageIcon(getClass().getClassLoader().getResource("images/empty128.gif"));
 

@@ -27,9 +27,11 @@ import javax.swing.JProgressBar;
 import javax.swing.JSeparator;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
+import javax.swing.plaf.basic.BasicProgressBarUI;
 import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.logic.io.Importer;
 import pl.jblew.cpr.gui.MainPanel;
+import pl.jblew.cpr.gui.util.CPRProgressBarUI;
 import pl.jblew.cpr.gui.util.PanelDisabler;
 import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.util.FileSizeFormatter;
@@ -43,6 +45,8 @@ public class ImportPanel extends MainPanel {
     private final Importer importer;
 
     public ImportPanel(Context context_, final File[] filesToImport_) {
+        long sT = System.currentTimeMillis();
+        
         this.context = context_;
         this.importer = new Importer(context, filesToImport_);
 
@@ -54,8 +58,9 @@ public class ImportPanel extends MainPanel {
         JPanel progressPanel = new JPanel(new BorderLayout());
         JPanel finishPanel = new JPanel(new FlowLayout());
 
-        final JProgressBar progressBar = new JProgressBar();
-
+        JProgressBar progressBar = new JProgressBar();
+        progressBar.setUI(new CPRProgressBarUI());
+        
         /**
          * INFO PANEL *
          */
@@ -137,6 +142,7 @@ public class ImportPanel extends MainPanel {
                     PanelDisabler.setEnabled(progressPanel, true);
                     importer.startAsync((final int percent, final String msg) -> {
                         SwingUtilities.invokeLater(() -> {
+                            System.out.println("Progress bar: "+percent+"%, msg="+msg);
                             progressBar.setValue(percent);
                             progressBar.setString(msg);
                             progressBar.revalidate();
@@ -165,6 +171,9 @@ public class ImportPanel extends MainPanel {
          */
         finishPanel.add(new JLabel("Gotowe!"));
 
+        add(new JLabel("Point"));
+        
+        
         add(infoPanel);
         add(new JSeparator(JSeparator.HORIZONTAL));
         add(deviceSelectionPanel);
@@ -174,6 +183,8 @@ public class ImportPanel extends MainPanel {
         add(progressPanel);
         add(new JSeparator(JSeparator.HORIZONTAL));
         add(finishPanel);
+        
+        
 
         PanelDisabler.setEnabled(infoPanel, true);
         PanelDisabler.setEnabled(deviceSelectionPanel, true);
@@ -181,6 +192,8 @@ public class ImportPanel extends MainPanel {
         PanelDisabler.setEnabled(progressPanel, false);
         PanelDisabler.setEnabled(finishPanel, false);
 
+                
+        System.out.println("t(ImportPanel.new())"+(System.currentTimeMillis()-sT)+"ms");
     }
 
     @Override
