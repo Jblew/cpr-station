@@ -1,8 +1,9 @@
 1. Sprawdzanie czy pliki w danej lokalizacji są bezpieczne
 2. Sprawdzanie, cyz dany nośnik pracuje / obliczanie czasu pracy
 3. SafeListeners
-4. Tworzenie nowego wydarzenia musi utworzyć przynajmniej jedną lokalizację!!!
+5. Program powinien na nośniku pozostawiać informację o tym, które zdjęcia są już zaimportowane
 
 Zrobione
 1. Panel eksportu do nowego nośnika
 2. Przenoszenie plików między wydarzeniami
+3. Tworzenie nowego wydarzenia musi utworzyć przynajmniej jedną lokalizację!!!

@@ -5,7 +5,6 @@
  */
 package pl.jblew.cpr.db;
 
-import java.sql.*;
 import com.google.common.eventbus.EventBus;
 import com.j256.ormlite.jdbc.JdbcConnectionSource;
 import com.j256.ormlite.support.ConnectionSource;
@@ -15,10 +14,8 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
@@ -31,7 +28,7 @@ import pl.jblew.cpr.util.NamingThreadFactory;
  * @author teofil
  */
 public class DatabaseManager implements DatabaseDetectedListener {
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
     private final AtomicInteger taskNum = new AtomicInteger(0);
     private final EventBus eBus;
     private final ExecutorService dbExecutor = Executors.newSingleThreadExecutor(new NamingThreadFactory("dbthread"));

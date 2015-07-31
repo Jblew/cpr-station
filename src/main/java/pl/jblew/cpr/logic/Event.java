@@ -214,7 +214,7 @@ public class Event {
 
     public static Event createEvent(Context c, Event.Type type, String name, Carrier carrier) {
         try {
-            AtomicBoolean hasNewEvent = new AtomicBoolean(false);
+            AtomicReference<Event> resEvent = new AtomicReference<Event>(null);
             final Event newEvent = new Event();
             newEvent.setDateTime(LocalDateTime.now());
             newEvent.setType(type);
@@ -230,16 +230,13 @@ public class Event {
                     
                     c.dbManager.getDaos().getEvent_LocalizationDao().create(el);
 
-                    hasNewEvent.set(true);
+                    List<Event> result = c.dbManager.getDaos().getEventDao().queryForEq("id", newEvent.getId());
+                    if(result.size() > 0) resEvent.set(result.get(0));
                 } catch (SQLException ex) {
                     Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
                 }
             });
-            if (hasNewEvent.get()) {
-                return newEvent;
-            } else {
-                return null;
-            }
+            return resEvent.get();
         } catch (InterruptedException ex) {
             Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
             return null;

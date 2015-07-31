@@ -10,6 +10,7 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.swing.BorderFactory;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
@@ -17,6 +18,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTree;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.event.TreeExpansionEvent;
 import javax.swing.event.TreeExpansionListener;
 import javax.swing.event.TreeSelectionEvent;
@@ -43,6 +45,7 @@ public class TreePanel extends JPanel {
     private final CarriersNode carriersNode;
     private final EventsNode sortedPhotosNode;
     private final EventsNode unsortedPhotosNode;
+    private final AtomicReference<SelectableIconTreeNode> lastSelected = new AtomicReference<>(null);
     //private final ExecutorService loadingExecutor = Executors.newSingleThreadExecutor();
 
     public TreePanel(Context context) {
@@ -162,10 +165,23 @@ public class TreePanel extends JPanel {
         tree_.addTreeSelectionListener((TreeSelectionEvent e) -> {
             Object selected = e.getPath().getLastPathComponent();
             
+            
             if (selected instanceof SelectableIconTreeNode) {
                 SelectableIconTreeNode selectableNode = (SelectableIconTreeNode) selected;
-                selectableNode.nodeSelected(tree);
+                if(selectableNode != lastSelected.get()) {
+                    Timer t = new Timer(2000, (ev) -> lastSelected.set(null));
+                    t.setRepeats(false);
+                    t.start();
+                    
+                    lastSelected.set(selectableNode);
+                    
+                    selectableNode.nodeSelected(tree);
+                }
             }
+            
+            Timer t = new Timer(800, (ev) -> tree.clearSelection());
+            t.setRepeats(false);
+            t.start();
         });
     }
 

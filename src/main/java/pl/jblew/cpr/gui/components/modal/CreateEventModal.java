@@ -92,7 +92,9 @@ public class CreateEventModal {
                             result.set(newEvent);
                             context.eBus.post(new EventsNode.EventsListChanged());
                             if (switchToNewEvent) {
-                                context.eBus.post(new ChangeMainPanel(new EventPanel(context, newEvent)));
+                                EventPanel eventPanel = new EventPanel(context, newEvent);
+                                ChangeMainPanel cmp = new ChangeMainPanel(eventPanel);
+                                context.eBus.post(cmp);
                             }
                             
                         }
