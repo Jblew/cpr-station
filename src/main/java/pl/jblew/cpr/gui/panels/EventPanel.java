@@ -11,11 +11,14 @@ import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComponent;
@@ -95,10 +98,12 @@ public class EventPanel extends MainPanel {
         prepareGridRow(gridPanel, "Zakres czasu: ", timespanLabel);
         prepareGridRow(gridPanel, "Ilość kopii: ", numOfCopiesLabel);
         prepareGridRow(gridPanel, "Ilość plików: ", numOfPhotosLabel);
-        prepareGridRow(gridPanel, "Nośniki: ", new JLabel(event.getLocalizations().stream().map(el -> el.getCarrier(context).getName()).reduce("", (a, b) -> a + ", " + b)));
+        prepareGridRow(gridPanel, "Nośniki: ", new JLabel(event.getLocalizations().stream().map(el -> el.getCarrier(context).getName()).reduce("", (a, b) -> a + ", " + b).substring(2)));
 
         final JButton showSelectiveEventButton = new JButton("Pokaż WYBRANE");
+        showSelectiveEventButton.setEnabled(false);
         final JButton makeSelectiveEventButton = new JButton("Stwórz WYBRANE");
+        makeSelectiveEventButton.setEnabled(false);
         final JButton makeCopyButton = new JButton("Utwórz kopię na innym nośniku");
         final JButton deleteFromDBButton = new JButton("Usuń z bazy danych");
 
@@ -112,6 +117,22 @@ public class EventPanel extends MainPanel {
         buttonPanel.add(makeSelectiveEventButton);
         buttonPanel.add(makeCopyButton);
         buttonPanel.add(deleteFromDBButton);
+
+        deleteFromDBButton.addActionListener((evt) -> {
+            int option = JOptionPane.showConfirmDialog(context.frame, "Czy jesteś pewien, że chcesz usunąć wydarzenie " + event.getName() + "?", "Usuwanie \"" + event.getName() + "\"", JOptionPane.YES_NO_OPTION);
+            if (option == JOptionPane.YES_OPTION) {
+                try {
+                    event.delete(context, () -> {
+                        SwingUtilities.invokeLater(() -> {
+                            context.eBus.post(new EventsNode.EventsListChanged());
+                            context.eBus.post(new ChangeMainPanel(new EmptyPanel()));
+                        });
+                    });
+                } catch (Exception e) {
+                    JOptionPane.showMessageDialog(context.frame, e.getMessage());
+                }
+            }
+        });
 
         GridLayout northPanelLayout = new GridLayout(1, 2);
         northPanelLayout.setVgap(10);
@@ -155,9 +176,9 @@ public class EventPanel extends MainPanel {
         executor.submit(() -> {
             MFile.Localized[] mfiles = event.getLocalizedMFiles(context);
             int redundancy = event.getRedundancy();
-            System.out.println("MFiles.length="+mfiles.length);
+            System.out.println("MFiles.length=" + mfiles.length);
             if (mfiles.length > 0) {
-                
+
                 SwingUtilities.invokeLater(() -> {
                     numOfPhotosLabel.setText(mfiles.length + "");
                     LocalDateTime earliesDT = mfiles[0].getMFile().getDateTime();
@@ -182,6 +203,11 @@ public class EventPanel extends MainPanel {
                     browserPanel.revalidate();
                     browserPanel.repaint();
                 });
+            } else {
+                browserPanel.removeAll();
+                browserPanel.add(new JLabel("To wydarzenie nie zawiera żadnych zdjęć"));
+                browserPanel.revalidate();
+                browserPanel.repaint();
             }
         });
     }
