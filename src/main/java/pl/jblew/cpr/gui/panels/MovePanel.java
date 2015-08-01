@@ -24,6 +24,7 @@ import javax.swing.SwingUtilities;
 import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.gui.MainPanel;
 import pl.jblew.cpr.gui.components.modal.CreateEventModal;
+import pl.jblew.cpr.gui.util.CPRProgressBarUI;
 import pl.jblew.cpr.gui.util.PanelDisabler;
 import pl.jblew.cpr.logic.Event;
 import pl.jblew.cpr.logic.Event_Localization;
@@ -208,6 +209,7 @@ public class MovePanel extends MainPanel {
 
                 if (step.isProcessable()) {
                     JProgressBar progressBar = new JProgressBar(0, 100);
+                    progressBar.setUI(new CPRProgressBarUI());
                     progressBar.setPreferredSize(new Dimension(300, 60));
                     progressBar.setStringPainted(true);
                     stepPanel.add(progressBar);

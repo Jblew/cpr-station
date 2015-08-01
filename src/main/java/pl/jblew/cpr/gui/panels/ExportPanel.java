@@ -33,6 +33,7 @@ import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.file.StorageDevicePresenceListener;
 import pl.jblew.cpr.gui.IconLoader;
 import pl.jblew.cpr.gui.MainPanel;
+import pl.jblew.cpr.gui.util.CPRProgressBarUI;
 import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.Event;
 import pl.jblew.cpr.logic.io.Exporter;
@@ -173,6 +174,7 @@ public class ExportPanel extends MainPanel {
         progressPanel.setLayout(new BorderLayout());
         progressPanel.setBorder(BorderFactory.createEmptyBorder(50, 50, 50, 50));
         JProgressBar progressBar = new JProgressBar(0, 100);
+        progressBar.setUI(new CPRProgressBarUI());
         progressBar.setStringPainted(true);
         progressBar.setString("Ładowanie...");
         progressPanel.add(progressBar, BorderLayout.CENTER);
