@@ -208,6 +208,7 @@ public class Importer {
             
             try {
                 Files.copy(sourceFile.toPath(), targetFile.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
+                System.out.println(sourceFile.toPath()+" -> "+targetFile.toPath());
                 md5SumsToFill.put(targetFile, MD5Util.calculateMD5(targetFile));
                 ThumbnailLoader.loadThumbnail(targetFile, true, null);
                 

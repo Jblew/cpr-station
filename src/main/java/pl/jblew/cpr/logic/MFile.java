@@ -167,5 +167,10 @@ public class MFile implements Comparable<MFile> {
             }
             return true;
         }
+
+        @Override
+        public String toString() {
+            return "MFile.Localized{" + "mfile=" + mfile + ", file=" + file + '}';
+        }
     }
 }

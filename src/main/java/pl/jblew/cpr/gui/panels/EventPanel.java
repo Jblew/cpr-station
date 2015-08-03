@@ -175,6 +175,7 @@ public class EventPanel extends MainPanel {
     private void asyncLoadData() {
         executor.submit(() -> {
             MFile.Localized[] mfiles = event.getLocalizedMFiles(context);
+            //Arrays.stream(mfiles).forEachOrdered(mfl -> System.out.println(mfl));
             int redundancy = event.getRedundancy();
             System.out.println("MFiles.length=" + mfiles.length);
             if (mfiles.length > 0) {

@@ -66,7 +66,7 @@ public class ImportPanel extends MainPanel {
          */
         String dirs = Arrays.stream(importer.getFilesToImport()).map(f -> f.getParent()).distinct().reduce("", (a, b) -> a + ", " + b);
         infoPanel.add(new JLabel("<html>Importowanie <b>" + importer.getFilesToImport().length + "</b> plików (<b>" + FileSizeFormatter.format(importer.getSize()) + "</b>) w katalogach: [" + dirs + "]."));
-
+        
         /**
          * DEVICE SELECTION PANEL *
          */
@@ -170,8 +170,6 @@ public class ImportPanel extends MainPanel {
          * FINISH PANEL *
          */
         finishPanel.add(new JLabel("Gotowe!"));
-
-        add(new JLabel("Point"));
         
         
         add(infoPanel);

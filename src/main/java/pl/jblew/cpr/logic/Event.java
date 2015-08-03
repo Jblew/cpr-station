@@ -106,7 +106,8 @@ public class Event {
 
                     QueryBuilder<MFile_Event, Integer> queryToJoin = mfile_EventDao.queryBuilder();
                     queryToJoin.where().eq("eventId", getId());
-                    QueryBuilder<MFile, Integer> qb = mfileDao.queryBuilder().orderBy("unixTime", true).join(queryToJoin);
+                    QueryBuilder<MFile, Integer> qb = mfileDao.queryBuilder().orderBy("unixTime", true).orderBy("name", true).orderBy("id", true).join(queryToJoin);
+                    System.out.println(">>>"+qb.prepareStatementString());
                     List<MFile> mfiles = qb.query();
 
                     mfiles.stream().map(mf -> {
@@ -118,7 +119,10 @@ public class Event {
                             return new MFile.Localized(mf, potentialFile);
                         }
                         return new MFile.Localized(mf, null);
-                    }).forEach(mfl -> result.add(mfl));
+                    }).forEachOrdered(mfl -> {
+                        result.add(mfl);
+                        System.out.println(mfl);
+                    });
 
                 } catch (SQLException ex) {
                     Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);

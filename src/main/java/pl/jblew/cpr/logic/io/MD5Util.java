@@ -40,7 +40,7 @@ public class MD5Util {
             try (InputStream is = Files.newInputStream(f.toPath())) {
                 DigestInputStream dis = new DigestInputStream(is, md5Digest);
                 int numBytes;
-                byte [] bytes = new byte[1024*5];
+                byte [] bytes = new byte[1024*10];
                 dis.read(bytes);
                 dis.close();
                 is.close();
