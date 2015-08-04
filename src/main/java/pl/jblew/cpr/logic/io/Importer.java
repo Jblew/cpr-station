@@ -6,9 +6,15 @@
 package pl.jblew.cpr.logic.io;
 
 import com.j256.ormlite.dao.Dao;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.sql.SQLException;
@@ -19,9 +25,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -119,7 +127,7 @@ public class Importer {
     public void setEventName(String eventName) {
         this.eventName.set(eventName);
     }
-    
+
     public String getEventName() {
         return eventName.get();
     }
@@ -185,7 +193,11 @@ public class Importer {
                 }
                 callback.progressChanged(99, "Dodaję pliki do bazy danych...");
 
-                int numOfExisting = registerFilesInDB(targetFilesMap, md5sums, newEvent);
+                int numOfExisting = registerFilesInDB(targetFilesMap, md5sums, newEvent, callback);
+                
+                callback.progressChanged(99, "Zapisuję listy zaimportowanych plików");
+                
+                markImported(targetFilesMap);
 
                 callback.progressChanged(100, "Gotowe! (" + numOfExisting + " znajdowało się już wcześniej w bazie!)");
             } catch (InterruptedException ex) {
@@ -204,20 +216,21 @@ public class Importer {
             File targetFile = targetFilesMap.get(sourceFile);
             float percentF = ((float) i) / ((float) numOfFiles);
             int percent = (int) (percentF * 100f);
-            if(percent == 100) percent = 99; //in order not to disable progress bar
-            
+            if (percent == 100) {
+                percent = 99; //in order not to disable progress bar
+            }
             try {
                 Files.copy(sourceFile.toPath(), targetFile.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
-                System.out.println(sourceFile.toPath()+" -> "+targetFile.toPath());
+                System.out.println(sourceFile.toPath() + " -> " + targetFile.toPath());
                 md5SumsToFill.put(targetFile, MD5Util.calculateMD5(targetFile));
                 ThumbnailLoader.loadThumbnail(targetFile, true, null);
-                
-                long elapsedTime = System.currentTimeMillis()-sTime;
-                int percentLeft = 100-percent;
-                long leftTimeMulti = (long)elapsedTime*(long)percentLeft;
-                long leftTime = (percent > 0? leftTimeMulti/(long)percent : 1);
-                
-                callback.progressChanged(percent, "Importowanie " + i + "/" + numOfFiles + " (" + percent + "%) Zostało: "+DateTimeFormatter.ofPattern("HH:mm:ss").format(LocalDateTime.ofEpochSecond(leftTime/1000l, 0, ZoneOffset.UTC)));
+
+                long elapsedTime = System.currentTimeMillis() - sTime;
+                int percentLeft = 100 - percent;
+                long leftTimeMulti = (long) elapsedTime * (long) percentLeft;
+                long leftTime = (percent > 0 ? leftTimeMulti / (long) percent : 1);
+
+                callback.progressChanged(percent, "Importowanie " + i + "/" + numOfFiles + " (" + percent + "%) Zostało: " + DateTimeFormatter.ofPattern("HH:mm:ss").format(LocalDateTime.ofEpochSecond(leftTime / 1000l, 0, ZoneOffset.UTC)));
             } catch (IOException ex) {
                 Logger.getLogger(Importer.class.getName()).log(Level.SEVERE, "Błąd przy kopiowaniu plików", ex);
                 callback.progressChanged(percent, " Błąd przy importowaniu pliku: " + i + "/" + numOfFiles + ": " + ex.getLocalizedMessage());
@@ -228,71 +241,120 @@ public class Importer {
         return true;
     }
 
-    private int registerFilesInDB(Map<File, File> targetFilesMap, Map<File, String> md5sums, Event event) {
+    private int registerFilesInDB(Map<File, File> targetFilesMap, Map<File, String> md5sums, Event event, ImportPanel.ProgressChangedCallback callback) {
         final AtomicInteger numOfExistingFiles = new AtomicInteger(0);
-        context.dbManager.executeInDBThread(() -> {
-            try {
-                Dao<Carrier, Integer> carrierDao = context.dbManager.getDaos().getCarrierDao();
-                Dao<Event, Integer> eventDao = context.dbManager.getDaos().getEventDao();
-                Dao<MFile, Integer> mfileDao = context.dbManager.getDaos().getMfileDao();
-                Dao<Event_Localization, Integer> event_localizationDao = context.dbManager.getDaos().getEvent_LocalizationDao();
-                Dao<MFile_Event, Integer> mfile_eventDao = context.dbManager.getDaos().getMfile_EventDao();
-
-                Carrier carrier = carrierDao.queryForEq("name", deviceName).get(0);
-
-                Event_Localization el = new Event_Localization();
-                el.setCarrierId(carrier.getId());
-                el.setEvent(event);
-                el.setPath(event.getProperPath(deviceRoot.get()));
-                event_localizationDao.create(el);
-
-                for (File sourceFile : targetFilesMap.keySet()) {
-                    File targetFile = targetFilesMap.get(sourceFile);
-                    String md5 = md5sums.get(targetFile);
-
-                    MFile mf = null;
-                    if (!md5.isEmpty()) {
-                        MFile probe = new MFile();
-                        probe.setDateTime(LocalDateTime.ofEpochSecond(/*->*/sourceFile/*<-*/.lastModified() / 1000l, 0, ZoneOffset.UTC));
-                        probe.setMd5(md5);
-                        List<MFile> result = mfileDao.queryForMatching(probe);
-                        if (result.size() > 0) {
-                            mf = result.get(0);
-                        }
-                    }
-
-                    long mfId;
-                    if (mf != null) {
-                        mfId = mf.getId();
-                        numOfExistingFiles.incrementAndGet();
-                    } else {
-                        mf = new MFile();
-                        mf.setName(targetFile.getName());
-                        mf.setDateTime(LocalDateTime.ofEpochSecond(/*->*/sourceFile/*<-*/.lastModified() / 1000l, 0, ZoneOffset.UTC));
-
+        try {
+            context.dbManager.executeInDBThreadAndWait(() -> {
+                callback.progressChanged(0, "Dodawanie plików do bazy danych...");
+                try {
+                    Dao<Carrier, Integer> carrierDao = context.dbManager.getDaos().getCarrierDao();
+                    Dao<Event, Integer> eventDao = context.dbManager.getDaos().getEventDao();
+                    Dao<MFile, Integer> mfileDao = context.dbManager.getDaos().getMfileDao();
+                    Dao<Event_Localization, Integer> event_localizationDao = context.dbManager.getDaos().getEvent_LocalizationDao();
+                    Dao<MFile_Event, Integer> mfile_eventDao = context.dbManager.getDaos().getMfile_EventDao();
+                    
+                    Carrier carrier = carrierDao.queryForEq("name", deviceName).get(0);
+                    
+                    Event_Localization el = new Event_Localization();
+                    el.setCarrierId(carrier.getId());
+                    el.setEvent(event);
+                    el.setPath(event.getProperPath(deviceRoot.get()));
+                    event_localizationDao.create(el);
+                    
+                    int i = 0;
+                    for (File sourceFile : targetFilesMap.keySet()) {
+                        float percentF = ((float) i) / ((float) targetFilesMap.keySet().size());
+            int percent = (int) (percentF * 100f);
+            if (percent == 100) {
+                percent = 99; //in order not to disable progress bar
+            }
+                        File targetFile = targetFilesMap.get(sourceFile);
+                        String md5 = md5sums.get(targetFile);
+                        
+                        MFile mf = null;
                         if (!md5.isEmpty()) {
-                            mf.setMd5(md5);
-                        } else {
-                            mf.setMd5("-");
+                            MFile probe = new MFile();
+                            probe.setDateTime(LocalDateTime.ofEpochSecond(/*->*/sourceFile/*<-*/.lastModified() / 1000l, 0, ZoneOffset.UTC));
+                            probe.setMd5(md5);
+                            List<MFile> result = mfileDao.queryForMatching(probe);
+                            if (result.size() > 0) {
+                                mf = result.get(0);
+                            }
                         }
-
-                        mfileDao.create(mf);
-                        mfId = mf.getId();
+                        
+                        long mfId;
+                        if (mf != null) {
+                            mfId = mf.getId();
+                            numOfExistingFiles.incrementAndGet();
+                        } else {
+                            mf = new MFile();
+                            mf.setName(targetFile.getName());
+                            mf.setDateTime(LocalDateTime.ofEpochSecond(/*->*/sourceFile/*<-*/.lastModified() / 1000l, 0, ZoneOffset.UTC));
+                            
+                            if (!md5.isEmpty()) {
+                                mf.setMd5(md5);
+                            } else {
+                                mf.setMd5("-");
+                            }
+                            
+                            mfileDao.create(mf);
+                            mfId = mf.getId();
+                        }
+                        
+                        MFile_Event mfe = new MFile_Event();
+                        mfe.setEvent(event);
+                        mfe.setMFile(mf);
+                        mfile_eventDao.create(mfe);
+                        
+                        callback.progressChanged(percent, "Dodawanie plików do bazy danych... ("+percent+"%)");
+                        
+                        i++;
                     }
+                    
+                    context.eBus.post(new EventsNode.EventsListChanged());
+                } catch (SQLException ex) {
+                    Logger.getLogger(Importer.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            });
+        } catch (InterruptedException ex) {
+            Logger.getLogger(Importer.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return numOfExistingFiles.get();
+    }
 
-                    MFile_Event mfe = new MFile_Event();
-                    mfe.setEvent(event);
-                    mfe.setMFile(mf);
-                    mfile_eventDao.create(mfe);
-
+    private void markImported(Map<File, File> targetFilesMap) {
+        System.out.println("1");
+        File[] dirs = targetFilesMap.keySet().stream().map(f -> f.getParentFile()).distinct().toArray(File[]::new);
+        System.out.println("2");
+        for (File dir : dirs) {
+            
+            try {
+                File importedListFile = new File(dir.getAbsolutePath() + File.separator + "ZAIMPORTOWANE.txt");
+                Set<String> alreadyMarked = new HashSet<>();
+                if (importedListFile.exists()) {
+                    try (BufferedReader br = new BufferedReader(new FileReader(importedListFile))) {
+                        for (String line; (line = br.readLine()) != null;) {
+                            if (!line.isEmpty()) {
+                                alreadyMarked.add(line);
+                            }
+                        }
+                    } catch (IOException ex) {
+                        Logger.getLogger(Importer.class.getName()).log(Level.SEVERE, null, ex);
+                    }
                 }
 
-                context.eBus.post(new EventsNode.EventsListChanged());
-            } catch (SQLException ex) {
+                String childrenToWrite = targetFilesMap.keySet().stream().filter(f -> f.getParent().equals(dir)).filter(f -> !alreadyMarked.contains(f.getName())).map(f -> f.getName()).reduce("", (a, b) -> a + "\n" + b);
+                try (PrintWriter pw = new PrintWriter(new BufferedWriter(new FileWriter(importedListFile)))) {
+                    pw.write(childrenToWrite);
+                    pw.flush();
+                } catch (IOException ex) {
+                    Logger.getLogger(Importer.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            } catch (Exception ex) {
                 Logger.getLogger(Importer.class.getName()).log(Level.SEVERE, null, ex);
             }
-        });
-        return numOfExistingFiles.get();
+        }
+        System.out.println("3");
     }
 
     private static long makeListCalculateSpace(List<File> list, File f) {

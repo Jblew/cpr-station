@@ -190,6 +190,7 @@ public class SwingFileBrowser extends JPanel {
             setVerticalTextPosition(SwingConstants.BOTTOM);
             setHorizontalTextPosition(SwingConstants.CENTER);
             setPreferredSize(new Dimension(164, 164));
+            this.setToolTipText(file.getName());
 
             addMouseListener(new MouseListener() {
                 @Override

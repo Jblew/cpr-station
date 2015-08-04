@@ -34,8 +34,8 @@ public class DatabaseDetector implements StorageDevicePresenceListener {
     @Override
     public void storageDeviceConnected(File root, final String deviceName) {
         if (root.isDirectory() && root.canRead()) {
-            final File potentialDbFile = new File(root.getAbsolutePath() + File.separator + DB_FILE_NAME+DB_FILE_EXTENSION);
-            final File potentialDbFileJDBCPath = new File(root.getAbsolutePath() + File.separator + DB_FILE_NAME);
+            final File potentialDbFile = getPotentialDBFile(root);
+            final File potentialDbFileJDBCPath = getPotentialDbFileJDBCPath(root);
             System.out.println("Checking for DB on "+potentialDbFile);
             
             if (potentialDbFile.exists()) {
@@ -55,5 +55,13 @@ public class DatabaseDetector implements StorageDevicePresenceListener {
     @Override
     public void storageDeviceDisconnected(File rootFile, String deviceName) {
         
+    }
+    
+    public static File getPotentialDBFile(File deviceRoot) {
+        return new File(deviceRoot.getAbsolutePath() + File.separator + DB_FILE_NAME+DB_FILE_EXTENSION);
+    }
+    
+    public static File getPotentialDbFileJDBCPath(File deviceRoot) {
+        return new File(deviceRoot.getAbsolutePath() + File.separator + DB_FILE_NAME);
     }
 }

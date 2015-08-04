@@ -55,11 +55,10 @@ public class MFileBrowser extends JPanel {
         this.context = context_;
         tabbedPane = new JTabbedPane();
         
-        System.out.println("Created browser");
-
         emptyImage = new ImageIcon(getClass().getClassLoader().getResource("images/empty128.gif"));
 
         singleBrowsingPanel = new SingleBrowsingPanel();
+        this.addKeyListener(singleBrowsingPanel);
         gridBrowsingPanel = new GridBrowsingPanel();
 
         setBackground(Color.WHITE);
@@ -72,7 +71,7 @@ public class MFileBrowser extends JPanel {
         tilesViewButton.addActionListener((ActionEvent e) -> {
             SwingUtilities.invokeLater(() -> {
                 tabbedPane.setSelectedIndex(0);
-                components.values().stream().sorted().forEach((mfc) -> {
+                components.values().stream().sorted().forEachOrdered((mfc) -> {
                     gridBrowsingPanel.addMFileComponent(mfc);
                 });
 
@@ -81,7 +80,7 @@ public class MFileBrowser extends JPanel {
         singleViewButton.addActionListener((ActionEvent e) -> {
             SwingUtilities.invokeLater(() -> {
                 tabbedPane.setSelectedIndex(1);
-                components.values().stream().sorted().forEach((mfc) -> {
+                components.values().stream().sorted().forEachOrdered((mfc) -> {
                     singleBrowsingPanel.addMFileComponent(mfc);
                 });
             });
@@ -109,6 +108,7 @@ public class MFileBrowser extends JPanel {
 
         loadFiles();
 
+        this.requestFocusInWindow();
     }
 
     public void addComponentToToolPanel(JComponent c) {
@@ -330,7 +330,7 @@ public class MFileBrowser extends JPanel {
         @Override
         public void clickedOpen(MFileComponent cmp) {
             tabbedPane.setSelectedIndex(1);
-            components.values().stream().forEach((mfc) -> {
+            components.values().stream().sorted().forEachOrdered((mfc) -> {
                 singleBrowsingPanel.addMFileComponent(mfc);
             });
             singleBrowsingPanel.changeMFile(cmp.localizedMFile, cmp);
@@ -338,7 +338,7 @@ public class MFileBrowser extends JPanel {
 
     }
 
-    private class SingleBrowsingPanel extends BrowsingPanel implements OpenMFileCallback {
+    private class SingleBrowsingPanel extends BrowsingPanel implements OpenMFileCallback, KeyListener {
         private final AtomicReference<MFileComponent> currentComponent = new AtomicReference<>(null);
         private final AtomicReference<JComponent> browser = new AtomicReference<>(null);
         //private final AtomicInteger selectedIndex = new AtomicInteger(0);
@@ -363,43 +363,7 @@ public class MFileBrowser extends JPanel {
 
             //southPanel.add(scrollPane);
             //changeMFile(mfiles.get(0));
-            this.addKeyListener(new KeyListener() {
-                @Override
-                public void keyTyped(KeyEvent e) {
-                }
-
-                @Override
-                public void keyPressed(KeyEvent e) {
-                }
-
-                @Override
-                public void keyReleased(KeyEvent e) {
-                    MFileComponent leftComponent = null;
-                    MFileComponent rightComponent = null;
-                    MFileComponent prev = null;
-                    for (Component c : southPanel.getComponents()) {
-                        if (c instanceof MFileComponent) {
-                            MFileComponent mfc = (MFileComponent) c;
-                            if (mfc == currentComponent.get()) {
-                                leftComponent = prev;
-                            }
-                            if (prev == currentComponent.get()) {
-                                rightComponent = mfc;
-                                break;
-                            }
-                            prev = mfc;
-
-                        }
-                    }
-
-                    if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
-                        changeMFile(rightComponent.localizedMFile, rightComponent);
-                    } else if (e.getKeyCode() == KeyEvent.VK_LEFT) {
-                        changeMFile(leftComponent.localizedMFile, leftComponent);
-                    }
-                }
-
-            });
+            this.addKeyListener(this);
         }
 
         public void changeMFile(final MFile.Localized localizedMFile, final MFileComponent mfc) {
@@ -417,6 +381,7 @@ public class MFileBrowser extends JPanel {
                 }
 
                 scrollSouthToCenter(mfc);
+                me.requestFocusInWindow();
             });
 
         }
@@ -457,5 +422,40 @@ public class MFileBrowser extends JPanel {
         public void clickedOpen(MFileComponent cmp) {
             changeMFile(cmp.localizedMFile, cmp);
         }
+        
+        @Override
+                public void keyTyped(KeyEvent e) {
+                }
+
+                @Override
+                public void keyPressed(KeyEvent e) {
+                }
+
+                @Override
+                public void keyReleased(KeyEvent e) {
+                    MFileComponent leftComponent = null;
+                    MFileComponent rightComponent = null;
+                    MFileComponent prev = null;
+                    for (Component c : southPanel.getComponents()) {
+                        if (c instanceof MFileComponent) {
+                            MFileComponent mfc = (MFileComponent) c;
+                            if (mfc == currentComponent.get()) {
+                                leftComponent = prev;
+                            }
+                            if (prev == currentComponent.get()) {
+                                rightComponent = mfc;
+                                break;
+                            }
+                            prev = mfc;
+
+                        }
+                    }
+
+                    if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
+                        changeMFile(rightComponent.localizedMFile, rightComponent);
+                    } else if (e.getKeyCode() == KeyEvent.VK_LEFT) {
+                        changeMFile(leftComponent.localizedMFile, leftComponent);
+                    }
+                }
     }
 }

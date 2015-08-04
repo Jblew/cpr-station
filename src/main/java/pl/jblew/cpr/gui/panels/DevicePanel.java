@@ -26,6 +26,7 @@ import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.db.DatabaseManager;
 import pl.jblew.cpr.gui.ChangeMainPanel;
 import pl.jblew.cpr.gui.MainPanel;
+import pl.jblew.cpr.gui.MainWindow;
 import pl.jblew.cpr.gui.components.SwingFileBrowser;
 import pl.jblew.cpr.gui.util.CPRProgressBarUI;
 import pl.jblew.cpr.logic.Carrier;
@@ -125,6 +126,13 @@ public class DevicePanel extends MainPanel {
         }
 
         JButton backupDbButton = new JButton("Zgraj tu kopię zapasową bazy danych");
+        backupDbButton.addActionListener((evt) -> {
+            Executors.newSingleThreadExecutor().execute(() -> {
+                context.eBus.post(new MainWindow.SetUILocked(true));
+                context.dbManager.dumpDB(root);
+                context.eBus.post(new MainWindow.SetUILocked(false));
+            });
+        });
 
         JPanel buttonPanel = new JPanel();
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));

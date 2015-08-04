@@ -42,11 +42,19 @@ public class Daos {
         event_LocalizationDao.set(initDao(Event_Localization.class, connectionSource));
     }
     
-    private <A> Dao<A, Integer> initDao(Class<A> clazz, ConnectionSource connectionSource) {
+    static void staticInit(ConnectionSource src) {
+        initDao(Carrier.class, src);
+        initDao(Event.class, src);
+        initDao(MFile.class, src);
+        initDao(MFile_Event.class, src);
+        initDao(Event_Localization.class, src);
+    }
+    
+    private static <A> Dao<A, Integer> initDao(Class<A> clazz, ConnectionSource connectionSource) {
         try {
             Dao<A, Integer> dao = DaoManager.createDao(connectionSource, clazz);
             if (!dao.isTableExists()) {
-                Logger.getLogger(getClass().getName()).log(Level.INFO, "Creating table for {0}", clazz.getName());
+                Logger.getLogger(Dao.class.getName()).log(Level.INFO, "Creating table for {0}", clazz.getName());
                 TableUtils.createTable(connectionSource, clazz);
             }
             dao.setAutoCommit(connectionSource.getReadWriteConnection(), true);

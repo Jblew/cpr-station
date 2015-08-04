@@ -47,10 +47,10 @@ public class DeviceDetectorProcess {
         new Thread(() -> {
             USBDeviceDetectorManager detectorManager = new USBDeviceDetectorManager(2 * 1000);
             for (USBStorageDevice device : detectorManager.getRemovableDevices()) {
-                System.out.println("USB device detected: \"" + device.getDeviceName() + "\". Writable: " + device.getRootDirectory().canWrite());
+                System.out.println("USB device detected: \"" + device.getSystemDisplayName() + "\". Writable: " + device.getRootDirectory().canWrite());
 
                 synchronized (devices) {
-                    devices.put(device.getDeviceName(), device.getRootDirectory());
+                    devices.put(device.getSystemDisplayName(), device.getRootDirectory());
                 }
 
                 StorageDevicePresenceListener[] tmpList;
@@ -58,7 +58,7 @@ public class DeviceDetectorProcess {
                     tmpList = listeners.toArray(new StorageDevicePresenceListener[]{});
                 }
                 for (StorageDevicePresenceListener listener : tmpList) {
-                    listener.storageDeviceConnected(device.getRootDirectory(), device.getDeviceName());
+                    listener.storageDeviceConnected(device.getRootDirectory(), device.getSystemDisplayName());
                 }
             }
             detectorManager.addDriveListener((USBStorageEvent usbse) -> {
@@ -66,9 +66,9 @@ public class DeviceDetectorProcess {
 
                 synchronized (devices) {
                     if (usbse.getEventType() == DeviceEventType.CONNECTED) {
-                        devices.put(usbse.getStorageDevice().getDeviceName(), usbse.getStorageDevice().getRootDirectory());
+                        devices.put(usbse.getStorageDevice().getSystemDisplayName(), usbse.getStorageDevice().getRootDirectory());
                     } else if (usbse.getEventType() == DeviceEventType.REMOVED) {
-                        devices.remove(usbse.getStorageDevice().getDeviceName());
+                        devices.remove(usbse.getStorageDevice().getSystemDisplayName());
                     }
 
                 }
@@ -78,9 +78,9 @@ public class DeviceDetectorProcess {
                 }
                 for (StorageDevicePresenceListener listener : tmpList) {
                     if (usbse.getEventType() == DeviceEventType.CONNECTED) {
-                        listener.storageDeviceConnected(usbse.getStorageDevice().getRootDirectory(), usbse.getStorageDevice().getDeviceName());
+                        listener.storageDeviceConnected(usbse.getStorageDevice().getRootDirectory(), usbse.getStorageDevice().getSystemDisplayName());
                     } else if (usbse.getEventType() == DeviceEventType.REMOVED) {
-                        listener.storageDeviceDisconnected(usbse.getStorageDevice().getRootDirectory(), usbse.getStorageDevice().getDeviceName());
+                        listener.storageDeviceDisconnected(usbse.getStorageDevice().getRootDirectory(), usbse.getStorageDevice().getSystemDisplayName());
                     }
                 }
 

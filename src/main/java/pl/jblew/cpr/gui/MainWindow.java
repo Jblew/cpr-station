@@ -9,9 +9,11 @@ import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dialog;
 import java.awt.Dimension;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JLayeredPane;
@@ -20,6 +22,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
 import pl.jblew.cpr.bootstrap.Context;
+import pl.jblew.cpr.db.DBBackupManager;
 import pl.jblew.cpr.db.DatabaseChanged;
 import pl.jblew.cpr.gui.panels.HomePanel;
 import pl.jblew.cpr.util.MessageToStatusBar;
@@ -32,6 +35,7 @@ public class MainWindow {
     private final Context context;
     private final JFrame frame;
     private final MainContentPane mainContentPane;
+    private final JDialog lockDialog;
 
     public MainWindow(Context context_) {
         context = context_;
@@ -45,6 +49,8 @@ public class MainWindow {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         
         frame.setContentPane(mainContentPane);
+        
+        lockDialog = new JDialog(frame, "Ładowanie...", Dialog.ModalityType.APPLICATION_MODAL);
     }
 
     public void show() {
@@ -64,6 +70,7 @@ public class MainWindow {
     private class MainContentPane extends JPanel {
         private final JLabel statusBar;
         private final JLabel dbLabel;
+        private final JLabel dbBackupLabel;
         private MainPanel mainPanel = new HomePanel();
 
         MainContentPane() {
@@ -71,10 +78,13 @@ public class MainWindow {
             statusBar.setBorder(BorderFactory.createLoweredBevelBorder());
 
             dbLabel = new JLabel("Brak bazy danych, podłącz klucz z bazą");
+            dbBackupLabel = new JLabel("");
             dbLabel.setForeground(Color.RED);
             
             JToolBar toolBar = new JToolBar();
             toolBar.add(dbLabel);
+            toolBar.addSeparator();
+            toolBar.add(dbBackupLabel);
             
             this.setLayout(new BorderLayout());
             this.add(toolBar, BorderLayout.NORTH);
@@ -127,6 +137,30 @@ public class MainWindow {
                 dbLabel.setForeground((e.isNull()? Color.RED : Color.BLACK));
                 dbLabel.setText("Baza danych: "+e.getDeviceName());
             });
+        }
+        
+        @Subscribe
+        public void dbBackupStateChanged(final DBBackupManager.BackupStateChanged e) {
+            SwingUtilities.invokeLater(() -> {
+                dbBackupLabel.setForeground((e.isSafe()? Color.GREEN.darker() : Color.RED));
+                dbBackupLabel.setText(e.getMsg()+" ("+e.getRemaningChanges()+")");
+            });
+        }
+        
+        @Subscribe
+        public void setUILocked(SetUILocked l) {
+            SwingUtilities.invokeLater(() -> {
+                lockDialog.setVisible(l.locked);
+            });
+        }
+        
+    }
+    
+    public static class SetUILocked {
+        public final boolean locked;
+
+        public SetUILocked(boolean locked) {
+            this.locked = locked;
         }
     }
 }

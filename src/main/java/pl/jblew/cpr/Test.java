@@ -21,6 +21,7 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.IntStream;
 import javax.imageio.ImageIO;
 
 /**
@@ -44,8 +45,12 @@ public class Test {
         File dir = new File("/Users/teofil/numbered");
         dir.mkdirs();
         
-        for(int i = 0;i < 100;i++) {
-            BufferedImage img = new BufferedImage(1024, 768, BufferedImage.TYPE_INT_RGB);
+        final int WIDTH = 128;
+        final int HEIGHT = 96;
+        final int COUNT = 100*1000;
+        
+        IntStream.range(20*1000, 50*1000).parallel().forEach((i) -> {
+            BufferedImage img = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
             Graphics2D g = img.createGraphics();
             g.setColor(Color.WHITE);
             g.fillRect(0, 0, 1024, 768);
@@ -54,25 +59,25 @@ public class Test {
             
             g.setColor(Color.LIGHT_GRAY);
             
-            for(int x = 0;x < 1024;x += 15) {
-                for(int y = x/9;y < 768;y += 10) {
+            for(int x = 0;x < WIDTH;x += 50) {
+                for(int y = x/9;y < HEIGHT;y += 10) {
                     g.drawString(i+"", x, y);
                 }
             }
             
             g.setColor(Color.BLACK);
-            g.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 150));
-            g.drawString(""+i, 512, 768/2);
+            g.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 45));
+            g.drawString(""+i, WIDTH/2, HEIGHT/2);
             
             g.dispose();
             
             try {
-                ImageIO.write(img, "jpeg", new File(dir+File.separator+String.format("%1$" + 5 + "s", i + "").replace(' ', '0')+".jpg"));
+                ImageIO.write(img, "jpeg", new File(dir+File.separator+String.format("%1$" + (int)Math.log10(COUNT) + "s", i + "").replace(' ', '0')+".jpg"));
             } catch (IOException ex) {
                 Logger.getLogger(Test.class.getName()).log(Level.SEVERE, null, ex);
             }
-            System.out.println(i+"/100");
-        }
+            if(i%10 == 0) System.out.println(i+"/"+COUNT);
+        });
     }
 
 }

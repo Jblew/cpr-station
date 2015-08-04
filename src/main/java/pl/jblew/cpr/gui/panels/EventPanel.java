@@ -98,7 +98,7 @@ public class EventPanel extends MainPanel {
         prepareGridRow(gridPanel, "Zakres czasu: ", timespanLabel);
         prepareGridRow(gridPanel, "Ilość kopii: ", numOfCopiesLabel);
         prepareGridRow(gridPanel, "Ilość plików: ", numOfPhotosLabel);
-        prepareGridRow(gridPanel, "Nośniki: ", new JLabel(event.getLocalizations().stream().map(el -> el.getCarrier(context).getName()).reduce("", (a, b) -> a + ", " + b).substring(2)));
+        prepareGridRow(gridPanel, "Nośniki: ", new JLabel(event.getLocalizations().stream().map(el -> el.getCarrier(context)).filter(c -> c != null).map(c -> c.getName()).reduce("", (a, b) -> a + ", " + b).substring(2)));
 
         final JButton showSelectiveEventButton = new JButton("Pokaż WYBRANE");
         showSelectiveEventButton.setEnabled(false);
