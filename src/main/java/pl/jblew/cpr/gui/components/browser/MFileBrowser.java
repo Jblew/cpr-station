@@ -3,12 +3,13 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package pl.jblew.cpr.gui.components;
+package pl.jblew.cpr.gui.components.browser;
 
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
@@ -25,6 +26,11 @@ import javax.swing.*;
 import javax.swing.border.*;
 import pl.jblew.cpr.Settings;
 import pl.jblew.cpr.bootstrap.Context;
+import pl.jblew.cpr.gui.components.FileBrowser;
+import pl.jblew.cpr.gui.components.NoTabTabbedPaneUI;
+import pl.jblew.cpr.gui.components.PhotoBrowser;
+import pl.jblew.cpr.gui.components.PreloadingPhotoBrowser;
+import pl.jblew.cpr.gui.components.WrapLayout;
 import pl.jblew.cpr.logic.Event;
 import pl.jblew.cpr.logic.MFile;
 import pl.jblew.cpr.logic.io.ThumbnailLoader;
@@ -117,6 +123,15 @@ public class MFileBrowser extends JPanel {
 
     public void inactivate() {
         //browsingPanel.inactivate();
+    }
+    
+    public void showSingleView() {
+        SwingUtilities.invokeLater(() -> {
+                tabbedPane.setSelectedIndex(1);
+                components.values().stream().sorted().forEachOrdered((mfc) -> {
+                    singleBrowsingPanel.addMFileComponent(mfc);
+                });
+            });
     }
 
     private void loadFiles() {
@@ -340,8 +355,8 @@ public class MFileBrowser extends JPanel {
 
     private class SingleBrowsingPanel extends BrowsingPanel implements OpenMFileCallback, KeyListener {
         private final AtomicReference<MFileComponent> currentComponent = new AtomicReference<>(null);
-        private final AtomicReference<JComponent> browser = new AtomicReference<>(null);
-        //private final AtomicInteger selectedIndex = new AtomicInteger(0);
+        private final PreloadingPhotoBrowser browser;
+        private final PreloadingPhotoBrowser.PreloadableImage [] preloadables;
         private final JScrollPane scrollPane;
         private final JPanel southPanel;
         private final SingleBrowsingPanel me = this;
@@ -349,8 +364,11 @@ public class MFileBrowser extends JPanel {
         public SingleBrowsingPanel() {
             setLayout(new BorderLayout());
 
-            browser.set(new JLabel("Ładowanie..."));
-            add(browser.get(), BorderLayout.CENTER);
+            preloadables = Arrays.stream(localizedMFiles).map(mfl -> mfl.getFile()).filter(f -> f != null && f.canRead())
+            .map(f -> new PreloadingPhotoBrowser.PreloadableImage(f, null)).toArray(PreloadingPhotoBrowser.PreloadableImage[]::new);
+            
+            browser = new PreloadingPhotoBrowser(preloadables, 0, PreloadingPhotoBrowser.ScaleType.FIT);
+            add(browser, BorderLayout.CENTER);
 
             southPanel = new JPanel();
             southPanel.setLayout(new BoxLayout(southPanel, BoxLayout.LINE_AXIS));
@@ -370,14 +388,7 @@ public class MFileBrowser extends JPanel {
             currentComponent.set(mfc);
             SwingUtilities.invokeLater(() -> {
                 if (localizedMFile.getFile() != null) {
-                    if (browser.get() != null) {
-                        remove(browser.get());
-                        PhotoBrowser newBrowser = new PhotoBrowser(localizedMFile.getFile(), PhotoBrowser.ScaleType.FIT);
-                        browser.set(newBrowser);
-                        add(newBrowser, BorderLayout.CENTER);
-                        revalidate();
-                        repaint();
-                    }
+                    browser.changeImage(localizedMFile.getFile());
                 }
 
                 scrollSouthToCenter(mfc);
@@ -451,9 +462,9 @@ public class MFileBrowser extends JPanel {
                         }
                     }
 
-                    if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
+                    if (e.getKeyCode() == KeyEvent.VK_RIGHT && rightComponent != null) {
                         changeMFile(rightComponent.localizedMFile, rightComponent);
-                    } else if (e.getKeyCode() == KeyEvent.VK_LEFT) {
+                    } else if (e.getKeyCode() == KeyEvent.VK_LEFT && leftComponent != null) {
                         changeMFile(leftComponent.localizedMFile, leftComponent);
                     }
                 }

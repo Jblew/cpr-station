@@ -30,7 +30,8 @@ import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.gui.ChangeMainPanel;
 import pl.jblew.cpr.gui.IconLoader;
 import pl.jblew.cpr.gui.MainPanel;
-import pl.jblew.cpr.gui.components.MFileBrowser;
+import pl.jblew.cpr.gui.components.browser.MFileBrowser;
+import pl.jblew.cpr.gui.components.modal.FullScreenBrowser;
 import pl.jblew.cpr.gui.treenodes.EventsNode;
 import pl.jblew.cpr.logic.Event;
 import pl.jblew.cpr.logic.MFile;
@@ -48,6 +49,7 @@ public class EventPanel extends MainPanel {
     private final JLabel numOfPhotosLabel;
     private final JButton moveSelectedToEventButton;
     private final JButton moveAllToEventButton;
+    private final JButton fullScreenButton;
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private MFileBrowser browser;
 
@@ -57,6 +59,7 @@ public class EventPanel extends MainPanel {
 
         this.moveSelectedToEventButton = new JButton("Przenieś zaznaczone");
         this.moveAllToEventButton = new JButton("Przenieś wszystkie");
+        this.fullScreenButton = new JButton("Pełen ekran");
 
         moveSelectedToEventButton.addActionListener((evt) -> {
             moveMFilesToEvent(Arrays.stream(browser.getSelectedLocalizedMFiles()).map(mfl -> mfl.getMFile()).toArray(MFile[]::new));
@@ -64,6 +67,13 @@ public class EventPanel extends MainPanel {
 
         moveAllToEventButton.addActionListener((evt) -> {
             moveMFilesToEvent(Arrays.stream(browser.getAllLocalizedMFiles()).map(mfl -> mfl.getMFile()).toArray(MFile[]::new));
+        });
+        
+        fullScreenButton.addActionListener((evt) -> {
+            SwingUtilities.invokeLater(() -> {
+                FullScreenBrowser fsb = new FullScreenBrowser(context, event);
+                fsb.setVisible(true);
+            });
         });
 
         setLayout(new BorderLayout());
@@ -200,6 +210,7 @@ public class EventPanel extends MainPanel {
                     browser = new MFileBrowser(context, mfiles, event);
                     browser.addComponentToToolPanel(moveSelectedToEventButton);
                     browser.addComponentToToolPanel(moveAllToEventButton);
+                    browser.addComponentToToolPanel(fullScreenButton);
                     browserPanel.add(browser, BorderLayout.CENTER);
                     browserPanel.revalidate();
                     browserPanel.repaint();

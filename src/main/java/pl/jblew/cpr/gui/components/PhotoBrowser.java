@@ -28,7 +28,7 @@ public class PhotoBrowser extends JPanel {
     private final JScrollPane scrollPane;
     private final ImagePanel imagePanel;
     private final AtomicReference<File> imageUrl = new AtomicReference<>();
-    private final PhotoBrowser parentPhotoBrowser = this;
+    private final PhotoBrowser me = this;
 
     public PhotoBrowser(File f, final ScaleType t) {
         imageUrl.set(f);

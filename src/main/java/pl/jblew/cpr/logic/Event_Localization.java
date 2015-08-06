@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import pl.jblew.cpr.bootstrap.Context;
-import pl.jblew.cpr.gui.components.MFileBrowser;
+import pl.jblew.cpr.gui.components.browser.MFileBrowser;
 
 /**
  *
