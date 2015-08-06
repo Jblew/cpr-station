@@ -27,7 +27,7 @@ import pl.jblew.cpr.db.DatabaseManager;
 import pl.jblew.cpr.gui.ChangeMainPanel;
 import pl.jblew.cpr.gui.MainPanel;
 import pl.jblew.cpr.gui.MainWindow;
-import pl.jblew.cpr.gui.components.SwingFileBrowser;
+import pl.jblew.cpr.gui.components.browser.SwingFileBrowser;
 import pl.jblew.cpr.gui.util.CPRProgressBarUI;
 import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.io.CarrierMaker;

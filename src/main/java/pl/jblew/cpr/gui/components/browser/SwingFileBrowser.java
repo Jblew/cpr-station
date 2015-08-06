@@ -3,8 +3,9 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package pl.jblew.cpr.gui.components;
+package pl.jblew.cpr.gui.components.browser;
 
+import pl.jblew.cpr.gui.components.browser.FileBrowser;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -26,6 +27,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import javax.swing.*;
 import javax.swing.border.BevelBorder;
 import pl.jblew.cpr.Settings;
+import pl.jblew.cpr.gui.components.WrapLayout;
 import pl.jblew.cpr.logic.io.ThumbnailLoader;
 
 /**

@@ -20,7 +20,7 @@ import java.util.logging.Logger;
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import pl.jblew.cpr.Settings;
-import pl.jblew.cpr.gui.components.SwingFileBrowser;
+import pl.jblew.cpr.gui.components.browser.SwingFileBrowser;
 import pl.jblew.cpr.util.TwoTuple;
 
 /**
