@@ -209,19 +209,30 @@ public class MovePanel extends MainPanel {
 
                 if (step.isProcessable()) {
                     JProgressBar progressBar = new JProgressBar(0, 100);
+                    ProgressListPanel.ProgressEntity progressEntity = new ProgressListPanel.ProgressEntity();
+                    context.eBus.post(progressEntity);
+        
                     progressBar.setUI(new CPRProgressBarUI());
                     progressBar.setPreferredSize(new Dimension(300, 60));
                     progressBar.setStringPainted(true);
                     stepPanel.add(progressBar);
                     
-                    executor.execute(() -> step.processable.process((percent, msg) -> {
+                    executor.execute(() -> step.processable.process((percent, msg, error) -> {
                         progressBar.setString(msg);
                         progressBar.setValue(percent);
                         progressBar.repaint();
                         progressBar.revalidate();
                         
+                        progressEntity.setPercent(percent);
+                        progressEntity.setText("(Przenoszenie) "+msg);
+                        
                         if(percent == 100) {
+                            progressEntity.markFinished();
                             processStep(mover.getNextStep());
+                        }
+                        
+                        if(error) {
+                            progressEntity.markError();
                         }
                     }));
                 }
@@ -231,6 +242,6 @@ public class MovePanel extends MainPanel {
     }
 
     public static interface ProgressChangedCallback {
-        public void progressChanged(int percent, String msg);
+        public void progressChanged(int percent, String msg, boolean error);
     }
 }

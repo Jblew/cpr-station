@@ -20,10 +20,11 @@ public class FileStructureUtil {
 
     public static final String PATH_UNSORTED = "NIEPOSEGREGOWANE";
     public static final String PATH_UNSORTED_PHOTOS = PATH_UNSORTED + File.separator + "Zdjęcia";
-    public static final String PATH_UnSORTED_PHOTOS_THUMBNAILS = PATH_UNSORTED_PHOTOS + File.separator + ".thumb";
+    public static final String PATH_UNSORTED_PHOTOS_THUMBNAILS = PATH_UNSORTED_PHOTOS + File.separator + ".thumb";
     public static final String PATH_UNSORTED_VIDEOS = PATH_UNSORTED + File.separator + "Filmy";
     public static final String PATH_UNSORTED_VIDEOS_THUMBNAILS = PATH_UNSORTED_VIDEOS + File.separator + ".thumb";
-
+    public static final String PATH_UNSORTED_AUTOIMPORT = PATH_UNSORTED + File.separator + "Automatyczny import";
+    
     public static final String[] REQUIRED_DIRS = new String[]{
         PATH_SORTED,
         PATH_SORTED_PHOTOS,
@@ -32,9 +33,10 @@ public class FileStructureUtil {
         PATH_SORTED_VIDEOS_THUMBNAILS,
         PATH_UNSORTED,
         PATH_UNSORTED_PHOTOS,
-        PATH_UnSORTED_PHOTOS_THUMBNAILS,
+        PATH_UNSORTED_PHOTOS_THUMBNAILS,
         PATH_UNSORTED_VIDEOS,
-        PATH_UNSORTED_VIDEOS_THUMBNAILS
+        PATH_UNSORTED_VIDEOS_THUMBNAILS,
+        PATH_UNSORTED_AUTOIMPORT
     };
 
     public static boolean checkFileStructure(File root) {

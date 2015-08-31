@@ -17,6 +17,7 @@ import java.io.File;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -288,6 +289,27 @@ public class Event {
                 Logger.getLogger(EventPanel.class.getName()).log(Level.SEVERE, null, ex);
             }
         });
+    }
+    
+    public static String formatName(LocalDateTime dt, String text) {
+        return "[" + DateTimeFormatter.ofPattern("YYYY.MM.dd").format(dt) + "] "+text;
+    }
+    
+    public static Event forName(Context c, String name) {
+        AtomicReference<Event> result = new AtomicReference<>(null);
+        try {
+            c.dbManager.executeInDBThreadAndWait(() -> {
+                try {
+                    List<Event> res = c.dbManager.getDaos().getEventDao().queryForEq("name", name);
+                    if(res.size() > 0) result.set(res.get(0));
+                } catch (SQLException ex) {
+                    Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            });
+        } catch (InterruptedException ex) {
+            Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return result.get();
     }
 
     public static enum Type {

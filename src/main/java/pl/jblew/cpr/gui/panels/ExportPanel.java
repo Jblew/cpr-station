@@ -173,19 +173,31 @@ public class ExportPanel extends MainPanel {
          */
         progressPanel.setLayout(new BorderLayout());
         progressPanel.setBorder(BorderFactory.createEmptyBorder(50, 50, 50, 50));
+        
         JProgressBar progressBar = new JProgressBar(0, 100);
+        ProgressListPanel.ProgressEntity progressEntity = new ProgressListPanel.ProgressEntity();
+        context.eBus.post(progressEntity);
+        
         progressBar.setUI(new CPRProgressBarUI());
         progressBar.setStringPainted(true);
         progressBar.setString("Ładowanie...");
+        progressEntity.setText("(Eksport) Ładowanie...");
         progressPanel.add(progressBar, BorderLayout.CENTER);
 
-        exporter.setProgressChangedCallback((percent, msg) -> {
+        exporter.setProgressChangedCallback((percent, msg, error) -> {
             progressBar.setString(msg);
+            progressEntity.setText("(Eksport) "+msg);
+            
             progressBar.setValue(percent);
+            progressEntity.setPercent(percent);
 
             if (percent == 100) {
+                progressEntity.markFinished();
                 PanelDisabler.setEnabled(progressPanel, false);
                 PanelDisabler.setEnabled(finishPanel, true);
+            }
+            else if(error) {
+                progressEntity.markError();
             }
         });
         /**
@@ -247,6 +259,6 @@ public class ExportPanel extends MainPanel {
     }
 
     public static interface ProgressChangedCallback {
-        public void progressChanged(int percent, String msg);
+        public void progressChanged(int percent, String msg, boolean error);
     }
 }

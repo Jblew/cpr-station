@@ -6,17 +6,15 @@
 package pl.jblew.cpr.util;
 
 import java.util.ArrayList;
-import java.util.concurrent.Callable;
-import net.samuelcampos.usbdrivedectector.events.DeviceEventType;
-import pl.jblew.cpr.file.StorageDevicePresenceListener;
 import pl.jblew.cpr.util.ListenersManager.Listener;
 
 /**
  *
  * @author teofil
+ * @param <E>
  */
 public class ListenersManager<E extends Listener> {
-    private final ArrayList<E> listeners = new ArrayList<E>();
+    private final ArrayList<E> listeners = new ArrayList<>();
 
     public void addListener(E l) {
         synchronized (listeners) {

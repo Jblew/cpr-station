@@ -62,7 +62,6 @@ public class DeviceDetectorProcess {
                 }
             }
             detectorManager.addDriveListener((USBStorageEvent usbse) -> {
-                StorageDevicePresenceListener[] tmpList;
 
                 synchronized (devices) {
                     if (usbse.getEventType() == DeviceEventType.CONNECTED) {
@@ -73,6 +72,7 @@ public class DeviceDetectorProcess {
 
                 }
 
+                StorageDevicePresenceListener[] tmpList;
                 synchronized (listeners) {
                     tmpList = listeners.toArray(new StorageDevicePresenceListener[]{});
                 }

@@ -33,6 +33,7 @@ import javax.imageio.ImageIO;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
+import pl.jblew.cpr.logic.io.ThumbnailLoader;
 import pl.jblew.cpr.util.CollectionUtil;
 import pl.jblew.cpr.util.ListenersManager;
 import pl.jblew.cpr.util.NamingThreadFactory;
@@ -142,7 +143,7 @@ public class PreloadingPhotoBrowser extends JPanel {
         private final AtomicReference<ScaleType> scaleType = new AtomicReference<>(ScaleType.FIT);
         private final AffineTransform transform = new AffineTransform();
         private final ExecutorService loaderExecutor = Executors.newSingleThreadExecutor(new NamingThreadFactory("PhotoBrowser-loader"));
-
+        private final AtomicReference<BufferedImage> cachedThumb = new AtomicReference<>();        
         public ImagePanel() {
 
         }
@@ -150,7 +151,7 @@ public class PreloadingPhotoBrowser extends JPanel {
         public void changeImage(PreloadableImage img) {
             image.set(img);
             if (img.getFullImage() == null) {
-                img.addListener((loadedImg) -> {
+                img.addListener((loadedImg, isFull) -> {
                     updatePreferredSize();
                     revalidate();
                     repaint();
@@ -173,6 +174,16 @@ public class PreloadingPhotoBrowser extends JPanel {
             PreloadableImage preloadableSafe = image.get();
             if (preloadableSafe != null) {
                 imgSafe = preloadableSafe.getFullImage();
+                cachedThumb.set(null);
+            }
+            else if(cachedThumb.get() != null) {
+                imgSafe = cachedThumb.get();
+            }
+            else {
+                imgSafe = ThumbnailLoader.seekImageInCache(preloadableSafe.thumbFile);
+                if(imgSafe != null) {
+                    cachedThumb.set(imgSafe);
+                }
             }
 
             if (imgSafe != null) {
@@ -302,13 +313,12 @@ public class PreloadingPhotoBrowser extends JPanel {
             } else {
                 return null;
             }
-
+            
             if (loadImage && imageFile != null && imageFile.canRead()) {
                 try {
-
                     BufferedImage fullImg = ImageIO.read(imageFile);
                     fullImage.set(fullImg);
-                    listenersManager.callListeners((l) -> l.imageLoaded(fullImg));
+                    listenersManager.callListeners((l) -> l.imageLoaded(fullImg, true));
                     System.out.println("Loaded image " + imageFile);
                     return fullImg;
                 } catch (IOException ex) {
@@ -347,7 +357,7 @@ public class PreloadingPhotoBrowser extends JPanel {
         }
 
         public static interface ImageLoadedListener extends ListenersManager.Listener {
-            public void imageLoaded(BufferedImage fullImg);
+            public void imageLoaded(BufferedImage img, boolean full);
         }
     }
 

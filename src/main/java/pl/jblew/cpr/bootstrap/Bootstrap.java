@@ -10,6 +10,7 @@ import com.google.common.eventbus.Subscribe;
 import javax.swing.JFrame;
 import pl.jblew.cpr.db.DatabaseDetector;
 import pl.jblew.cpr.db.DatabaseManager;
+import pl.jblew.cpr.logic.autoimport.AutomaticImportListener;
 import pl.jblew.cpr.file.DeviceDetectorProcess;
 import pl.jblew.cpr.gui.GUI;
 import pl.jblew.cpr.util.MessageToStatusBar;
@@ -41,6 +42,7 @@ public class Bootstrap {
         gui.executeWhenLoaded(() -> {
             context.deviceDetector.addStorageDevicePresenceListener(gui.getTreePanel().getDevicesNode());
             context.deviceDetector.addStorageDevicePresenceListener(gui.getTreePanel().getCarriersNode());
+            context.deviceDetector.addStorageDevicePresenceListener(new AutomaticImportListener(context));
             context.deviceDetector.start();
         });
         

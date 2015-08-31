@@ -106,7 +106,7 @@ public class Exporter {
             new File(targetPath).mkdirs();
 
             if (!new File(targetPath).exists()) {
-                progressChangedCallback.progressChanged(0, "Nie można było utworzyć katalogu");
+                progressChangedCallback.progressChanged(0, "Nie można było utworzyć katalogu", true);
                 return;
             }
 
@@ -135,11 +135,11 @@ public class Exporter {
                 Files.copy(sourceFile.toPath(), targetFile.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
                 ThumbnailLoader.loadThumbnail(targetFile, true, null);
                 if (progressChangedCallback != null) {
-                    progressChangedCallback.progressChanged(percent, "Eksportowanie " + i + "/" + localizedMFiles.get().length + " (" + percent + "%)");
+                    progressChangedCallback.progressChanged(percent, "Eksportowanie " + i + "/" + localizedMFiles.get().length + " (" + percent + "%)", false);
                 }
             } catch (IOException ex) {
                 Logger.getLogger(Exporter.class.getName()).log(Level.SEVERE, "Błąd przy kopiowaniu plików", ex);
-                progressChangedCallback.progressChanged(percent, " Błąd przy Eksportowaniu pliku: " + i + "/" + localizedMFiles.get().length + ": " + ex.getLocalizedMessage());
+                progressChangedCallback.progressChanged(percent, " Błąd przy Eksportowaniu pliku: " + i + "/" + localizedMFiles.get().length + ": " + ex.getLocalizedMessage(), true);
                 throw new RuntimeException("Could not finish", ex);
             }
         }
@@ -170,10 +170,10 @@ public class Exporter {
                 el.setCarrierId(c.getId());
                 event_localizationDao.create(el);
 
-                progressChangedCallback.progressChanged(100, "Gotowe!");
+                progressChangedCallback.progressChanged(100, "Gotowe!", false);
             } catch (SQLException ex) {
                 Logger.getLogger(Exporter.class.getName()).log(Level.SEVERE, null, ex);
-                progressChangedCallback.progressChanged(99, "Błąd: Nie można było dodać do bazy danych!");
+                progressChangedCallback.progressChanged(99, "Błąd: Nie można było dodać do bazy danych!", true);
             }
         });
     }

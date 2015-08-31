@@ -34,7 +34,28 @@ public class Test {
      * @param args the command line arguments
      */
     public static void main(String[] args) throws InterruptedException {
-        File f = new File("/Users/teofil/Desktop/a.png");
+        String [] testSeqs = new String [] {
+            "Wydarzenie",
+            "Wy[darzenie",
+            "[Wydarzenie",
+            "[] Wydarzenie",
+            "[ ] Wydarzenie 01",
+            "Wydarzenie [12.32.43]",
+            "[2014.04.43] Wydarzenie",
+            "[2014.04.43-23.21] Wydarzenie"
+        };
+        
+        for(String s : testSeqs) {
+            s=s.trim();
+            boolean matches = s.matches("^\\[[0-9\\.\\-]+\\](.*)");
+            System.out.print(s+" => "+matches);
+            if(matches) {
+                System.out.println(" => "+s.substring(s.indexOf("]")+1).trim());
+            }
+            else System.out.println("");
+        }
+        
+        /*File f = new File("/Users/teofil/Desktop/a.png");
         long unixDatetime = f.lastModified();
         System.out.println("Unix: "+unixDatetime);
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy");
@@ -77,7 +98,7 @@ public class Test {
                 Logger.getLogger(Test.class.getName()).log(Level.SEVERE, null, ex);
             }
             if(i%10 == 0) System.out.println(i+"/"+COUNT);
-        });
+        });*/
     }
 
 }

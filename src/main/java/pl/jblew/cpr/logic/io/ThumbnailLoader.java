@@ -5,9 +5,14 @@
  */
 package pl.jblew.cpr.logic.io;
 
+import com.google.common.collect.MapMaker;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -35,6 +40,7 @@ public class ThumbnailLoader {
     private final BlockingQueue<TwoTuple<File, LoadedListener>> loadingQueue = new LinkedBlockingQueue<>();
     private final ProcessingThread[] processingThreads = new ProcessingThread[numOfProcessingThreads];
     private final AtomicInteger numOfRunningThreads = new AtomicInteger(0);
+    private static final Map<String, BufferedImage> weakCache = new MapMaker().weakValues().makeMap();
 
     public ThumbnailLoader(int maxSize) {
         this(maxSize, false);
@@ -148,6 +154,7 @@ public class ThumbnailLoader {
                     if (listener != null) {
                         listener.thumbnailLoaded(icon);
                     }
+                    weakCache.put(f.getAbsolutePath(), scaled);
 
                     if (tryReadOrSave) {
                         if (!possibleThumbDir.exists()) {
@@ -169,5 +176,9 @@ public class ThumbnailLoader {
         String name = f.getName().toLowerCase();
         return name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png")
                 || name.endsWith(".gif") || name.endsWith(".tif") || name.endsWith(".bmp");
+    }
+    
+    public static BufferedImage seekImageInCache(File f) {
+        return weakCache.get(f.getAbsolutePath());
     }
 }

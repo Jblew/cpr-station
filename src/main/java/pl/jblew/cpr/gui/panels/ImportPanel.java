@@ -34,6 +34,7 @@ import pl.jblew.cpr.gui.MainPanel;
 import pl.jblew.cpr.gui.util.CPRProgressBarUI;
 import pl.jblew.cpr.gui.util.PanelDisabler;
 import pl.jblew.cpr.logic.Carrier;
+import pl.jblew.cpr.logic.Event;
 import pl.jblew.cpr.util.FileSizeFormatter;
 
 /**
@@ -46,7 +47,7 @@ public class ImportPanel extends MainPanel {
 
     public ImportPanel(Context context_, final File[] filesToImport_) {
         long sT = System.currentTimeMillis();
-        
+
         this.context = context_;
         this.importer = new Importer(context, filesToImport_);
 
@@ -60,13 +61,15 @@ public class ImportPanel extends MainPanel {
 
         JProgressBar progressBar = new JProgressBar();
         progressBar.setUI(new CPRProgressBarUI());
-        
+        ProgressListPanel.ProgressEntity progressEntity = new ProgressListPanel.ProgressEntity();
+        context.eBus.post(progressEntity);
+
         /**
          * INFO PANEL *
          */
         String dirs = Arrays.stream(importer.getFilesToImport()).map(f -> f.getParent()).distinct().reduce("", (a, b) -> a + ", " + b);
         infoPanel.add(new JLabel("<html>Importowanie <b>" + importer.getFilesToImport().length + "</b> plików (<b>" + FileSizeFormatter.format(importer.getSize()) + "</b>) w katalogach: [" + dirs + "]."));
-        
+
         /**
          * DEVICE SELECTION PANEL *
          */
@@ -118,7 +121,7 @@ public class ImportPanel extends MainPanel {
         JLabel eventNameLabel = new JLabel("Podaj nazwę wydarzenia (w NIEPOSEGREGOWANYCH): ");
         eventNamePanel.add(eventNameLabel);
 
-        JTextField eventNameField = new JTextField("[" + DateTimeFormatter.ofPattern("YYYY.MM.dd").format(LocalDateTime.now()) + "] ");
+        JTextField eventNameField = new JTextField(Event.formatName(LocalDateTime.now(), ""));
         eventNameField.setColumns(50);
         eventNamePanel.add(eventNameField);
         eventNamePanel.setPreferredSize(new Dimension(0, 200));
@@ -140,17 +143,24 @@ public class ImportPanel extends MainPanel {
                     PanelDisabler.setEnabled(deviceSelectionPanel, false);
                     PanelDisabler.setEnabled(eventNamePanel, false);
                     PanelDisabler.setEnabled(progressPanel, true);
-                    importer.startAsync((final int percent, final String msg) -> {
+                    importer.startAsync((final int percent, final String msg, boolean error) -> {
                         SwingUtilities.invokeLater(() -> {
-                            System.out.println("Progress bar: "+percent+"%, msg="+msg);
                             progressBar.setValue(percent);
                             progressBar.setString(msg);
                             progressBar.revalidate();
                             progressBar.repaint();
-                            
-                            if(percent == 100) {
+
+                            progressEntity.setPercent(percent);
+                            progressEntity.setText("(Import) " + msg);
+
+                            if (percent == 100) {
+                                progressEntity.markFinished();
                                 PanelDisabler.setEnabled(progressPanel, false);
                                 PanelDisabler.setEnabled(finishPanel, true);
+                            }
+
+                            if (error) {
+                                progressEntity.markError();
                             }
                         });
                     });
@@ -165,13 +175,13 @@ public class ImportPanel extends MainPanel {
         progressPanel.add(progressBar, BorderLayout.CENTER);
         progressBar.setStringPainted(true);
         progressBar.setString("Oczekiwanie...");
-        
+        progressEntity.setText("(Import) Oczekiwanie...");
+
         /**
          * FINISH PANEL *
          */
         finishPanel.add(new JLabel("Gotowe!"));
-        
-        
+
         add(infoPanel);
         add(new JSeparator(JSeparator.HORIZONTAL));
         add(deviceSelectionPanel);
@@ -181,8 +191,6 @@ public class ImportPanel extends MainPanel {
         add(progressPanel);
         add(new JSeparator(JSeparator.HORIZONTAL));
         add(finishPanel);
-        
-        
 
         PanelDisabler.setEnabled(infoPanel, true);
         PanelDisabler.setEnabled(deviceSelectionPanel, true);
@@ -190,8 +198,7 @@ public class ImportPanel extends MainPanel {
         PanelDisabler.setEnabled(progressPanel, false);
         PanelDisabler.setEnabled(finishPanel, false);
 
-                
-        System.out.println("t(ImportPanel.new())"+(System.currentTimeMillis()-sT)+"ms");
+        System.out.println("t(ImportPanel.new())" + (System.currentTimeMillis() - sT) + "ms");
     }
 
     @Override
@@ -202,8 +209,8 @@ public class ImportPanel extends MainPanel {
     @Override
     public void inactivate() {
     }
-    
+
     public static interface ProgressChangedCallback {
-        public void progressChanged(int percent, String msg);
+        public void progressChanged(int percent, String msg, boolean error);
     }
 }

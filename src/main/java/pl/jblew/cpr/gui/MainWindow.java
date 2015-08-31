@@ -25,6 +25,7 @@ import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.db.DBBackupManager;
 import pl.jblew.cpr.db.DatabaseChanged;
 import pl.jblew.cpr.gui.panels.HomePanel;
+import pl.jblew.cpr.gui.panels.ProgressListPanel;
 import pl.jblew.cpr.util.MessageToStatusBar;
 
 /**
@@ -90,6 +91,7 @@ public class MainWindow {
             this.add(toolBar, BorderLayout.NORTH);
             this.add(mainPanel, BorderLayout.CENTER);
             this.add(statusBar, BorderLayout.SOUTH);
+            this.add(new ProgressListPanel(context), BorderLayout.EAST);
         }
 
         public void setMainPanel(final MainPanel newMainPanel) {

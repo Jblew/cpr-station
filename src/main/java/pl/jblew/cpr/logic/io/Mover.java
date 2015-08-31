@@ -91,7 +91,7 @@ public class Mover {
                     return new Step("Kopiowanie do " + carrierToCopy.getName(), (MovePanel.ProgressChangedCallback callback) -> {
                         if (writeFiles(carrierToCopy, callback, sourceLocalization, targetLocalization)) {
                             leftTargetLocalizationsToWrite.remove(targetLocalization);
-                            callback.progressChanged(100, "Gotowe!");
+                            callback.progressChanged(100, "Gotowe!", false);
                         }
                     });
                 } else {
@@ -109,7 +109,7 @@ public class Mover {
                     return new Step("Usuwanie z " + carrierToDelete.getName(), (MovePanel.ProgressChangedCallback callback) -> {
                         if (deleteFiles(carrierToDelete, callback, sourceLocalization)) {
                             leftSourceLocalizationsToDelete.remove(sourceLocalization);
-                            callback.progressChanged(100, "Gotowe!");
+                            callback.progressChanged(100, "Gotowe!", false);
                         }
                     });
                 } else {
@@ -123,7 +123,7 @@ public class Mover {
             if (!tempEvents.isEmpty()) {
                 return new Step("Aktualizowanie bazy danych ", (MovePanel.ProgressChangedCallback callback) -> {
                     updateDB(callback);
-                    callback.progressChanged(100, "Gotowe!");
+                    callback.progressChanged(100, "Gotowe!", false);
                 });
             } else {
                 return null;
@@ -160,11 +160,11 @@ public class Mover {
                 Files.copy(sourceFile.toPath(), targetFile.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
                 ThumbnailLoader.loadThumbnail(targetFile, true, null);
                 if (callback != null) {
-                    callback.progressChanged(percent, "Kopiowanie " + i + "/" + mfilesToMove.length + " (" + percent + "%)");
+                    callback.progressChanged(percent, "Kopiowanie " + i + "/" + mfilesToMove.length + " (" + percent + "%)", false);
                 }
             } catch (IOException ex) {
                 Logger.getLogger(Exporter.class.getName()).log(Level.SEVERE, "Błąd przy kopiowaniu plików", ex);
-                callback.progressChanged(percent, " Błąd przy kopiowaniu pliku: " + i + "/" + mfilesToMove.length + ": " + ex.getLocalizedMessage());
+                callback.progressChanged(percent, " Błąd przy kopiowaniu pliku: " + i + "/" + mfilesToMove.length + ": " + ex.getLocalizedMessage(), true);
                 return false;
             }
         }
@@ -222,11 +222,11 @@ public class Mover {
                 System.out.println("Usuwam " + sourceFile.toPath());
                 Files.delete(sourceFile.toPath());
                 if (callback != null) {
-                    callback.progressChanged(percent, "Usuwanie " + i + "/" + mfilesToMove.length + " (" + percent + "%)");
+                    callback.progressChanged(percent, "Usuwanie " + i + "/" + mfilesToMove.length + " (" + percent + "%)", false);
                 }
             } catch (IOException ex) {
                 Logger.getLogger(Exporter.class.getName()).log(Level.SEVERE, "Błąd przy usuwaniu plików", ex);
-                callback.progressChanged(percent, " Błąd przy usuwaniu pliku: " + i + "/" + mfilesToMove.length + ": " + ex.getLocalizedMessage());
+                callback.progressChanged(percent, " Błąd przy usuwaniu pliku: " + i + "/" + mfilesToMove.length + ": " + ex.getLocalizedMessage(), true);
                 return false;
             }
         }
@@ -238,7 +238,7 @@ public class Mover {
         try {
             context.dbManager.executeInDBThreadAndWait(() -> {
                 System.out.println("Usuwam źródłowe linki MFile_Event");
-                callback.progressChanged(1, "Usuwam źródłowe linki MFile_Event");
+                callback.progressChanged(1, "Usuwam źródłowe linki MFile_Event", false);
                 MFile_Event[] mFile_EventLinks = Arrays.stream(sourceEvent.getMFileLinks(context)).filter(mfe -> Arrays.asList(mfilesToMove).contains(mfe.getMFile())).toArray(MFile_Event[]::new);
                 for (MFile_Event mfe : mFile_EventLinks) {
                     try {
@@ -249,7 +249,7 @@ public class Mover {
                     }
                 }
 
-                callback.progressChanged(50, "Zmieniam tymczasowe linki MFile_Event na docelowe i usuwam tymczasowe wydarzenia");
+                callback.progressChanged(50, "Zmieniam tymczasowe linki MFile_Event na docelowe i usuwam tymczasowe wydarzenia", false);
                 for (Event tempEvent_ : tempEvents) {
                     try {
                         Event tempEvent = context.dbManager.getDaos().getEventDao().queryForEq("id", tempEvent_.getId()).get(0);
@@ -274,7 +274,7 @@ public class Mover {
                 }
                 tempEvents.clear();
 
-                callback.progressChanged(100, "Gotowe!");
+                callback.progressChanged(100, "Gotowe!", false);
             });
         } catch (InterruptedException ex) {
             Logger.getLogger(Mover.class.getName()).log(Level.SEVERE, null, ex);
