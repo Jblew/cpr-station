@@ -25,8 +25,8 @@ public class CPRProgressBarUI extends BasicProgressBarUI {
         
         int amountFull = super.getAmountFull(c.getInsets(), c.getWidth()-4, c.getHeight());
         
-        g.setColor(c.isEnabled()? COLOR : Color.LIGHT_GRAY);
-        g.drawRect(0, 0, c.getWidth(), c.getHeight());
+        g.setColor(c.isEnabled()? (c.getForeground() == Color.RED? Color.RED : COLOR) : Color.LIGHT_GRAY);
+        g.drawRect(0, 0, c.getWidth()-1, c.getHeight()-1);
         
         g.fillRect(2, 2, amountFull, c.getHeight()-4);
         

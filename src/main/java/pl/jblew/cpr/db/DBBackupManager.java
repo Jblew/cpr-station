@@ -337,7 +337,7 @@ public class DBBackupManager {
         }
     }
 
-    public static class BackupStateChanged implements PrintableBusMessage {
+    public static class BackupStateChanged {
         private final boolean safe;
         private final int remaningChanges;
         private final String msg;

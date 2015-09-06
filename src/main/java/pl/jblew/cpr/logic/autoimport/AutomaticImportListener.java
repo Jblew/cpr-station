@@ -28,6 +28,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.file.StorageDevicePresenceListener;
+import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.io.FileStructureUtil;
 import static pl.jblew.cpr.logic.io.FileStructureUtil.PATH_UNSORTED_AUTOIMPORT;
 import pl.jblew.cpr.util.NamingThreadFactory;
@@ -56,13 +57,13 @@ public class AutomaticImportListener implements StorageDevicePresenceListener {
                     File dir = entry.getValue().toFile();
                     if (dir != null && dir.exists() && dir.canRead()) {
                         boolean containsFiles = false;
-                        for(File child : dir.listFiles((File f, String name) -> !name.startsWith("."))) {
-                            if(child.exists() && child.canRead()) {
-                               containsFiles = true;
-                               break;
+                        for (File child : dir.listFiles((File f, String name) -> !name.startsWith("."))) {
+                            if (child.exists() && child.canRead()) {
+                                containsFiles = true;
+                                break;
                             }
                         }
-                        if(containsFiles) {
+                        if (containsFiles) {
                             importProcessor.process(dir.toPath(), entry.getKey());
                         }
                     }
@@ -76,11 +77,13 @@ public class AutomaticImportListener implements StorageDevicePresenceListener {
     @Override
     public void storageDeviceConnected(File rootFile, String deviceName) {
         try {
-            Path autoImportDir = new File(rootFile.toString() + File.separator + FileStructureUtil.PATH_UNSORTED_AUTOIMPORT).toPath();
+            if (Carrier.forName(context, deviceName) != null) {//import only if device is registered carrier
+                Path autoImportDir = new File(rootFile.toString() + File.separator + FileStructureUtil.PATH_UNSORTED_AUTOIMPORT).toPath();
 
-            if (autoImportDir.toFile().exists() && autoImportDir.toFile().canRead()) {
-                System.out.println("Registering watcher for " + autoImportDir);
-                observedDirs.put(deviceName, autoImportDir);
+                if (autoImportDir.toFile().exists() && autoImportDir.toFile().canRead()) {
+                    //System.out.println("Registering watcher for " + autoImportDir);
+                    observedDirs.put(deviceName, autoImportDir);
+                }
             }
 
         } catch (Exception ex) {
@@ -90,7 +93,9 @@ public class AutomaticImportListener implements StorageDevicePresenceListener {
 
     @Override
     public void storageDeviceDisconnected(File rootFile, String deviceName) {
-        if(observedDirs.containsKey(deviceName)) observedDirs.remove(deviceName);
+        if (observedDirs.containsKey(deviceName)) {
+            observedDirs.remove(deviceName);
+        }
     }
 
 }

@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -159,7 +160,7 @@ public class Exporter {
                     Carrier newC = new Carrier();
                     newC.setName(device.getA());
                     newC.setType(Carrier.Type.UNKNOWN);
-                    newC.setLastChecked(new Date());
+                    newC.setLastChecked(LocalDateTime.now());
                     carrierDao.create(newC);
                     c = newC;
                 }

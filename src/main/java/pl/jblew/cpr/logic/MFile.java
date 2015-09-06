@@ -7,11 +7,15 @@ package pl.jblew.cpr.logic;
 
 import com.j256.ormlite.field.DataType;
 import com.j256.ormlite.field.DatabaseField;
+import com.j256.ormlite.stmt.DeleteBuilder;
 import com.j256.ormlite.table.DatabaseTable;
 import java.io.File;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import pl.jblew.cpr.bootstrap.Context;
 
 /**
@@ -71,6 +75,24 @@ public class MFile implements Comparable<MFile> {
     public String getProperPath(File deviceRoot, Event e) {
         return e.getProperPath(deviceRoot) + File.separator + getName();
     }
+    
+    public File getFile(Context context, Event event, Event_Localization eventLocalization) {
+        return new File(event.getProperPath(context.deviceDetector.getDeviceRoot(eventLocalization.getCarrier(context).getName()))+File.separator+this.getName());
+    }
+
+    public void delete(Context context) {
+        context.dbManager.executeInDBThread(() -> {
+            try {
+                DeleteBuilder<MFile_Event, Integer> linkDeleteBuilder = context.dbManager.getDaos().getMfile_EventDao().deleteBuilder();
+                linkDeleteBuilder.where().eq("fileId", getId());
+                linkDeleteBuilder.delete();
+                
+                context.dbManager.getDaos().getMfileDao().delete(this);
+            } catch (SQLException ex) {
+                Logger.getLogger(MFile.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        });
+    }
 
     @Override
     public int hashCode() {
@@ -108,10 +130,6 @@ public class MFile implements Comparable<MFile> {
     @Override
     public String toString() {
         return "MFile{" + "id=" + id + ", name=" + name + '}';
-    }
-    
-    public File getFile(Context context, Event event, Event_Localization eventLocalization) {
-        return new File(event.getProperPath(context.deviceDetector.getDeviceRoot(eventLocalization.getCarrier(context).getName()))+File.separator+this.getName());
     }
 
     public static class Localized implements Comparable<MFile.Localized> {

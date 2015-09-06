@@ -108,7 +108,7 @@ public class EventPanel extends MainPanel {
         prepareGridRow(gridPanel, "Zakres czasu: ", timespanLabel);
         prepareGridRow(gridPanel, "Ilość kopii: ", numOfCopiesLabel);
         prepareGridRow(gridPanel, "Ilość plików: ", numOfPhotosLabel);
-        prepareGridRow(gridPanel, "Nośniki: ", new JLabel(event.getLocalizations().stream().map(el -> el.getCarrier(context)).filter(c -> c != null).map(c -> c.getName()).reduce("", (a, b) -> a + ", " + b).substring(2)));
+        prepareGridRow(gridPanel, "Nośniki: ", new JLabel(event.getLocalizations().stream().map(el -> el.getCarrier(context)).filter(c -> c != null).map(c -> c.getName()).reduce("", (a, b) -> a + ", " + b)));
 
         final JButton showSelectiveEventButton = new JButton("Pokaż WYBRANE");
         showSelectiveEventButton.setEnabled(false);
@@ -187,7 +187,6 @@ public class EventPanel extends MainPanel {
             MFile.Localized[] mfiles = event.getLocalizedMFiles(context);
             //Arrays.stream(mfiles).forEachOrdered(mfl -> System.out.println(mfl));
             int redundancy = event.getRedundancy();
-            System.out.println("MFiles.length=" + mfiles.length);
             if (mfiles.length > 0) {
 
                 SwingUtilities.invokeLater(() -> {

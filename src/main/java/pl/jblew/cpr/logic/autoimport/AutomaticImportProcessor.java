@@ -83,9 +83,9 @@ public class AutomaticImportProcessor {
             }
             eventName = Event.formatName(LocalDateTime.now(), eventName);
             
-            while(Event.forName(context, eventName) != null) {
+            /*while(Event.forName(context, eventName) != null) {
                 eventName += "|";
-            }
+            }*/
 
             if (!eventMapping.containsKey(eventName)) {
                 eventMapping.put(eventName, new LinkedList<>());
@@ -102,6 +102,7 @@ public class AutomaticImportProcessor {
             progressEntity.setText("Importuję " + eventName);
 
             Importer importer = new Importer(context, files.toArray(new File[]{}));
+            importer.setDeleteAfterAdd(true);
             File deviceRoot = context.deviceDetector.getDeviceRoot(deviceName);
             try {
                 importer.tryDevice(context, deviceName, deviceRoot);
@@ -126,11 +127,6 @@ public class AutomaticImportProcessor {
                     });
                 });
                 cdLatch.await(); //make it synchronous again
-                System.out.println("Here");
-                
-                Arrays.stream(topDir.listFiles()).forEach(f -> {
-                    try {FileUtil.deleteRecursively(f);} catch(Exception e) {System.err.println(e);}
-                });
                 
                 
             } catch (Importer.DeviceNotWritableException ex) {

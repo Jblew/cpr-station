@@ -59,7 +59,6 @@ public class ThumbnailLoader {
         for (ProcessingThread pt : processingThreads) {
             if (!pt.running.get()) {
                 pt.running.set(true);
-                //System.out.println("Submit thumbnailLoader executor: " + numOfRunningThreads.incrementAndGet());
                 executor.submit(pt);
             }
         }
@@ -102,7 +101,6 @@ public class ThumbnailLoader {
             }
 
             running.set(false);
-            //System.out.println("Quit thumbnail loader process: " + numOfRunningThreads.decrementAndGet());
         }
     }
 
@@ -162,7 +160,6 @@ public class ThumbnailLoader {
                         }
                         if (possibleThumbDir.exists()) {
                             ImageIO.write(scaled, "jpg", possibleThumbFile);
-                            //System.out.println("Written thumbnail to " + possibleThumbFile);
                         }
                     }
                 }

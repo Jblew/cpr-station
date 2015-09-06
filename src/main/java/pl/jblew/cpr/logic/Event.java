@@ -20,16 +20,11 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.swing.SwingUtilities;
 import pl.jblew.cpr.bootstrap.Context;
-import pl.jblew.cpr.gui.ChangeMainPanel;
-import pl.jblew.cpr.gui.panels.EmptyPanel;
 import pl.jblew.cpr.gui.panels.EventPanel;
-import pl.jblew.cpr.gui.treenodes.EventsNode;
 import pl.jblew.cpr.logic.io.Exporter;
 import pl.jblew.cpr.logic.io.FileStructureUtil;
 
@@ -108,7 +103,7 @@ public class Event {
                     QueryBuilder<MFile_Event, Integer> queryToJoin = mfile_EventDao.queryBuilder();
                     queryToJoin.where().eq("eventId", getId());
                     QueryBuilder<MFile, Integer> qb = mfileDao.queryBuilder().orderBy("unixTime", true).orderBy("name", true).orderBy("id", true).join(queryToJoin);
-                    System.out.println(">>>"+qb.prepareStatementString());
+                    //System.out.println(">>>"+qb.prepareStatementString());
                     List<MFile> mfiles = qb.query();
 
                     mfiles.stream().map(mf -> {
@@ -122,7 +117,7 @@ public class Event {
                         return new MFile.Localized(mf, null);
                     }).forEachOrdered(mfl -> {
                         result.add(mfl);
-                        System.out.println(mfl);
+                        //System.out.println(mfl);
                     });
 
                 } catch (SQLException ex) {

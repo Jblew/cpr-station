@@ -34,6 +34,8 @@ public class Event_Localization {
     @DatabaseField(canBeNull = false)
     private String path;
 
+    private final AtomicReference<Carrier> cachedCarrier = new AtomicReference<>(null);
+
     public long getId() {
         return id;
     }
@@ -43,11 +45,44 @@ public class Event_Localization {
     }
 
     public Event getEvent() {
-        return event;
+        synchronized (event) {
+            return event;
+        }
+    }
+
+    public Event getOrLoadFullEvent(Context c) {
+        String name;
+        long id;
+        synchronized (event) {
+            name = event.getName();
+            id = event.getId();
+        }
+        if (name == null) {
+            try {
+                c.dbManager.executeInDBThreadAndWait(() -> {
+                    try {
+                        Event result = c.dbManager.getDaos().getEventDao().queryForId((int) id);
+                        if (result != null) {
+                            setEvent(result);
+                        }
+                    } catch (SQLException ex) {
+                        Logger.getLogger(Event_Localization.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                });
+            } catch (InterruptedException ex) {
+                Logger.getLogger(Event_Localization.class.getName()).log(Level.SEVERE, null, ex);
+            }
+
+        }
+        synchronized (event) {
+            return event;
+        }
     }
 
     public void setEvent(Event event) {
-        this.event = event;
+        synchronized (event) {
+            this.event = event;
+        }
     }
 
     public long getCarrierId() {
@@ -61,60 +96,63 @@ public class Event_Localization {
     //public String getPath() {
     //    return path;
     //}
-
     public void setPath(String path) {
         this.path = path;
     }
 
     public Carrier getCarrier(Context context) {
-        final AtomicReference<Carrier> result = new AtomicReference<>(null);
-        try {
-            context.dbManager.executeInDBThreadAndWait(() -> {
-                Carrier c = null;
-                try {
-                    List<Carrier> res = context.dbManager.getDaos().getCarrierDao().queryForEq("id", getCarrierId());
-                    if(res.size() > 0) result.set(res.get(0));
-                } catch (SQLException ex) {
-                    Logger.getLogger(MFileBrowser.class.getName()).log(Level.SEVERE, null, ex);
-                }
-            });
-        } catch (InterruptedException ex) {
-            Logger.getLogger(Event_Localization.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        if (cachedCarrier.get() != null) {
+            return cachedCarrier.get();
+        } else {
+            try {
+                context.dbManager.executeInDBThreadAndWait(() -> {
+                    Carrier c = null;
+                    try {
+                        List<Carrier> res = context.dbManager.getDaos().getCarrierDao().queryForEq("id", getCarrierId());
+                        if (res.size() > 0) {
+                            cachedCarrier.set(res.get(0));
+                        }
+                    } catch (SQLException ex) {
+                        Logger.getLogger(MFileBrowser.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                });
+            } catch (InterruptedException ex) {
+                Logger.getLogger(Event_Localization.class.getName()).log(Level.SEVERE, null, ex);
+            }
 
-        return result.get();
+            return cachedCarrier.get();
+        }
     }
 
     /*public File getFile(final Context context) {
-        final AtomicReference<File> result = new AtomicReference<>(null);
-        try {
-            context.dbManager.executeInDBThreadAndWait(() -> {
-                Carrier c = null;
-                try {
-                    List<Carrier> res = context.dbManager.getDaos().getCarrierDao().queryForEq("id", getCarrierId());
-                    if (res.size() > 0) {
-                        c = res.get(0);
-                    }
-                } catch (SQLException ex) {
-                    Logger.getLogger(MFileBrowser.class.getName()).log(Level.SEVERE, null, ex);
-                }
-                if (c != null) {
-                    File root = context.deviceDetector.getDeviceRoot(c.getName());
-                    if (root != null) {
-                        File me = new File(root.getAbsolutePath() + File.separator + getPath());
-                        if (me.exists() && me.canRead()) {
-                            result.set(me);
-                        }
-                    }
-                }
-            });
-        } catch (InterruptedException ex) {
-            Logger.getLogger(MFile_Localization.class.getName()).log(Level.SEVERE, null, ex);
-        }
+     final AtomicReference<File> result = new AtomicReference<>(null);
+     try {
+     context.dbManager.executeInDBThreadAndWait(() -> {
+     Carrier c = null;
+     try {
+     List<Carrier> res = context.dbManager.getDaos().getCarrierDao().queryForEq("id", getCarrierId());
+     if (res.size() > 0) {
+     c = res.get(0);
+     }
+     } catch (SQLException ex) {
+     Logger.getLogger(MFileBrowser.class.getName()).log(Level.SEVERE, null, ex);
+     }
+     if (c != null) {
+     File root = context.deviceDetector.getDeviceRoot(c.getName());
+     if (root != null) {
+     File me = new File(root.getAbsolutePath() + File.separator + getPath());
+     if (me.exists() && me.canRead()) {
+     result.set(me);
+     }
+     }
+     }
+     });
+     } catch (InterruptedException ex) {
+     Logger.getLogger(MFile_Localization.class.getName()).log(Level.SEVERE, null, ex);
+     }
 
-        return result.get();
-    }*/
-
+     return result.get();
+     }*/
     @Override
     public int hashCode() {
         int hash = 7;

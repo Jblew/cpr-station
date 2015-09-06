@@ -54,11 +54,14 @@ public class PreloadingPhotoBrowser extends JPanel {
     public PreloadingPhotoBrowser(PreloadableImage[] preloadables, int initialIndex, final ScaleType t) {
         this.preloadables = preloadables;
         currentIndex = new AtomicInteger(initialIndex);
+        //if(preloadables.length == 0) throw new IllegalArgumentException("Empty preloadables");
+        if (initialIndex < 0 || initialIndex > preloadables.length) {
+            throw new IllegalArgumentException("Initial index is out of preloadables bounds");
+        }
 
         setLayout(new BorderLayout());
 
         imagePanel = new ImagePanel();
-        
 
         scrollPane = new JScrollPane(imagePanel);
         add(scrollPane, BorderLayout.CENTER);
@@ -80,61 +83,61 @@ public class PreloadingPhotoBrowser extends JPanel {
     }
 
     public void changeImage(int i) {
-        synchronized (currentIndex) {
-            int dir = Math.max(-1, Math.min(1, i - currentIndex.get()));//direction of change
-            if (dir == 0) {
-                dir = 1;
-            }
-            currentIndex.set(i);
+        if (preloadables.length > 0) {
+            synchronized (currentIndex) {
+                int dir = Math.max(-1, Math.min(1, i - currentIndex.get()));//direction of change
+                if (dir == 0) {
+                    dir = 1;
+                }
+                currentIndex.set(i);
 
-            /**
-             * PREPARE PRELOADING QUEUE *
-             */
-            preloadingQueue.clear();
-            int[] indexesToPreloadOrdered = IntStream.of(i, i + 1 * dir, i - 1 * dir, i + 2 * dir, i + 3 * dir, i - 2 * dir, i + 4 * dir)
-                    .filter(ci -> (ci >= 0 && ci < preloadables.length)).toArray();
+                /**
+                 * PREPARE PRELOADING QUEUE *
+                 */
+                preloadingQueue.clear();
+                int[] indexesToPreloadOrdered = IntStream.of(i, i + 1 * dir, i - 1 * dir, i + 2 * dir, i + 3 * dir, i - 2 * dir, i + 4 * dir)
+                        .filter(ci -> (ci >= 0 && ci < preloadables.length)).toArray();
             //6 3 [1] 2 4 5 7 - order of loading [1] is currently selected image
 
-            //strongen already loaded images
-            Arrays.stream(indexesToPreloadOrdered).mapToObj(ci -> preloadables[ci])
-                    .forEachOrdered(preloadable -> preloadable.makeStrongIfWeakLoaded());
+                //strongen already loaded images
+                Arrays.stream(indexesToPreloadOrdered).mapToObj(ci -> preloadables[ci])
+                        .forEachOrdered(preloadable -> preloadable.makeStrongIfWeakLoaded());
 
-            //weaken other loaded images
-            IntStream.range(0, preloadables.length).filter(ci -> !CollectionUtil.inArray(ci, indexesToPreloadOrdered))
-                    .mapToObj(ci -> preloadables[ci]).forEachOrdered(preloadable -> preloadable.makeWeak());
+                //weaken other loaded images
+                IntStream.range(0, preloadables.length).filter(ci -> !CollectionUtil.inArray(ci, indexesToPreloadOrdered))
+                        .mapToObj(ci -> preloadables[ci]).forEachOrdered(preloadable -> preloadable.makeWeak());
 
-            //preload not preloaded images
-            Arrays.stream(indexesToPreloadOrdered)
-                    .filter(ci -> preloadables[ci].getFullImage() == null).forEachOrdered(ci -> preloadingQueue.add(ci));
+                //preload not preloaded images
+                Arrays.stream(indexesToPreloadOrdered)
+                        .filter(ci -> preloadables[ci].getFullImage() == null).forEachOrdered(ci -> preloadingQueue.add(ci));
 
-            if (!preloadingRunning.get()) {
-                loadingExecutor.submit(() -> {
-                    preloadingRunning.set(true);
+                if (!preloadingRunning.get()) {
+                    loadingExecutor.submit(() -> {
+                        preloadingRunning.set(true);
 
-                    while (true) {
-                        try {
-                            Integer nextNum = preloadingQueue.poll(100, TimeUnit.MILLISECONDS);
-                            if (nextNum == null) {
-                                System.out.println("No more images to preload");
+                        while (true) {
+                            try {
+                                Integer nextNum = preloadingQueue.poll(100, TimeUnit.MILLISECONDS);
+                                if (nextNum == null) {
+                                    break;
+                                } else {
+                                    preloadables[(int) nextNum].loadStrongFullImage();
+                                }
+                            } catch (InterruptedException ex) {
+                                Logger.getLogger(PreloadingPhotoBrowser.class.getName()).log(Level.SEVERE, null, ex);
                                 break;
-                            } else {
-                                preloadables[(int) nextNum].loadStrongFullImage();
                             }
-                        } catch (InterruptedException ex) {
-                            Logger.getLogger(PreloadingPhotoBrowser.class.getName()).log(Level.SEVERE, null, ex);
-                            break;
+
                         }
 
-                    }
-
-                    preloadingRunning.set(false);
-                });
+                        preloadingRunning.set(false);
+                    });
+                }
             }
+            SwingUtilities.invokeLater(() -> {
+                imagePanel.changeImage(preloadables[currentIndex.get()]);
+            });
         }
-        SwingUtilities.invokeLater(() -> {
-            imagePanel.changeImage(preloadables[currentIndex.get()]);
-        });
-
     }
 
     private class ImagePanel extends JPanel {
@@ -143,7 +146,8 @@ public class PreloadingPhotoBrowser extends JPanel {
         private final AtomicReference<ScaleType> scaleType = new AtomicReference<>(ScaleType.FIT);
         private final AffineTransform transform = new AffineTransform();
         private final ExecutorService loaderExecutor = Executors.newSingleThreadExecutor(new NamingThreadFactory("PhotoBrowser-loader"));
-        private final AtomicReference<BufferedImage> cachedThumb = new AtomicReference<>();        
+        private final AtomicReference<BufferedImage> cachedThumb = new AtomicReference<>();
+
         public ImagePanel() {
 
         }
@@ -168,6 +172,9 @@ public class PreloadingPhotoBrowser extends JPanel {
         public void paintComponent(Graphics g_) {
             super.paintComponent(g_);
             Graphics2D g = (Graphics2D) g_;
+            
+            g.setColor(Color.BLACK);
+            g.fillRect(0, 0, getWidth(), getHeight());
 
             BufferedImage imgSafe = null;
 
@@ -175,13 +182,11 @@ public class PreloadingPhotoBrowser extends JPanel {
             if (preloadableSafe != null) {
                 imgSafe = preloadableSafe.getFullImage();
                 cachedThumb.set(null);
-            }
-            else if(cachedThumb.get() != null) {
+            } else if (cachedThumb.get() != null) {
                 imgSafe = cachedThumb.get();
-            }
-            else {
+            } else {
                 imgSafe = ThumbnailLoader.seekImageInCache(preloadableSafe.thumbFile);
-                if(imgSafe != null) {
+                if (imgSafe != null) {
                     cachedThumb.set(imgSafe);
                 }
             }
@@ -236,7 +241,6 @@ public class PreloadingPhotoBrowser extends JPanel {
                     setPreferredSize(new Dimension(imgSafe.getWidth(), imgSafe.getHeight()));
                 }
             } else if (t == ScaleType.FIT) {
-                System.out.println("scrollPane="+scrollPane);
                 setPreferredSize(new Dimension(scrollPane.getViewport().getWidth(), scrollPane.getViewport().getHeight()));
             } else if (t == ScaleType.FILL) {
                 setPreferredSize(new Dimension(scrollPane.getViewport().getWidth(), scrollPane.getViewport().getHeight()));
@@ -313,13 +317,13 @@ public class PreloadingPhotoBrowser extends JPanel {
             } else {
                 return null;
             }
-            
+
             if (loadImage && imageFile != null && imageFile.canRead()) {
                 try {
                     BufferedImage fullImg = ImageIO.read(imageFile);
                     fullImage.set(fullImg);
                     listenersManager.callListeners((l) -> l.imageLoaded(fullImg, true));
-                    System.out.println("Loaded image " + imageFile);
+                    //System.out.println("Loaded image " + imageFile);
                     return fullImg;
                 } catch (IOException ex) {
                     Logger.getLogger(PreloadingPhotoBrowser.class.getName()).log(Level.SEVERE, null, ex);
