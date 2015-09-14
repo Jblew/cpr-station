@@ -191,7 +191,15 @@ public class Event {
 
     public File getAccessibleDir(Context context) {
         return getLocalizations().stream().map(el -> el.getCarrier(context)).filter(carrier -> carrier != null)
-                .map(carrier -> new File(getProperPath(context.deviceDetector.getDeviceRoot(carrier.getName()))))
+                .map(carrier -> {
+                    File deviceRoot = context.deviceDetector.getDeviceRoot(carrier.getName());
+                    if (deviceRoot != null) {
+                        return new File(getProperPath(deviceRoot));
+                    } else {
+                        return null;
+                    }
+                }
+                )
                 .filter(dir -> dir != null && dir.exists() && dir.isDirectory()).findFirst().orElse(null);
     }
 
@@ -269,10 +277,10 @@ public class Event {
     }
 
     public void delete(Context context, Runnable successCallback) {
-        if(this.getMFileLinks(context).length > 0) {
+        if (this.getMFileLinks(context).length > 0) {
             throw new RuntimeException("To wydarzenie zawiera zdjęcia! Nie można go usunąć.");
         }
-        
+
         context.dbManager.executeInDBThread(() -> {
             try {
                 DeleteBuilder<Event_Localization, Integer> localizationDeleteBuilder = context.dbManager.getDaos().getEvent_LocalizationDao().deleteBuilder();
@@ -286,18 +294,20 @@ public class Event {
             }
         });
     }
-    
+
     public static String formatName(LocalDateTime dt, String text) {
-        return "[" + DateTimeFormatter.ofPattern("YYYY.MM.dd").format(dt) + "] "+text;
+        return "[" + DateTimeFormatter.ofPattern("YYYY.MM.dd").format(dt) + "] " + text;
     }
-    
+
     public static Event forName(Context c, String name) {
         AtomicReference<Event> result = new AtomicReference<>(null);
         try {
             c.dbManager.executeInDBThreadAndWait(() -> {
                 try {
                     List<Event> res = c.dbManager.getDaos().getEventDao().queryForEq("name", name);
-                    if(res.size() > 0) result.set(res.get(0));
+                    if (res.size() > 0) {
+                        result.set(res.get(0));
+                    }
                 } catch (SQLException ex) {
                     Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
                 }
