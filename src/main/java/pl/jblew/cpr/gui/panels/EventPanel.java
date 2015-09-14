@@ -59,11 +59,15 @@ public class EventPanel extends MainPanel {
     public EventPanel(Context context_, final Event event_) {
         this.context = context_;
         this.event = event_;
-        
-        /*** LOAD EVENT DATA ***/
-        Carrier [] carriers = event.getLocalizations().stream().map(el -> el.getCarrier(context)).filter(c -> c != null).toArray(Carrier[]::new);
 
-        /*** PREPARE BUTTONS ***/
+        /**
+         * * LOAD EVENT DATA **
+         */
+        Carrier[] carriers = event.getLocalizations().stream().map(el -> el.getCarrier(context)).filter(c -> c != null).toArray(Carrier[]::new);
+
+        /**
+         * * PREPARE BUTTONS **
+         */
         this.moveSelectedToEventButton = new JButton("Przenieś zaznaczone");
         this.moveAllToEventButton = new JButton("Przenieś wszystkie");
         this.fullScreenButton = new JButton("Pełen ekran");
@@ -75,24 +79,21 @@ public class EventPanel extends MainPanel {
         moveAllToEventButton.addActionListener((evt) -> {
             moveMFilesToEvent(Arrays.stream(browser.getAllLocalizedMFiles()).map(mfl -> mfl.getMFile()).toArray(MFile[]::new));
         });
-        
+
         fullScreenButton.addActionListener((evt) -> {
             SwingUtilities.invokeLater(() -> {
                 FullScreenBrowser fsb = new FullScreenBrowser(context, event);
                 fsb.setVisible(true);
             });
         });
-        
-        
-        
-        /*** PREPARE LABELS ***/
+
+        /**
+         * * PREPARE LABELS **
+         */
         this.timespanLabel = new JLabel("...");
         this.numOfPhotosLabel = new JLabel("...");
-        
-        
 
         setLayout(new BorderLayout());
-
 
         JPanel infoPanel = new JPanel();
         infoPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
@@ -113,20 +114,26 @@ public class EventPanel extends MainPanel {
                 }
             }
         });
-        
+
         infoPanel.add(nameLabel);
         infoPanel.add(timespanLabel);
-        
-        JLabel numOfCopiesLabel = new JLabel("Kopie: "+carriers.length+(carriers.length == 1? " (Skopiuj na inny nośnik)" : ""));
-        if(carriers.length == 1) numOfCopiesLabel.setForeground(Color.RED);
+
+        JLabel numOfCopiesLabel = new JLabel("Kopie: " + carriers.length + (carriers.length == 1 ? " (Skopiuj na inny nośnik)" : ""));
+        if (carriers.length == 1) {
+            numOfCopiesLabel.setForeground(Color.RED);
+        }
         infoPanel.add(numOfCopiesLabel);
-        
+
         infoPanel.add(numOfPhotosLabel);
-        
+
         String devicesListS = Arrays.stream(carriers).map(c -> c.getName()).reduce("", (a, b) -> a + ", " + b);
-        if(!devicesListS.isEmpty()) devicesListS = devicesListS.substring(2);
-        JLabel devicesListLabel = new JLabel("Nośniki: "+devicesListS);
-        if(carriers.length == 1) devicesListLabel.setForeground(Color.RED);
+        if (!devicesListS.isEmpty()) {
+            devicesListS = devicesListS.substring(2);
+        }
+        JLabel devicesListLabel = new JLabel("Nośniki: " + devicesListS);
+        if (carriers.length == 1) {
+            devicesListLabel.setForeground(Color.RED);
+        }
         infoPanel.add(devicesListLabel);
 
         //final JButton showSelectiveEventButton = new JButton("Pokaż WYBRANE");
@@ -134,6 +141,11 @@ public class EventPanel extends MainPanel {
         //final JButton makeSelectiveEventButton = new JButton("Stwórz WYBRANE");
         //makeSelectiveEventButton.setEnabled(false);
         final JButton makeCopyButton = new JButton("Utwórz kopię na innym nośniku");
+        if (carriers.length == 1) {
+            makeCopyButton.setForeground(Color.WHITE);
+            makeCopyButton.setBackground(Color.RED);
+        }
+        
         final JButton deleteFromDBButton = new JButton("Usuń z bazy danych");
 
         JPanel buttonPanel = new JPanel();
@@ -180,7 +192,7 @@ public class EventPanel extends MainPanel {
         browserPanel.setBorder(BorderFactory.createEmptyBorder(0, 15, 0, 15));
         add(browserPanel, BorderLayout.CENTER);
 
-        asyncLoadData();
+        asyncLoadData(carriers);
     }
 
     @Override
@@ -192,37 +204,51 @@ public class EventPanel extends MainPanel {
     public void inactivate() {
     }
 
-    private void asyncLoadData() {
+    private void asyncLoadData(Carrier[] carriers) {
         executor.submit(() -> {
             MFile.Localized[] mfiles = event.getLocalizedMFiles(context);
-            
-            if (mfiles.length > 0) {
 
-                SwingUtilities.invokeLater(() -> {
-                    numOfPhotosLabel.setText(mfiles.length + "");
-                    LocalDateTime earliesDT = mfiles[0].getMFile().getDateTime();
-                    LocalDateTime latestDT = mfiles[mfiles.length - 1].getMFile().getDateTime();
-                    DateTimeFormatter f = DateTimeFormatter.ofPattern("YYYY.MM.dd HH:ss");
-                    String timeSpan = f.format(earliesDT) + (earliesDT.equals(latestDT) ? "" : " - " + f.format(latestDT));
-                    timespanLabel.setText(timeSpan);
-                    timespanLabel.setText("");
-
-                    browserPanel.removeAll();
-
-                    browser = new MFileBrowser(context, mfiles, event);
-                    browser.addComponentToToolPanel(moveSelectedToEventButton);
-                    browser.addComponentToToolPanel(moveAllToEventButton);
-                    browser.addComponentToToolPanel(fullScreenButton);
-                    browserPanel.add(browser, BorderLayout.CENTER);
-                    browserPanel.revalidate();
-                    browserPanel.repaint();
-                });
-            } else {
+            SwingUtilities.invokeLater(() -> {
                 browserPanel.removeAll();
-                browserPanel.add(new JLabel("To wydarzenie nie zawiera żadnych zdjęć"));
+            });
+
+            if (mfiles.length > 0) {
+                if (carriers.length == 0) {
+                    SwingUtilities.invokeLater(() -> browserPanel.add(new JLabel("Brak nośników dla tego wydarzenia")));
+                } else {
+                    SwingUtilities.invokeLater(() -> {
+                        numOfPhotosLabel.setText("Ilość zdjęć: "+mfiles.length);
+                        
+                        
+                        LocalDateTime earliesDT = mfiles[0].getMFile().getDateTime();
+                        LocalDateTime latestDT = mfiles[mfiles.length - 1].getMFile().getDateTime();
+                        DateTimeFormatter f = DateTimeFormatter.ofPattern("YYYY.MM.dd HH:ss");
+                        String timeSpan = f.format(earliesDT) + (earliesDT.equals(latestDT) ? "" : " - " + f.format(latestDT));
+                        timespanLabel.setText(timeSpan);
+                    });
+
+                    boolean hasAccessibleCarrier = Arrays.stream(carriers).filter(c -> c.isConnected(context)).findAny().isPresent();
+                    if (hasAccessibleCarrier) {
+
+                        SwingUtilities.invokeLater(() -> {
+                            browser = new MFileBrowser(context, mfiles, event);
+                            browser.addComponentToToolPanel(moveSelectedToEventButton);
+                            browser.addComponentToToolPanel(moveAllToEventButton);
+                            browser.addComponentToToolPanel(fullScreenButton);
+                            browserPanel.add(browser, BorderLayout.CENTER);
+                        });
+                    } else {
+                        SwingUtilities.invokeLater(() -> browserPanel.add(new JLabel("Aby zobaczyć zdjęcia podłącz przynajmniej jeden z nośników")));
+                    }
+                }
+            } else {
+                SwingUtilities.invokeLater(() -> browserPanel.add(new JLabel("To wydarzenie nie zawiera żadnych zdjęć")));
+            }
+            
+            SwingUtilities.invokeLater(() -> {
                 browserPanel.revalidate();
                 browserPanel.repaint();
-            }
+            });
         });
     }
 
