@@ -154,6 +154,7 @@ public class Event {
         return result.stream().sorted().toArray(MFile_Event[]::new);
     }
 
+    @Deprecated
     public int getRedundancy() {
         return getLocalizations().size();
     }

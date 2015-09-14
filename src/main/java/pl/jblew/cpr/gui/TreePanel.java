@@ -33,6 +33,7 @@ import pl.jblew.cpr.gui.treenodes.DevicesNode;
 import pl.jblew.cpr.gui.treenodes.EventsNode;
 import pl.jblew.cpr.gui.treenodes.NodeChangeListener;
 import pl.jblew.cpr.logic.Event;
+import pl.jblew.cpr.util.IdManager;
 
 /**
  *
@@ -57,7 +58,7 @@ public class TreePanel extends JPanel {
         unsortedPhotosNode = new EventsNode(context, Event.Type.UNSORTED);
 
         addMainNodesAndListeners(top);
-        
+
         this.setMaximumSize(new Dimension(300, Integer.MAX_VALUE));
 
         tree = new JTree(top);
@@ -75,7 +76,7 @@ public class TreePanel extends JPanel {
         tree.expandPath(new TreePath(unsortedPhotosNode.getPath()));
         tree.expandPath(new TreePath(carriersNode.getPath()));
         tree.expandPath(new TreePath(sortedPhotosNode.getPath()));
-        
+
     }
 
     private void addMainNodesAndListeners(DefaultMutableTreeNode top) {
@@ -83,7 +84,6 @@ public class TreePanel extends JPanel {
         top.add(carriersNode);
         top.add(sortedPhotosNode);
         top.add(unsortedPhotosNode);
-        
 
         NodeChangeListener nodeChangeListener = (DefaultMutableTreeNode node) -> {
             DefaultTreeModel model = (DefaultTreeModel) tree.getModel();
@@ -163,25 +163,19 @@ public class TreePanel extends JPanel {
         });
 
         tree_.addTreeSelectionListener((TreeSelectionEvent e) -> {
-            Object selected = e.getPath().getLastPathComponent();
-            
-            
-            if (selected instanceof SelectableIconTreeNode) {
-                SelectableIconTreeNode selectableNode = (SelectableIconTreeNode) selected;
-                if(selectableNode != lastSelected.get()) {
-                    Timer t = new Timer(2000, (ev) -> lastSelected.set(null));
-                    t.setRepeats(false);
-                    t.start();
-                    
-                    lastSelected.set(selectableNode);
-                    
+            TreePath newPath = e.getNewLeadSelectionPath();
+            if (newPath != null) {//newPath may be null if selection was cleared
+                Object selected = newPath.getLastPathComponent();
+                
+                if (selected instanceof SelectableIconTreeNode) {
+                    SelectableIconTreeNode selectableNode = (SelectableIconTreeNode) selected;
                     selectableNode.nodeSelected(tree);
                 }
+
+                Timer t = new Timer(800, (ev) -> tree.clearSelection());
+                t.setRepeats(false);
+                t.start();
             }
-            
-            Timer t = new Timer(800, (ev) -> tree.clearSelection());
-            t.setRepeats(false);
-            t.start();
         });
     }
 

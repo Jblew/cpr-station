@@ -6,6 +6,7 @@
 package pl.jblew.cpr.gui.panels;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
@@ -20,6 +21,7 @@ import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -33,8 +35,10 @@ import pl.jblew.cpr.gui.MainPanel;
 import pl.jblew.cpr.gui.components.browser.MFileBrowser;
 import pl.jblew.cpr.gui.components.modal.FullScreenBrowser;
 import pl.jblew.cpr.gui.treenodes.EventsNode;
+import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.Event;
 import pl.jblew.cpr.logic.MFile;
+import pl.jblew.cpr.util.IdManager;
 
 /**
  *
@@ -44,7 +48,6 @@ public class EventPanel extends MainPanel {
     private final Context context;
     private final Event event;
     private final JLabel timespanLabel;
-    private final JLabel numOfCopiesLabel;
     private final JPanel browserPanel;
     private final JLabel numOfPhotosLabel;
     private final JButton moveSelectedToEventButton;
@@ -56,7 +59,11 @@ public class EventPanel extends MainPanel {
     public EventPanel(Context context_, final Event event_) {
         this.context = context_;
         this.event = event_;
+        
+        /*** LOAD EVENT DATA ***/
+        Carrier [] carriers = event.getLocalizations().stream().map(el -> el.getCarrier(context)).filter(c -> c != null).toArray(Carrier[]::new);
 
+        /*** PREPARE BUTTONS ***/
         this.moveSelectedToEventButton = new JButton("Przenieś zaznaczone");
         this.moveAllToEventButton = new JButton("Przenieś wszystkie");
         this.fullScreenButton = new JButton("Pełen ekran");
@@ -75,19 +82,21 @@ public class EventPanel extends MainPanel {
                 fsb.setVisible(true);
             });
         });
+        
+        
+        
+        /*** PREPARE LABELS ***/
+        this.timespanLabel = new JLabel("...");
+        this.numOfPhotosLabel = new JLabel("...");
+        
+        
 
         setLayout(new BorderLayout());
 
-        this.timespanLabel = new JLabel("...");
-        this.numOfCopiesLabel = new JLabel("...");
-        this.numOfPhotosLabel = new JLabel("...");
 
-        JPanel gridPanel = new JPanel();
-        gridPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
-        GridLayout gridLayout = new GridLayout(0, 2);
-        gridLayout.setHgap(10);
-        gridLayout.setVgap(10);
-        gridPanel.setLayout(gridLayout);
+        JPanel infoPanel = new JPanel();
+        infoPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.PAGE_AXIS));
 
         JLabel nameLabel = new JLabel(event.getName());
         nameLabel.setIcon(IconLoader.EDIT_16.load());
@@ -104,16 +113,26 @@ public class EventPanel extends MainPanel {
                 }
             }
         });
-        prepareGridRow(gridPanel, "Nazwa: ", nameLabel);
-        prepareGridRow(gridPanel, "Zakres czasu: ", timespanLabel);
-        prepareGridRow(gridPanel, "Ilość kopii: ", numOfCopiesLabel);
-        prepareGridRow(gridPanel, "Ilość plików: ", numOfPhotosLabel);
-        prepareGridRow(gridPanel, "Nośniki: ", new JLabel(event.getLocalizations().stream().map(el -> el.getCarrier(context)).filter(c -> c != null).map(c -> c.getName()).reduce("", (a, b) -> a + ", " + b)));
+        
+        infoPanel.add(nameLabel);
+        infoPanel.add(timespanLabel);
+        
+        JLabel numOfCopiesLabel = new JLabel("Kopie: "+carriers.length+(carriers.length == 1? " (Skopiuj na inny nośnik)" : ""));
+        if(carriers.length == 1) numOfCopiesLabel.setForeground(Color.RED);
+        infoPanel.add(numOfCopiesLabel);
+        
+        infoPanel.add(numOfPhotosLabel);
+        
+        String devicesListS = Arrays.stream(carriers).map(c -> c.getName()).reduce("", (a, b) -> a + ", " + b);
+        if(!devicesListS.isEmpty()) devicesListS = devicesListS.substring(2);
+        JLabel devicesListLabel = new JLabel("Nośniki: "+devicesListS);
+        if(carriers.length == 1) devicesListLabel.setForeground(Color.RED);
+        infoPanel.add(devicesListLabel);
 
-        final JButton showSelectiveEventButton = new JButton("Pokaż WYBRANE");
-        showSelectiveEventButton.setEnabled(false);
-        final JButton makeSelectiveEventButton = new JButton("Stwórz WYBRANE");
-        makeSelectiveEventButton.setEnabled(false);
+        //final JButton showSelectiveEventButton = new JButton("Pokaż WYBRANE");
+        //showSelectiveEventButton.setEnabled(false);
+        //final JButton makeSelectiveEventButton = new JButton("Stwórz WYBRANE");
+        //makeSelectiveEventButton.setEnabled(false);
         final JButton makeCopyButton = new JButton("Utwórz kopię na innym nośniku");
         final JButton deleteFromDBButton = new JButton("Usuń z bazy danych");
 
@@ -123,8 +142,8 @@ public class EventPanel extends MainPanel {
         buttonPanelLayout.setHgap(10);
         buttonPanelLayout.setVgap(10);
         buttonPanel.setLayout(buttonPanelLayout);
-        buttonPanel.add(showSelectiveEventButton);
-        buttonPanel.add(makeSelectiveEventButton);
+        //buttonPanel.add(showSelectiveEventButton);
+        //buttonPanel.add(makeSelectiveEventButton);
         buttonPanel.add(makeCopyButton);
         buttonPanel.add(deleteFromDBButton);
 
@@ -147,7 +166,7 @@ public class EventPanel extends MainPanel {
         GridLayout northPanelLayout = new GridLayout(1, 2);
         northPanelLayout.setVgap(10);
         JPanel northPanel = new JPanel(northPanelLayout);
-        northPanel.add(gridPanel);
+        northPanel.add(infoPanel);
         northPanel.add(buttonPanel);
         add(northPanel, BorderLayout.NORTH);
 
@@ -173,20 +192,10 @@ public class EventPanel extends MainPanel {
     public void inactivate() {
     }
 
-    private void prepareGridRow(JPanel panel, String text, JComponent component) {
-        JLabel label = new JLabel(text);
-        label.setFont(new Font("default", Font.BOLD, 16));
-        label.setHorizontalAlignment(JLabel.RIGHT);
-        panel.add(label);
-
-        panel.add(component);
-    }
-
     private void asyncLoadData() {
         executor.submit(() -> {
             MFile.Localized[] mfiles = event.getLocalizedMFiles(context);
-            //Arrays.stream(mfiles).forEachOrdered(mfl -> System.out.println(mfl));
-            int redundancy = event.getRedundancy();
+            
             if (mfiles.length > 0) {
 
                 SwingUtilities.invokeLater(() -> {
@@ -197,12 +206,6 @@ public class EventPanel extends MainPanel {
                     String timeSpan = f.format(earliesDT) + (earliesDT.equals(latestDT) ? "" : " - " + f.format(latestDT));
                     timespanLabel.setText(timeSpan);
                     timespanLabel.setText("");
-                    String warn = "";
-
-                    if (redundancy < 2) {
-                        warn = " (Koniecznie wykonaj dodatkową kopię na innym nośniku)";
-                    }
-                    numOfCopiesLabel.setText(redundancy + warn);
 
                     browserPanel.removeAll();
 

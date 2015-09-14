@@ -21,6 +21,7 @@ import pl.jblew.cpr.gui.TreePanel;
 import pl.jblew.cpr.gui.components.modal.CreateEventModal;
 import pl.jblew.cpr.gui.panels.EventPanel;
 import pl.jblew.cpr.logic.Event;
+import pl.jblew.cpr.util.IdManager;
 import pl.jblew.cpr.util.ListenersManager;
 import pl.jblew.cpr.util.PrintableBusMessage;
 
