@@ -39,6 +39,7 @@ import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.Event;
 import pl.jblew.cpr.logic.MFile;
 import pl.jblew.cpr.util.IdManager;
+import pl.jblew.cpr.util.TimeUtils;
 
 /**
  *
@@ -220,11 +221,9 @@ public class EventPanel extends MainPanel {
                         numOfPhotosLabel.setText("Ilość zdjęć: "+mfiles.length);
                         
                         
-                        LocalDateTime earliesDT = mfiles[0].getMFile().getDateTime();
+                        LocalDateTime earliestDT = mfiles[0].getMFile().getDateTime();
                         LocalDateTime latestDT = mfiles[mfiles.length - 1].getMFile().getDateTime();
-                        DateTimeFormatter f = DateTimeFormatter.ofPattern("YYYY.MM.dd HH:ss");
-                        String timeSpan = f.format(earliesDT) + (earliesDT.equals(latestDT) ? "" : " - " + f.format(latestDT));
-                        timespanLabel.setText(timeSpan);
+                        timespanLabel.setText(TimeUtils.formatDateRange(earliestDT, latestDT));
                     });
 
                     boolean hasAccessibleCarrier = Arrays.stream(carriers).filter(c -> c.isConnected(context)).findAny().isPresent();
