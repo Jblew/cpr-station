@@ -31,7 +31,7 @@ public class CarrierIntegrityChecker implements StorageDevicePresenceListener {
         context.dbManager.executeInDBThread(() -> {
             Carrier c = Carrier.forName(context, deviceName);
             if (c != null) {
-                if (c.getLastChecked().isBefore(LocalDateTime.now().minusDays(1))) {
+                if (c.getLastChecked().isBefore(LocalDateTime.now().minusWeeks(2))) {
                     processor.check(c, rootFile, deviceName);
                 }
             }
