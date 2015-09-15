@@ -7,6 +7,7 @@ package pl.jblew.cpr.bootstrap;
 
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+import java.util.concurrent.Executors;
 import javax.swing.JFrame;
 import pl.jblew.cpr.db.DatabaseDetector;
 import pl.jblew.cpr.db.DatabaseManager;
@@ -15,6 +16,7 @@ import pl.jblew.cpr.file.DeviceDetectorProcess;
 import pl.jblew.cpr.gui.GUI;
 import pl.jblew.cpr.logic.integritycheck.CarrierIntegrityChecker;
 import pl.jblew.cpr.util.MessageToStatusBar;
+import pl.jblew.cpr.util.NamingThreadFactory;
 import pl.jblew.cpr.util.PrintableBusMessage;
 
 /**
@@ -35,7 +37,7 @@ public class Bootstrap {
         
         DeviceDetectorProcess deviceDetectorProcess = new DeviceDetectorProcess(mainBus);
         
-        final Context context = new Context(mainBus, dbManager, deviceDetectorProcess, new JFrame());
+        final Context context = new Context(mainBus, dbManager, deviceDetectorProcess, Executors.newCachedThreadPool(new NamingThreadFactory("main-cached-executor")), new JFrame());
         
         final GUI gui = new GUI(context);
         gui.start();

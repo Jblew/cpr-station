@@ -35,6 +35,7 @@ import pl.jblew.cpr.gui.MainPanel;
 import pl.jblew.cpr.gui.components.browser.MFileBrowser;
 import pl.jblew.cpr.gui.components.modal.FullScreenBrowser;
 import pl.jblew.cpr.gui.treenodes.EventsNode;
+import pl.jblew.cpr.gui.windows.RenameWindow;
 import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.Event;
 import pl.jblew.cpr.logic.MFile;
@@ -106,12 +107,13 @@ public class EventPanel extends MainPanel {
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (e.getButton() == MouseEvent.BUTTON1) {
-                    String newName = JOptionPane.showInputDialog("Podaj nową nazwę:", event.getName());
+                    /*String newName = JOptionPane.showInputDialog("Podaj nową nazwę:", event.getName());
                     if (newName != null && !newName.isEmpty()) {
                         Event renamedEvent = event.rename(context, newName);
                         context.eBus.post(new EventsNode.EventsListChanged());
                         context.eBus.post(new ChangeMainPanel(new EventPanel(context, renamedEvent)));
-                    }
+                    }*/
+                    new RenameWindow(context, event);
                 }
             }
         });

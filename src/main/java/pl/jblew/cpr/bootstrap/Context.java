@@ -6,6 +6,7 @@
 package pl.jblew.cpr.bootstrap;
 
 import com.google.common.eventbus.EventBus;
+import java.util.concurrent.ExecutorService;
 import javax.swing.JFrame;
 import pl.jblew.cpr.db.DatabaseManager;
 import pl.jblew.cpr.file.DeviceDetectorProcess;
@@ -18,12 +19,14 @@ public class Context {
     public final EventBus eBus;
     public final DatabaseManager dbManager;
     public final DeviceDetectorProcess deviceDetector;
+    public final ExecutorService cachedExecutor;
     public final JFrame frame;
 
-    Context(EventBus eBus, DatabaseManager dbManager, DeviceDetectorProcess deviceDetector, JFrame frame) {
+    Context(EventBus eBus, DatabaseManager dbManager, DeviceDetectorProcess deviceDetector, ExecutorService cachedExecutor, JFrame frame) {
         this.eBus = eBus;
         this.dbManager = dbManager;
         this.deviceDetector = deviceDetector;
+        this.cachedExecutor = cachedExecutor;
         this.frame = frame;
     }
 }

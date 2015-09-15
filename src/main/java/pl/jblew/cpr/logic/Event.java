@@ -167,23 +167,23 @@ public class Event {
         this.localizations = localizations;
     }
 
-    public Event rename(Context c, String newName) {
-        setName(newName);
-        final Event me = this;
-        try {
-            c.dbManager.executeInDBThreadAndWait(() -> {
-                try {
-                    c.dbManager.getDaos().getEventDao().update(me);
-                } catch (SQLException ex) {
-                    Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
-                }
-            });
-        } catch (InterruptedException ex) {
-            Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        return this;
-    }
-
+    /*@Deprecated
+     public Event rename(Context c, String newName) {
+     setName(newName);
+     final Event me = this;
+     try {
+     c.dbManager.executeInDBThreadAndWait(() -> {
+     try {
+     c.dbManager.getDaos().getEventDao().update(me);
+     } catch (SQLException ex) {
+     Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
+     }
+     });
+     } catch (InterruptedException ex) {
+     Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
+     }
+     return this;
+     }*/
     public String getProperPath(File deviceRoot) {
         String sortedPath = (getType() == Event.Type.SORTED ? FileStructureUtil.PATH_SORTED_PHOTOS : FileStructureUtil.PATH_UNSORTED_PHOTOS);
         return deviceRoot.getAbsolutePath() + File.separator + sortedPath + File.separator + getName();
@@ -316,6 +316,36 @@ public class Event {
             Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
         }
         return result.get();
+    }
+
+    public static String makeNameValid(Context context, String name) {
+        /*< > : " / \ | ? **/
+        String newName = name.replace('<', ' ').replace('>', ' ').replace(':', ' ')
+                .replace('"', ' ').replace('/', ' ').replace('\\', ' ')
+                .replace('|', ' ').replace('?', ' ').replace('*', ' ');
+        AtomicReference<String> resultName = new AtomicReference<>(newName + System.currentTimeMillis());
+        try {
+            context.dbManager.executeInDBThreadAndWait(() -> {
+                String out = newName;
+                try {
+                    while (true) {
+
+                        long count = context.dbManager.getDaos().getEventDao().queryBuilder().where().eq("name", out).countOf();
+                        if (count > 0) {
+                            out += "|";
+                        } else {
+                            resultName.set(out);
+                            break;
+                        }
+                    }
+                } catch (SQLException ex) {
+                    Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            });
+        } catch (InterruptedException ex) {
+            Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return resultName.get();
     }
 
     public static enum Type {

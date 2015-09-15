@@ -46,6 +46,7 @@ public class MainWindow {
 
         frame = context.frame;
         frame.setSize(1000, 800);
+        frame.setLocationRelativeTo(null);
         
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         

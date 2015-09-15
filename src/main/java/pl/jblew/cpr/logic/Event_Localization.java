@@ -96,6 +96,7 @@ public class Event_Localization {
     //public String getPath() {
     //    return path;
     //}
+    
     public void setPath(String path) {
         this.path = path;
     }
@@ -153,6 +154,7 @@ public class Event_Localization {
 
      return result.get();
      }*/
+    
     @Override
     public int hashCode() {
         int hash = 7;

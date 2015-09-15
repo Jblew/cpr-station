@@ -7,6 +7,7 @@ package pl.jblew.cpr.file;
 
 import com.google.common.eventbus.EventBus;
 import java.io.File;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -34,7 +35,7 @@ import pl.jblew.cpr.util.TwoTuple;
  */
 public class DeviceDetectorProcess {
     private final EventBus eBus;
-    private final ArrayList<StorageDevicePresenceListener> listeners = new ArrayList<>();
+    private final ArrayList<Object> listeners = new ArrayList<>();
     private final Map<String, File> devices = new HashMap<>();
     private final BlockingQueue<Runnable> executeOnDevicesChange = new LinkedBlockingQueue<>();
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -53,12 +54,24 @@ public class DeviceDetectorProcess {
                     devices.put(device.getSystemDisplayName(), device.getRootDirectory());
                 }
 
-                StorageDevicePresenceListener[] tmpList;
+                Object[] tmpList;
                 synchronized (listeners) {
-                    tmpList = listeners.toArray(new StorageDevicePresenceListener[]{});
+                    tmpList = listeners.toArray(new Object[]{});
                 }
-                for (StorageDevicePresenceListener listener : tmpList) {
-                    listener.storageDeviceConnected(device.getRootDirectory(), device.getSystemDisplayName());
+                for (Object listenerO : tmpList) {
+                    if (listenerO instanceof StorageDevicePresenceListener) {
+                        ((StorageDevicePresenceListener) listenerO).storageDeviceConnected(device.getRootDirectory(), device.getSystemDisplayName());
+                    } else if (listenerO instanceof WeakReference) {
+                        WeakReference<StorageDevicePresenceListener> ref = (WeakReference<StorageDevicePresenceListener>) listenerO;
+                        StorageDevicePresenceListener listener = ref.get();
+                        if (listener != null) {
+                            listener.storageDeviceConnected(device.getRootDirectory(), device.getSystemDisplayName());
+                        } else {
+                            synchronized (listeners) {
+                                listeners.remove(listenerO);
+                            }
+                        }
+                    }
                 }
             }
             detectorManager.addDriveListener((USBStorageEvent usbse) -> {
@@ -72,15 +85,30 @@ public class DeviceDetectorProcess {
 
                 }
 
-                StorageDevicePresenceListener[] tmpList;
+                Object[] tmpList;
                 synchronized (listeners) {
                     tmpList = listeners.toArray(new StorageDevicePresenceListener[]{});
                 }
-                for (StorageDevicePresenceListener listener : tmpList) {
-                    if (usbse.getEventType() == DeviceEventType.CONNECTED) {
-                        listener.storageDeviceConnected(usbse.getStorageDevice().getRootDirectory(), usbse.getStorageDevice().getSystemDisplayName());
-                    } else if (usbse.getEventType() == DeviceEventType.REMOVED) {
-                        listener.storageDeviceDisconnected(usbse.getStorageDevice().getRootDirectory(), usbse.getStorageDevice().getSystemDisplayName());
+                for (Object listenerO : tmpList) {
+                    StorageDevicePresenceListener listener = null;
+                    if (listenerO instanceof StorageDevicePresenceListener) {
+                        listener = ((StorageDevicePresenceListener) listenerO);
+
+                    } else if (listenerO instanceof WeakReference) {
+                        WeakReference<StorageDevicePresenceListener> ref = (WeakReference<StorageDevicePresenceListener>) listenerO;
+                        listener = ref.get();
+                        if (listener == null) {
+                            synchronized (listeners) {
+                                listeners.remove(listenerO);
+                            }
+                        }
+                    }
+                    if (listener != null) {
+                        if (usbse.getEventType() == DeviceEventType.CONNECTED) {
+                            listener.storageDeviceConnected(usbse.getStorageDevice().getRootDirectory(), usbse.getStorageDevice().getSystemDisplayName());
+                        } else if (usbse.getEventType() == DeviceEventType.REMOVED) {
+                            listener.storageDeviceDisconnected(usbse.getStorageDevice().getRootDirectory(), usbse.getStorageDevice().getSystemDisplayName());
+                        }
                     }
                 }
 
@@ -111,6 +139,12 @@ public class DeviceDetectorProcess {
             listeners.add(l);
         }
     }
+    
+    public void addWeakStorageDevicePresenceListener(StorageDevicePresenceListener l) {
+        synchronized (listeners) {
+            listeners.add(new WeakReference<StorageDevicePresenceListener>(l));
+        }
+    }
 
     public void addStorageDeviceChangeListener(StorageDeviceChangeListener l) {
         synchronized (listeners) {
@@ -133,7 +167,7 @@ public class DeviceDetectorProcess {
             listeners.remove(l);
         }
     }
-    
+
     public void executeOnDevicesChange(Runnable r) {
         executeOnDevicesChange.add(r);
     }
