@@ -15,7 +15,7 @@ import java.time.format.DateTimeFormatter;
 public class TimeUtils {
     private static final DateTimeFormatter dayFormatter = DateTimeFormatter.ofPattern("dd");
     private static final DateTimeFormatter monthDayFormatter = DateTimeFormatter.ofPattern("MM.dd");
-    private static final DateTimeFormatter fullDateFormatter = DateTimeFormatter.ofPattern("YYYY.MM.dd");
+    private static final DateTimeFormatter fullDateFormatter = DateTimeFormatter.ofPattern("yyyy.MM.dd");
     
     
     private TimeUtils() {}
