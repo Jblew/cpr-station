@@ -41,11 +41,9 @@ public class ProgressListPanel extends JPanel {
     public ProgressListPanel(Context context) {
         this.context = context;
 
-        this.setPreferredSize(new Dimension(170, 1000));
-        this.setMaximumSize(new Dimension(180, Integer.MAX_VALUE));
-        this.setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
-
-        this.add(new JLabel("W trakcie: "));
+        this.setPreferredSize(new Dimension(500, 50));
+        this.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
+        this.setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 
         context.eBus.register(this);
     }
@@ -112,6 +110,8 @@ public class ProgressListPanel extends JPanel {
         private void finished() {
             SwingUtilities.invokeLater(() -> {
                 meProgressListPanel.remove(this);
+                meProgressListPanel.revalidate();
+                meProgressListPanel.repaint();
             });
         }
     }

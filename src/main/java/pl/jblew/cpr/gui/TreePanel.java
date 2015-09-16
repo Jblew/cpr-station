@@ -22,7 +22,6 @@ import javax.swing.Timer;
 import javax.swing.event.TreeExpansionEvent;
 import javax.swing.event.TreeExpansionListener;
 import javax.swing.event.TreeSelectionEvent;
-import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeModel;
@@ -33,7 +32,6 @@ import pl.jblew.cpr.gui.treenodes.DevicesNode;
 import pl.jblew.cpr.gui.treenodes.EventsNode;
 import pl.jblew.cpr.gui.treenodes.NodeChangeListener;
 import pl.jblew.cpr.logic.Event;
-import pl.jblew.cpr.util.IdManager;
 
 /**
  *
@@ -81,9 +79,9 @@ public class TreePanel extends JPanel {
 
     private void addMainNodesAndListeners(DefaultMutableTreeNode top) {
         top.add(devicesNode);
-        top.add(carriersNode);
         top.add(sortedPhotosNode);
         top.add(unsortedPhotosNode);
+        top.add(carriersNode);
 
         NodeChangeListener nodeChangeListener = (DefaultMutableTreeNode node) -> {
             DefaultTreeModel model = (DefaultTreeModel) tree.getModel();

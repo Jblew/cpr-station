@@ -8,26 +8,23 @@ package pl.jblew.cpr.logic.autoimport;
 import java.io.File;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
-import org.h2.store.fs.FileUtils;
 import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.gui.panels.ProgressListPanel;
-import pl.jblew.cpr.gui.util.PanelDisabler;
 import pl.jblew.cpr.logic.Event;
 import pl.jblew.cpr.logic.io.Importer;
-import pl.jblew.cpr.util.FileUtil;
-import pl.jblew.cpr.util.IdManager;
+import pl.jblew.cpr.util.ImageCreationDateLoader;
 import pl.jblew.cpr.util.NamingThreadFactory;
+import pl.jblew.cpr.util.TimeUtils;
 
 /**
  *
@@ -68,30 +65,50 @@ public class AutomaticImportProcessor {
 
         Map<String, List<File>> eventMapping = new HashMap<>();
 
+        /**
+         * CALCULATING BASE EVENT NAME (WITHOUT DATE) *
+         */
         for (File f : allImportableFiles) {
-            String eventName = topEventName;
+            String baseEventName = topEventName;
             if (f.getParentFile().equals(topDir)) {
-                eventName = topEventName;
+                baseEventName = topEventName;
             } else {
-                eventName = f.getParentFile().getName();
+                baseEventName = f.getParentFile().getName();
             }
 
             //process event name
-            eventName = eventName.trim();
-            if (eventName.matches("^\\[[0-9\\.\\-]+\\](.*)")) {
-                eventName = eventName.substring(eventName.indexOf("]") + 1).trim();
+            baseEventName = baseEventName.trim();
+            if (baseEventName.matches("^\\[[0-9\\.\\-]+\\](.*)")) {
+                baseEventName = baseEventName.substring(baseEventName.indexOf("]") + 1).trim();
             }
-            eventName = Event.formatName(LocalDateTime.now(), eventName);
-            
-            /*while(Event.forName(context, eventName) != null) {
-                eventName += "|";
-            }*/
 
-            if (!eventMapping.containsKey(eventName)) {
-                eventMapping.put(eventName, new LinkedList<>());
+            baseEventName = Event.formatName(LocalDateTime.now(), baseEventName);
+
+            /*while(Event.forName(context, eventName) != null) {
+             eventName += "|";
+             }*/
+            if (!eventMapping.containsKey(baseEventName)) {
+                eventMapping.put(baseEventName, new LinkedList<>());
             }
-            eventMapping.get(eventName).add(f);
+            eventMapping.get(baseEventName).add(f);
         }
+
+        /**
+         * ADD DATE TO EVENT NAME *
+         */
+        /*for (Entry<String, List<File>> entry : eventMapping.entrySet()) {
+            LocalDateTime[] timeBounds = entry.getValue().stream()
+                    .map(f -> ImageCreationDateLoader.getCreationDateTime(f)).sorted().toArray(LocalDateTime[]::new);
+
+            LocalDateTime startDT = timeBounds[0];
+            LocalDateTime endDT = timeBounds[timeBounds.length - 1];
+
+            String oldEventName = entry.getKey();
+            String newEventName = TimeUtils.formatDateRange(startDT, endDT) + " " + oldEventName;
+
+            eventMapping.remove(oldEventName);
+            eventMapping.put(newEventName, entry.getValue());
+        }*/
 
         for (String eventName : eventMapping.keySet()) {
             List<File> files = eventMapping.get(eventName);
@@ -119,16 +136,14 @@ public class AutomaticImportProcessor {
                         if (percent == 100) {
                             progressEntity.markFinished();
                             cdLatch.countDown();
-                        }
-                        else if(error) {
-                            JOptionPane.showMessageDialog(null, "Błąd podczas importowania " + eventName + " na " + deviceName + ": "+msg, "Błąd", JOptionPane.ERROR_MESSAGE);
+                        } else if (error) {
+                            JOptionPane.showMessageDialog(null, "Błąd podczas importowania " + eventName + " na " + deviceName + ": " + msg, "Błąd", JOptionPane.ERROR_MESSAGE);
                             cdLatch.countDown();
                         }
                     });
                 });
                 cdLatch.await(); //make it synchronous again
-                
-                
+
             } catch (Importer.DeviceNotWritableException ex) {
                 SwingUtilities.invokeLater(() -> {
                     JOptionPane.showMessageDialog(null, "Nie można importować " + eventName + " na " + deviceName + ": Urządzenie jest niezapisywalne.", "Błąd", JOptionPane.ERROR_MESSAGE);

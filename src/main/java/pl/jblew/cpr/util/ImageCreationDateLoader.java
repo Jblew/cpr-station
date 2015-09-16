@@ -29,6 +29,7 @@ public class ImageCreationDateLoader {
 
     private static final DateLoadingStrategy[] STRATEGIES = new DateLoadingStrategy[]{
         (imgFile, metadata) -> { //get Exif SubIFD date/time
+            if(metadata == null) return null;
             if (!metadata.containsDirectoryOfType(ExifSubIFDDirectory.class)) {
                 return null;
             }
@@ -69,6 +70,7 @@ public class ImageCreationDateLoader {
             return null;
         },
         (imgFile, metadata) -> { //get Exif IFD0 date/time
+            if(metadata == null) return null;
             if (!metadata.containsDirectoryOfType(ExifIFD0Directory.class)) {
                 return null;
             }
@@ -118,12 +120,17 @@ public class ImageCreationDateLoader {
     private ImageCreationDateLoader() {
     }
 
-    public static LocalDateTime getCreationDateTime(File imgFile) throws ImageProcessingException, IOException {
+    public static LocalDateTime getCreationDateTime(File imgFile) {
         if (!imgFile.exists()) {
             throw new RuntimeException(new FileNotFoundException());
         }
 
-        Metadata metadata = ImageMetadataReader.readMetadata(imgFile);
+        Metadata metadata = null;
+        try {
+            metadata = ImageMetadataReader.readMetadata(imgFile);
+        } catch (ImageProcessingException | IOException ex) {
+            Logger.getLogger(ImageCreationDateLoader.class.getName()).log(Level.SEVERE, null, ex);
+        }
 
         for (DateLoadingStrategy strategy : STRATEGIES) {
             LocalDateTime result = strategy.getCreationTime(imgFile, metadata);

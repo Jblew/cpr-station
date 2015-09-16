@@ -5,18 +5,15 @@
  */
 package pl.jblew.cpr.gui;
 
-import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dialog;
 import java.awt.Dimension;
 import javax.swing.BorderFactory;
-import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JToolBar;
@@ -47,6 +44,7 @@ public class MainWindow {
         frame = context.frame;
         frame.setSize(1000, 800);
         frame.setLocationRelativeTo(null);
+        frame.setIconImage(IconLoader.LOGO_256.load().getImage());
         
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         
@@ -91,8 +89,8 @@ public class MainWindow {
             this.setLayout(new BorderLayout());
             this.add(toolBar, BorderLayout.NORTH);
             this.add(mainPanel, BorderLayout.CENTER);
-            this.add(statusBar, BorderLayout.SOUTH);
-            this.add(new ProgressListPanel(context), BorderLayout.EAST);
+            //this.add(statusBar, BorderLayout.SOUTH);
+            this.add(new ProgressListPanel(context), BorderLayout.SOUTH);
         }
 
         public void setMainPanel(final MainPanel newMainPanel) {
