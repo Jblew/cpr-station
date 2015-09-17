@@ -6,6 +6,7 @@
 package pl.jblew.cpr.gui.treenodes;
 
 import com.google.common.eventbus.Subscribe;
+import java.awt.Color;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
@@ -68,7 +69,7 @@ public class EventsNode extends TreePanel.IconTreeNode implements TreePanel.AddT
                     removeAllChildren();
                     synchronized (events) {
                         events.clear();
-                        result.stream().forEach((e) -> addEventNode(e));
+                        result.stream().sorted().forEachOrdered((e) -> addEventNode(e));
                     }
                     if (eventType == Event.Type.SORTED) {
                         final TreePanel.SelectableIconTreeNode node = new TreePanel.SelectableIconTreeNode("Dodaj wydarzenie", new ImageIcon(TreePanel.class.getClassLoader().getResource("images/add16.png"))) {
@@ -92,12 +93,15 @@ public class EventsNode extends TreePanel.IconTreeNode implements TreePanel.AddT
     }
 
     private void addEventNode(final Event e) {
-        TreePanel.SelectableIconTreeNode node = new TreePanel.SelectableIconTreeNode(e.getName(), new ImageIcon(TreePanel.class.getClassLoader().getResource("images/pc16.gif"))) {
+        TreePanel.SelectableIconTreeNode node = new TreePanel.SelectableIconTreeNode(e.getDisplayName(), new ImageIcon(TreePanel.class.getClassLoader().getResource("images/pc16.gif"))) {
             @Override
             public void nodeSelected(JTree tree) {
                 context.eBus.post(new ChangeMainPanel(new EventPanel(context, e)));
             }
         };
+        
+        if(e.hasProblems()) node.setColor(Color.RED);
+        
         add(node);
         synchronized (events) {
             events.put(e, node);

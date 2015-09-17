@@ -5,7 +5,6 @@
  */
 package pl.jblew.cpr.gui.treenodes;
 
-import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import java.io.File;
 import java.sql.SQLException;
@@ -18,11 +17,13 @@ import java.util.logging.Logger;
 import javax.swing.ImageIcon;
 import javax.swing.JTree;
 import javax.swing.SwingUtilities;
-import pl.jblew.cpr.db.DatabaseManager;
+import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.file.StorageDevicePresenceListener;
+import pl.jblew.cpr.gui.ChangeMainPanel;
 import pl.jblew.cpr.gui.TreePanel;
 import pl.jblew.cpr.gui.TreePanel.IconTreeNode;
 import pl.jblew.cpr.gui.TreePanel.SelectableIconTreeNode;
+import pl.jblew.cpr.gui.panels.CarrierPanel;
 import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.util.ListenersManager;
 import pl.jblew.cpr.util.PrintableBusMessage;
@@ -36,14 +37,12 @@ public class CarriersNode extends IconTreeNode implements StorageDevicePresenceL
     private final ListenersManager<NodeChangeListener> listenersManager = new ListenersManager<>();
     private final Set<String> connectedDevices = new HashSet<>();
     private final CarriersNode me = this;
-    private final EventBus eBus;
-    private final DatabaseManager dbManager;
+    private final Context context;
 
-    public CarriersNode(DatabaseManager dbMgr, EventBus eBus_) {
+    public CarriersNode(Context context) {
         super("Wszystkie nośniki", new ImageIcon(TreePanel.class.getClassLoader().getResource("images/carriers.png")));
-        eBus = eBus_;
-        eBus.register(this);
-        dbManager = dbMgr;
+        this.context = context;
+        context.eBus.register(this);
         carriersListChanged(null);
     }
 
@@ -100,14 +99,13 @@ public class CarriersNode extends IconTreeNode implements StorageDevicePresenceL
 
     }
 
-    private void addCarrierNode(final Carrier c) {
+    private void addCarrierNode(Carrier c) {
         SwingUtilities.invokeLater(() -> {
             SelectableIconTreeNode node = new SelectableIconTreeNode(c.getName(), new ImageIcon(TreePanel.class.getClassLoader().getResource("images/dbsave16.png"))) {
                 @Override
                 public void nodeSelected(JTree tree) {
                     SwingUtilities.invokeLater(() -> {
-                        //onClick
-                        //onClick
+                        context.eBus.post(new ChangeMainPanel(new CarrierPanel(context, c)));
                     });
                 }
             };
@@ -126,12 +124,12 @@ public class CarriersNode extends IconTreeNode implements StorageDevicePresenceL
 
     @Subscribe
     public void carriersListChanged(CarriersListChanged evt) {
-        dbManager.executeInDBThread(() -> {
+        context.dbManager.executeInDBThread(() -> {
             try {
                 removeAllChildren();
                 synchronized (carriers) {
                     carriers.clear();
-                    for (Carrier c : dbManager.getDaos().getCarrierDao().queryForAll()) {
+                    for (Carrier c : context.dbManager.getDaos().getCarrierDao().queryForAll()) {
                         addCarrierNode(c);
                     }
                 }

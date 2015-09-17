@@ -15,6 +15,9 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import pl.jblew.cpr.bootstrap.Context;
@@ -112,8 +115,12 @@ public class AutomaticImportProcessor {
 
             ProgressListPanel.ProgressEntity progressEntity = new ProgressListPanel.ProgressEntity();
             context.eBus.post(progressEntity);
-
             progressEntity.setText("Importuję " + eventName);
+            try {
+                TimeUnit.SECONDS.sleep(1); //sleep to allow progressEntity disappera at right time
+            } catch (InterruptedException ex) {
+                Logger.getLogger(AutomaticImportProcessor.class.getName()).log(Level.SEVERE, null, ex);
+            }
 
             Importer importer = new Importer(context, files.toArray(new File[]{}));
             importer.setDeleteAfterAdd(true);

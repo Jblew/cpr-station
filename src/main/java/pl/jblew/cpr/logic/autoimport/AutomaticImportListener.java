@@ -59,7 +59,7 @@ public class AutomaticImportListener implements StorageDevicePresenceListener {
                     Logger.getLogger(AutomaticImportListener.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
-        }, 5, 5, TimeUnit.SECONDS);
+        }, 7, 5, TimeUnit.SECONDS);
     }
 
     @Override

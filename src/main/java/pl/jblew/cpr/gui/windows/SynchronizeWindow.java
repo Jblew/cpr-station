@@ -15,7 +15,11 @@ import java.awt.event.WindowEvent;
 import java.io.File;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultComboBoxModel;
@@ -38,23 +42,29 @@ import pl.jblew.cpr.gui.util.PanelDisabler;
 import pl.jblew.cpr.gui.util.ValidableLabel;
 import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.Event;
+import pl.jblew.cpr.logic.Event_Localization;
 import pl.jblew.cpr.logic.io.Exporter;
 
 /**
  *
  * @author teofil
  */
-public class RedundantCopyWindow {
-    private final Event event;
+public class SynchronizeWindow {
+    private final Carrier carrier;
     private final Context context;
     private final JFrame frame;
     private final AtomicBoolean windowCloseEnabled = new AtomicBoolean(true);
+    private final File deviceRoot;
+    private final AtomicReference<Carrier> targetCarrier = new AtomicReference<>(null);
 
-    public RedundantCopyWindow(Context context, Event event) {
-        this.event = event;
+    public SynchronizeWindow(Context context, Carrier carrier) {
+        this.carrier = carrier;
         this.context = context;
 
-        this.frame = new JFrame("Tworzenie kopii \"" + event.getName() + "\"");
+        //hold device root to prevent disconnecting
+        deviceRoot = context.deviceDetector.getDeviceRoot(carrier.getName());
+
+        this.frame = new JFrame("Synchronizacja \"" + carrier.getName() + "\"");
 
         SwingUtilities.invokeLater(() -> {
             frame.setSize(500, 500);
@@ -77,22 +87,20 @@ public class RedundantCopyWindow {
 
     private final class MainPanel extends JPanel {
         public MainPanel() {
-            Carrier[] carriers = event.getLocalizations().stream().map(el -> el.getCarrier(context)).filter(c -> c != null).toArray(Carrier[]::new);
-            Exporter exporter = new Exporter(context, event);
+            Event_Localization[] eventLocalizations = carrier.getEvents(context);
 
+            //Exporter exporter = new Exporter(context, event);
             ProgressListPanel.ProgressEntity progressEntity = new ProgressListPanel.ProgressEntity();
 
             setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
 
             JPanel infoPanel = new JPanel(new FlowLayout());
-            JPanel fileAccessibilityPanel = new JPanel(new FlowLayout());
             JPanel destinationSelectionPanel = new JPanel(new FlowLayout());
             JPanel confirmationPanel = new JPanel(new FlowLayout());
             JPanel progressPanel = new JPanel(new FlowLayout());
             JPanel finishPanel = new JPanel(new FlowLayout());
 
             JComboBox devicesCombo = new JComboBox(new String[]{"Wybierz urządzenie"});
-            devicesCombo.setEnabled(false);
 
             /**
              *
@@ -101,57 +109,9 @@ public class RedundantCopyWindow {
              *
              * INFO PANEL *
              */
-            String devicesListS_ = Arrays.stream(carriers).map(c -> c.getName()).reduce("", (a, b) -> a + ", " + b);
-            if (!devicesListS_.isEmpty()) {
-                devicesListS_ = devicesListS_.substring(2);
-            }
-            String devicesListS = devicesListS_;
-            JLabel infoLabel = new JLabel("<html><p width=\"480\">Tworzenie kopii <b>" + event.getName() + "</b> "
-                    + " będzie wymagało podłączenia jednego z nośników: " + devicesListS + ", oraz innego nośnika,"
-                    + " na którym jeszcze nie zapisano tego wydarzenia.</p>");
+            JLabel infoLabel = new JLabel("<html><p width=\"480\">Tworzenie kopii WSZYSTKICH wydarzeń na nośniku <b>" + carrier.getName() + "</b>. "
+                    + "Te z wydarzeń, które już wcześniej skopiowano na nośnik nie zostaną skopiowane powtórnie.</p>");
             infoPanel.add(infoLabel);
-
-            /**
-             *
-             *
-             *
-             *
-             * FILE ACCESSIBILITY PANEL *
-             */
-            ValidableLabel connectedLabel = new ValidableLabel(false, "Podłącz jeden z nośników: " + devicesListS);
-
-            Runnable checker = () -> {
-                Carrier[] connectedCarriers = context.deviceDetector.getConnectedOfCarriers(carriers);
-                if (connectedCarriers.length > 0) {
-                    SwingUtilities.invokeLater(() -> {
-                        connectedLabel.setValid_TSafe(true);
-                        connectedLabel.setText("Podłączono \"" + connectedCarriers[0].getName() + "\"");
-
-                        devicesCombo.setEnabled(true);
-                    });
-                } else {
-                    SwingUtilities.invokeLater(() -> {
-                        connectedLabel.setValid_TSafe(false);
-                        connectedLabel.setText("Podłącz jeden z nośników: " + devicesListS);
-
-                        devicesCombo.setEnabled(false);
-                    });
-                }
-            };
-            context.deviceDetector.addWeakStorageDevicePresenceListener(new StorageDevicePresenceListener() {
-                @Override
-                public void storageDeviceConnected(File rootFile, String deviceName) {
-                    checker.run();
-                }
-
-                @Override
-                public void storageDeviceDisconnected(File rootFile, String deviceName) {
-                    checker.run();
-                }
-            });
-            checker.run();
-
-            fileAccessibilityPanel.add(connectedLabel);
 
             /**
              *
@@ -170,9 +130,8 @@ public class RedundantCopyWindow {
                 SwingUtilities.invokeLater(() -> {
                     comboModel.removeAllElements();
 
-                    List<Carrier> restrictedCarriers = Arrays.asList(carriers);//carriers which already have this event
                     Arrays.stream(context.deviceDetector.getConnectedOfCarriers(Carrier.getAllCarriers(context)))
-                            .filter(c -> !restrictedCarriers.contains(c)).forEachOrdered(c -> comboModel.addElement(c.getName()));
+                            .filter(c -> c.getId() != carrier.getId()).forEachOrdered(c -> comboModel.addElement(c.getName()));
 
                 });
 
@@ -201,30 +160,10 @@ public class RedundantCopyWindow {
                     if (selected_ != null && selected_ instanceof String && !((String) selected_).isEmpty()) {
                         String selected = (String) selected_;
                         Carrier selectedCarrier = Carrier.forName(context, selected);
+                        targetCarrier.set(selectedCarrier);
 
                         if (selectedCarrier.isConnected(context)) {
-                            boolean enableNext = false;
-                            try {
-                                exporter.tryDevice(context, selectedCarrier, event);
-                                exporter.setTargetCarrier(selectedCarrier);
-                                enableNext = true;
-                                comboErrorLabel.setText("");
-                            } catch (Exporter.DeviceNotWritableException ex) {
-                                enableNext = false;
-                                comboErrorLabel.setText("Urządzenie jest niezapisywalne.");
-                            } catch (Exporter.NotEnoughSpaceException ex) {
-                                enableNext = false;
-                                comboErrorLabel.setText("Zbyt mało miejsca na tym urządzeniu.");
-                            } catch (Exception ex) {
-                                enableNext = false;
-                                comboErrorLabel.setText(ex.toString());
-                            }
-
-                            if (enableNext) {
-                                PanelDisabler.setEnabled(confirmationPanel, true);
-                            } else {
-                                PanelDisabler.setEnabled(confirmationPanel, false);
-                            }
+                            PanelDisabler.setEnabled(confirmationPanel, true);
                         } else {
                             PanelDisabler.setEnabled(confirmationPanel, false);
                         }
@@ -247,21 +186,11 @@ public class RedundantCopyWindow {
              *
              * CONFIRMATION PANEL *
              */
-            JLabel confirmationLabel = new JLabel("Zapisujesz " + exporter.getNumOfFiles() + " plików. Kontynuować?");
+            JLabel confirmationLabel = new JLabel("Czy jesteś pewien?");
             confirmationPanel.add(confirmationLabel);
 
-            JButton confirmationButton = new JButton("Zapisz pliki na urządzeniu");
+            JButton confirmationButton = new JButton("Rozpocznij kopiowanie");
             confirmationPanel.add(confirmationButton);
-            confirmationButton.addActionListener((evt) -> {
-                PanelDisabler.setEnabled(destinationSelectionPanel, false);
-                PanelDisabler.setEnabled(confirmationPanel, false);
-                PanelDisabler.setEnabled(progressPanel, true);
-                windowCloseEnabled.set(false);
-
-                context.eBus.post(progressEntity);
-
-                exporter.startAsync();
-            });
 
             /**
              *
@@ -282,30 +211,10 @@ public class RedundantCopyWindow {
             progressEntity.setText("(Eksport) Ładowanie...");
             progressPanel.add(progressBar, BorderLayout.CENTER);
 
-            exporter.setProgressChangedCallback((percent, msg, error) -> {
-                progressBar.setString(msg);
-                progressEntity.setText("(Eksport) " + msg);
-
-                progressBar.setValue(percent);
-                progressEntity.setPercent(percent);
-
-                if (percent == 100) {
-                    progressEntity.markFinished();
-                    PanelDisabler.setEnabled(progressPanel, false);
-                    PanelDisabler.setEnabled(finishPanel, true);
-                    windowCloseEnabled.set(true);
-                }
-                if (error) {
-                    progressEntity.markError();
-                    windowCloseEnabled.set(true);
-                }
-            });
-
             JButton finishButton = new JButton("Zamknij okno");
             finishPanel.add(finishButton);
             finishButton.addActionListener((evt) -> {
                 context.eBus.post(new EventsNode.EventsListChanged());
-                context.eBus.post(new ChangeMainPanel(new EventPanel(context, event)));
                 frame.setVisible(false);
             });
 
@@ -318,8 +227,6 @@ public class RedundantCopyWindow {
              */
             add(infoPanel);
             add(new JSeparator(JSeparator.HORIZONTAL));
-            add(fileAccessibilityPanel);
-            add(new JSeparator(JSeparator.HORIZONTAL));
             add(destinationSelectionPanel);
             add(new JSeparator(JSeparator.HORIZONTAL));
             add(confirmationPanel);
@@ -331,6 +238,84 @@ public class RedundantCopyWindow {
             PanelDisabler.setEnabled(confirmationPanel, false);
             PanelDisabler.setEnabled(progressPanel, false);
             PanelDisabler.setEnabled(finishPanel, false);
+
+            /**
+             *
+             *
+             *
+             *
+             *
+             * ACTION!
+             */
+            confirmationButton.addActionListener((evt) -> {
+                Carrier selectedCarrier = targetCarrier.get();
+                if (selectedCarrier != null) {
+                    PanelDisabler.setEnabled(destinationSelectionPanel, false);
+                    PanelDisabler.setEnabled(confirmationPanel, false);
+                    PanelDisabler.setEnabled(progressPanel, true);
+                    windowCloseEnabled.set(false);
+
+                    context.eBus.post(progressEntity);
+
+                    context.cachedExecutor.submit(() -> {
+                        int numOfDone = 0;
+                        for (int i = 0; i < eventLocalizations.length; i++) {//one localization for each event
+                            Event_Localization el = eventLocalizations[i];
+                            Event event = el.getOrLoadFullEvent(context);
+
+                            int i_ = i;
+                            int numOfDone_ = numOfDone;
+                            SwingUtilities.invokeLater(() -> {
+                                progressEntity.setText("Kopiowanie " + event.getName() + ". Nieudane: " + (i_ - numOfDone_));
+                                progressBar.setString("Kopiowanie " + event.getName() + ". Nieudane: " + (i_ - numOfDone_));
+                                System.out.println("Kopiowanie " + event.getName() + ". Nieudane: " + (i_ - numOfDone_));
+                            });
+
+                            Exporter exporter = new Exporter(context, event);
+                            exporter.setProgressChangedCallback((percent, msg, error) -> {
+                            });
+                            try {
+                                exporter.tryDevice(context, selectedCarrier, event);
+                                exporter.setTargetCarrier(selectedCarrier);
+
+                                CountDownLatch awaiterLatch = new CountDownLatch(1);
+                                exporter.startAsync(() -> {
+                                    awaiterLatch.countDown();
+                                });
+                                awaiterLatch.await();
+
+                                int percent = (int) ((float) (i+1) / (float) eventLocalizations.length * 100f);
+
+                                SwingUtilities.invokeLater(() -> {
+                                    progressEntity.setPercent(percent);
+                                    progressBar.setValue(percent);
+                                });
+
+                                context.eBus.post(new EventsNode.EventsListChanged());
+
+                                numOfDone++;
+                            } catch (Exporter.DeviceNotWritableException ex) {
+                                comboErrorLabel.setText("Urządzenie jest niezapisywalne.");
+                                Logger.getLogger(SynchronizeWindow.class.getName()).log(Level.SEVERE, null, ex);
+                            } catch (Exporter.NotEnoughSpaceException ex) {
+                                comboErrorLabel.setText("Zbyt mało miejsca na tym urządzeniu.");
+                                Logger.getLogger(SynchronizeWindow.class.getName()).log(Level.SEVERE, null, ex);
+                            } catch (Exception ex) {
+                                comboErrorLabel.setText(ex.toString());
+                                Logger.getLogger(SynchronizeWindow.class.getName()).log(Level.SEVERE, null, ex);
+                            }
+                        }
+                        int numOfDone_ = numOfDone;
+                        SwingUtilities.invokeLater(() -> {
+                            progressEntity.setText("Zakończono. Nieudane: " + (eventLocalizations.length - numOfDone_));
+                            progressBar.setString("Zakończono. Nieudane: " + (eventLocalizations.length - numOfDone_));
+                            PanelDisabler.setEnabled(finishPanel, true);
+                            progressEntity.markFinished();
+                            windowCloseEnabled.set(true);
+                        });
+                    });
+                }
+            });
         }
     }
 

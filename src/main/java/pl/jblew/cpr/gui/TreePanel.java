@@ -51,7 +51,7 @@ public class TreePanel extends JPanel {
         DefaultMutableTreeNode top = new DefaultMutableTreeNode("CPR-station");
 
         devicesNode = new DevicesNode(context);
-        carriersNode = new CarriersNode(context.dbManager, context.eBus);
+        carriersNode = new CarriersNode(context);
         sortedPhotosNode = new EventsNode(context, Event.Type.SORTED);
         unsortedPhotosNode = new EventsNode(context, Event.Type.UNSORTED);
 
@@ -124,6 +124,7 @@ public class TreePanel extends JPanel {
                     if (!((IconTreeNode) node).isActive()) {
                         this.setForeground(Color.GRAY);
                     }
+                    else this.setForeground(((IconTreeNode) node).getColor());
                 } else if (tree.getModel().getRoot().equals(node)) {
                     setIcon(TreeIcons.ROOT.getIcon());
                 } else if (node.getChildCount() > 0) {
@@ -201,6 +202,7 @@ public class TreePanel extends JPanel {
     public static class IconTreeNode extends DefaultMutableTreeNode {
         private final Icon icon;
         private final AtomicBoolean active = new AtomicBoolean(true);
+        private final AtomicReference<Color> color = new AtomicReference<>(Color.BLACK);
 
         public IconTreeNode(String text, Icon icon_) {
             super(text);
@@ -218,6 +220,14 @@ public class TreePanel extends JPanel {
 
         public void setActive(boolean active_) {
             active.set(active_);
+        }
+        
+        public void setColor(Color newColor) {
+            color.set(newColor);
+        }
+        
+        public Color getColor() {
+            return color.get();
         }
     }
 

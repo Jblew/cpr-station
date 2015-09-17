@@ -31,7 +31,7 @@ import pl.jblew.cpr.util.TimeUtils;
  * @author teofil
  */
 @DatabaseTable(tableName = "events")
-public class Event {
+public class Event implements Comparable<Event> {
     @DatabaseField(canBeNull = false, unique = true, generatedId = true)
     private long id;
 
@@ -113,6 +113,10 @@ public class Event {
     public String calculateProperDirName() {
         return "[" + TimeUtils.formatDateRange(getEarliestDateTime(), getLatestDateTime()) + "] " + getName();
     }
+    
+    public String getDisplayName() {
+        return calculateProperDirName();
+    }
 
     public MFile.Localized[] getLocalizedMFiles(Context context) {
         Event_Localization accessibleLocalization = getLocalizations().stream()
@@ -181,6 +185,10 @@ public class Event {
         )
                 .filter(dir -> dir != null && dir.exists() && dir.isDirectory() && dir.canRead()).findFirst().orElse(null);
     }
+    
+    public boolean hasProblems() {
+        return getLocalizations().size() < 2;
+    }
 
     @Override
     public int hashCode() {
@@ -204,6 +212,11 @@ public class Event {
     @Override
     public String toString() {
         return "Event{" + "id=" + id + ", name=" + name + ", type=" + type + '}';
+    }
+    
+    @Override
+    public int compareTo(Event o) {
+        return Long.compare(earliestUnixTime, o.earliestUnixTime);
     }
 
     public static Event createEvent(Context c, Event.Type type, String name, Carrier carrier) {

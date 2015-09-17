@@ -50,7 +50,6 @@ public class EventPanel extends MainPanel {
     private final JButton moveSelectedToEventButton;
     private final JButton moveAllToEventButton;
     private final JButton fullScreenButton;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private MFileBrowser browser;
 
     public EventPanel(Context context_, final Event event_) {
@@ -214,7 +213,7 @@ public class EventPanel extends MainPanel {
     }
 
     private void asyncLoadData(Carrier[] carriers) {
-        executor.submit(() -> {
+        context.cachedExecutor.submit(() -> {
             MFile.Localized[] mfiles = event.getLocalizedMFiles(context);
 
             SwingUtilities.invokeLater(() -> {

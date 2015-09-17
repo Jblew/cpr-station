@@ -65,6 +65,10 @@ public class Exporter {
     }
 
     public void startAsync() {
+        startAsync(null);
+    }
+
+    public void startAsync(Runnable finishedCallback) {
         if (localizedMFiles.get() == null) {
             throw new IllegalArgumentException("localizedMFiles is null!");
         }
@@ -76,35 +80,42 @@ public class Exporter {
         }
 
         executor.submit(() -> {
-            progressChangedCallback.progressChanged(0, "Ładowanie potrzebnych danych...", false);
+            try {
+                progressChangedCallback.progressChanged(0, "Ładowanie potrzebnych danych...", false);
 
-            event.recalculateAndUpdateTimeBounds(context);
+                event.recalculateAndUpdateTimeBounds(context);
 
-            Event_Localization targetLocalization = new Event_Localization();
-            targetLocalization.setEvent(event);
-            targetLocalization.setCarrierId(targetCarrier.getId());
-            targetLocalization.setDirName(event.calculateProperDirName());
+                Event_Localization targetLocalization = new Event_Localization();
+                targetLocalization.setEvent(event);
+                targetLocalization.setCarrierId(targetCarrier.getId());
+                targetLocalization.setDirName(event.calculateProperDirName());
 
-            String targetPath = targetLocalization.getFullEventPath(context);
-            File potentialTargetFile = new File(targetPath);
+                String targetPath = targetLocalization.getFullEventPath(context);
+                File potentialTargetFile = new File(targetPath);
 
-            if (potentialTargetFile.exists()) {
-                throw new RuntimeException("File already exists!");
+                if (potentialTargetFile.exists()) {
+                    throw new RuntimeException("File already exists!");
+                }
+
+                potentialTargetFile.mkdirs();
+
+                if (!potentialTargetFile.exists()) {
+                    progressChangedCallback.progressChanged(0, "Nie można było utworzyć katalogu", true);
+                    return;
+                }
+
+                /**
+                 * * CALCULATE NAMES AND PATHS **
+                 */
+                writeFiles(targetLocalization);
+
+                registerFilesInDB(targetLocalization);
+
+            } finally {
+                if (finishedCallback != null) {
+                    finishedCallback.run();
+                }
             }
-
-            potentialTargetFile.mkdirs();
-
-            if (!potentialTargetFile.exists()) {
-                progressChangedCallback.progressChanged(0, "Nie można było utworzyć katalogu", true);
-                return;
-            }
-
-            /**
-             * * CALCULATE NAMES AND PATHS **
-             */
-            writeFiles(targetLocalization);
-
-            registerFilesInDB(targetLocalization);
         });
     }
 
@@ -154,7 +165,7 @@ public class Exporter {
 
     public void tryDevice(Context c, Carrier carrier, Event event) throws DeviceNotWritableException, NotEnoughSpaceException {
         File deviceRoot = c.deviceDetector.getDeviceRoot(carrier.getName());
-        
+
         if (!(deviceRoot.exists() && deviceRoot.canWrite() && deviceRoot.canWrite())) {
             throw new DeviceNotWritableException();
         }
