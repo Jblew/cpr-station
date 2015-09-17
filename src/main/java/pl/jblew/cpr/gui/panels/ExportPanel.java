@@ -5,49 +5,24 @@
  */
 package pl.jblew.cpr.gui.panels;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.FlowLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.io.File;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import java.util.stream.IntStream;
-import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JProgressBar;
-import javax.swing.JSeparator;
-import javax.swing.SwingConstants;
-import javax.swing.SwingUtilities;
-import pl.jblew.cpr.bootstrap.Context;
-import pl.jblew.cpr.file.StorageDevicePresenceListener;
-import pl.jblew.cpr.gui.IconLoader;
 import pl.jblew.cpr.gui.MainPanel;
-import pl.jblew.cpr.gui.util.CPRProgressBarUI;
-import pl.jblew.cpr.logic.Carrier;
-import pl.jblew.cpr.logic.Event;
-import pl.jblew.cpr.logic.io.Exporter;
-import pl.jblew.cpr.util.FileSizeFormatter;
-import pl.jblew.cpr.util.NamingThreadFactory;
-import pl.jblew.cpr.gui.util.PanelDisabler;
-import pl.jblew.cpr.util.TwoTuple;
 
 /**
  *
  * @author teofil
  */
 public class ExportPanel extends MainPanel {
-    private final JPanel fileAccessibilityPanel;
+
+    @Override
+    public void activate() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    public void inactivate() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+    /*private final JPanel fileAccessibilityPanel;
     private final JPanel destinationSelectionPanel;
     private final JPanel confirmationPanel;
     private final JPanel progressPanel;
@@ -81,7 +56,7 @@ public class ExportPanel extends MainPanel {
 
         /**
          * ACCESSIBILITY PANEL*
-         */
+         * /
         fileAccessibilityPanel.setLayout(new BoxLayout(fileAccessibilityPanel, BoxLayout.PAGE_AXIS));
         JLabel accessibilityLabel = new JLabel("Eksportujesz " + exporter.getNumOfFiles() + " plików. \n"
                 + "Sprawdzam, czy wszystkie z nich są dostępne na podłączonych urządzeniach.");
@@ -103,7 +78,7 @@ public class ExportPanel extends MainPanel {
 
         /**
          * DESTINATION SELECTION PANEL*
-         */
+         * /
         destinationSelectionPanel.setLayout(new FlowLayout());
 
         destinationSelectionLabel.setText("Na jakim urządzeniu zapisać?");
@@ -153,7 +128,7 @@ public class ExportPanel extends MainPanel {
 
         /**
          * CONFIRMATION PANEL*
-         */
+         * /
         confirmationPanel.setLayout(new FlowLayout());
         confirmationPanel.add(confirmationLabel);
         confirmationLabel.setText("Zapisujesz " + exporter.getNumOfFiles() + " plików. Kontynuować?");
@@ -170,7 +145,7 @@ public class ExportPanel extends MainPanel {
 
         /**
          * PROGRESS PANEL *
-         */
+         * /
         progressPanel.setLayout(new BorderLayout());
         progressPanel.setBorder(BorderFactory.createEmptyBorder(50, 50, 50, 50));
         
@@ -202,7 +177,7 @@ public class ExportPanel extends MainPanel {
         });
         /**
          * FINISH PANEL *
-         */
+         * /
         finishPanel.setLayout(new FlowLayout());
         finishPanel.add(new JLabel("Gotowe!"));
 
@@ -260,5 +235,5 @@ public class ExportPanel extends MainPanel {
 
     public static interface ProgressChangedCallback {
         public void progressChanged(int percent, String msg, boolean error);
-    }
+    }*/
 }

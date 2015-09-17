@@ -5,7 +5,6 @@
  */
 package pl.jblew.cpr.gui.components.modal;
 
-import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dialog;
 import java.awt.FlowLayout;
@@ -26,7 +25,6 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JSeparator;
 import javax.swing.JTextField;
-import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.gui.ChangeMainPanel;
@@ -58,7 +56,7 @@ public class CreateEventModal {
                 contentPanel.add(new JLabel("Wybierz urządzenie i nazwę wydarzenia.Później będziesz mógł skopiować to wydarzenie na więcej urządzeń."));
                 contentPanel.add(new JSeparator(JSeparator.HORIZONTAL));
 
-                Carrier[] connectedCarriers = context.deviceDetector.getConnectedCarriers(Carrier.getAllCarriers(context));
+                Carrier[] connectedCarriers = context.deviceDetector.getConnectedOfCarriers(Carrier.getAllCarriers(context));
                 JComboBox deviceSelection = new JComboBox(Arrays.stream(connectedCarriers).map(c -> c.getName()).toArray(String[]::new));
                 contentPanel.add(deviceSelection);
 

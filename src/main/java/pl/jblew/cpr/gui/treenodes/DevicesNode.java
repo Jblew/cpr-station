@@ -5,17 +5,14 @@
  */
 package pl.jblew.cpr.gui.treenodes;
 
-import com.google.common.eventbus.EventBus;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
-import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JTree;
 import javax.swing.SwingUtilities;
 import javax.swing.tree.MutableTreeNode;
 import pl.jblew.cpr.bootstrap.Context;
-import pl.jblew.cpr.db.DatabaseManager;
 import pl.jblew.cpr.file.StorageDevicePresenceListener;
 import pl.jblew.cpr.gui.ChangeMainPanel;
 import pl.jblew.cpr.gui.TreePanel;

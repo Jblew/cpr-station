@@ -5,7 +5,6 @@
  */
 package pl.jblew.cpr.gui;
 
-import com.google.common.eventbus.EventBus;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -17,7 +16,6 @@ import javax.swing.UIManager;
 import javax.swing.UIManager.LookAndFeelInfo;
 import javax.swing.UnsupportedLookAndFeelException;
 import pl.jblew.cpr.bootstrap.Context;
-import pl.jblew.cpr.db.DatabaseManager;
 
 /**
  *

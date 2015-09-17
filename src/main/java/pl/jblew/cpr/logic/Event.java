@@ -5,13 +5,11 @@
  */
 package pl.jblew.cpr.logic;
 
-import com.j256.ormlite.dao.Dao;
 import com.j256.ormlite.dao.ForeignCollection;
 import com.j256.ormlite.field.DataType;
 import com.j256.ormlite.field.DatabaseField;
 import com.j256.ormlite.field.ForeignCollectionField;
 import com.j256.ormlite.stmt.DeleteBuilder;
-import com.j256.ormlite.stmt.QueryBuilder;
 import com.j256.ormlite.table.DatabaseTable;
 import java.io.File;
 import java.sql.SQLException;
@@ -26,7 +24,7 @@ import java.util.logging.Logger;
 import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.gui.panels.EventPanel;
 import pl.jblew.cpr.logic.io.Exporter;
-import pl.jblew.cpr.logic.io.FileStructureUtil;
+import pl.jblew.cpr.util.TimeUtils;
 
 /**
  *
@@ -41,7 +39,10 @@ public class Event {
     private String name;
 
     @DatabaseField(canBeNull = false, dataType = DataType.LONG)
-    private long unixTime;
+    private long earliestUnixTime;
+
+    @DatabaseField(canBeNull = false, dataType = DataType.LONG)
+    private long latestUnixTime;
 
     @DatabaseField(canBeNull = false, dataType = DataType.ENUM_INTEGER)
     private Type type;
@@ -65,12 +66,20 @@ public class Event {
         this.name = name;
     }
 
-    public LocalDateTime getDateTime() {
-        return LocalDateTime.ofEpochSecond(unixTime, 0, ZoneOffset.UTC);
+    public LocalDateTime getEarliestDateTime() {
+        return LocalDateTime.ofEpochSecond(earliestUnixTime, 0, ZoneOffset.UTC);
     }
 
-    public void setDateTime(LocalDateTime dateTime) {
-        this.unixTime = dateTime.toEpochSecond(ZoneOffset.UTC);
+    private void setEarliestDateTime(LocalDateTime dateTime) {
+        this.earliestUnixTime = dateTime.toEpochSecond(ZoneOffset.UTC);
+    }
+
+    public LocalDateTime getLatestDateTime() {
+        return LocalDateTime.ofEpochSecond(latestUnixTime, 0, ZoneOffset.UTC);
+    }
+
+    private void setLatestDateTime(LocalDateTime dateTime) {
+        this.latestUnixTime = dateTime.toEpochSecond(ZoneOffset.UTC);
     }
 
     public Type getType() {
@@ -81,43 +90,59 @@ public class Event {
         this.type = type;
     }
 
+    public void recalculateAndUpdateTimeBounds(Context context) {
+        try {
+            context.dbManager.executeInDBThreadAndWait(() -> {
+                try {
+                    List<MFile> mfiles = context.dbManager.getDaos().getMfileDao().queryForEq("eventId", getId());
+                    MFile[] sortedMFiles = mfiles.stream().sorted().toArray(MFile[]::new);
+
+                    setEarliestDateTime(sortedMFiles[0].getDateTime());
+                    setLatestDateTime(sortedMFiles[sortedMFiles.length - 1].getDateTime());
+
+                    context.dbManager.getDaos().getEventDao().update(this);
+                } catch (SQLException ex) {
+                    Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            });
+        } catch (InterruptedException ex) {
+            Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    public String calculateProperDirName() {
+        return "[" + TimeUtils.formatDateRange(getEarliestDateTime(), getLatestDateTime()) + "] " + getName();
+    }
+
     public MFile.Localized[] getLocalizedMFiles(Context context) {
-        return getLocalizedMFiles(context, getAccessibleDir(context));
+        Event_Localization accessibleLocalization = getLocalizations().stream()
+                .filter(el -> el.getCarrier(context).isConnected(context)).findAny().orElse(null);
+
+        return getLocalizedMFiles(context, accessibleLocalization);
     }
 
     public MFile.Localized[] getLocalizedMFiles(Context context, Event_Localization localization) {
-        return getLocalizedMFiles(context, new File(getProperPath(context.deviceDetector.getDeviceRoot(localization.getCarrier(context).getName()))));
-    }
-
-    private MFile.Localized[] getLocalizedMFiles(Context context, File accessibleEventDir) {
         long sT = System.currentTimeMillis();
 
-        //File accessibleEventDir = new File(getProperPath(context.deviceDetector.getDeviceRoot(carrier.getName())
         final List<MFile.Localized> result = new LinkedList<>();
         try {
             context.dbManager.executeInDBThreadAndWait(() -> {
                 try {
-                    Dao<MFile, Integer> mfileDao = context.dbManager.getDaos().getMfileDao();// context.dbManager.getDaos().getMfile_EventDao().queryForEq("eventId", event.getId());
-                    Dao<MFile_Event, Integer> mfile_EventDao = context.dbManager.getDaos().getMfile_EventDao();
-
-                    QueryBuilder<MFile_Event, Integer> queryToJoin = mfile_EventDao.queryBuilder();
-                    queryToJoin.where().eq("eventId", getId());
-                    QueryBuilder<MFile, Integer> qb = mfileDao.queryBuilder().orderBy("unixTime", true).orderBy("name", true).orderBy("id", true).join(queryToJoin);
-                    //System.out.println(">>>"+qb.prepareStatementString());
-                    List<MFile> mfiles = qb.query();
+                    List<MFile> mfiles = context.dbManager.getDaos().getMfileDao().queryForEq("eventId", getId());
 
                     mfiles.stream().map(mf -> {
-                        if (accessibleEventDir == null) {
+                        if (localization == null) {
                             return new MFile.Localized(mf, null);
                         }
-                        File potentialFile = new File(accessibleEventDir.getAbsolutePath() + File.separator + mf.getName());
+
+                        File potentialFile = mf.getFile(context, localization);
                         if (potentialFile.exists() && !potentialFile.isDirectory() && potentialFile.canRead()) {
                             return new MFile.Localized(mf, potentialFile);
                         }
+
                         return new MFile.Localized(mf, null);
                     }).forEachOrdered(mfl -> {
                         result.add(mfl);
-                        //System.out.println(mfl);
                     });
 
                 } catch (SQLException ex) {
@@ -135,72 +160,26 @@ public class Event {
         }
     }
 
-    public MFile_Event[] getMFileLinks(Context context) {
-        final List<MFile_Event> result = new LinkedList<>();
-        try {
-            context.dbManager.executeInDBThreadAndWait(() -> {
-                try {
-                    Dao<MFile_Event, Integer> mfile_EventDao = context.dbManager.getDaos().getMfile_EventDao();
-
-                    result.addAll(mfile_EventDao.queryForEq("eventId", this.getId()));
-                } catch (SQLException ex) {
-                    Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
-                }
-            });
-        } catch (InterruptedException ex) {
-            Logger.getLogger(Exporter.class.getName()).log(Level.SEVERE, null, ex);
-        }
-
-        return result.stream().sorted().toArray(MFile_Event[]::new);
-    }
-
-    @Deprecated
-    public int getRedundancy() {
-        return getLocalizations().size();
-    }
-
     public ForeignCollection<Event_Localization> getLocalizations() {
         return localizations;
+
     }
 
     public void setLocalizations(ForeignCollection<Event_Localization> localizations) {
         this.localizations = localizations;
     }
 
-    /*@Deprecated
-     public Event rename(Context c, String newName) {
-     setName(newName);
-     final Event me = this;
-     try {
-     c.dbManager.executeInDBThreadAndWait(() -> {
-     try {
-     c.dbManager.getDaos().getEventDao().update(me);
-     } catch (SQLException ex) {
-     Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
-     }
-     });
-     } catch (InterruptedException ex) {
-     Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
-     }
-     return this;
-     }*/
-    public String getProperPath(File deviceRoot) {
-        String sortedPath = (getType() == Event.Type.SORTED ? FileStructureUtil.PATH_SORTED_PHOTOS : FileStructureUtil.PATH_UNSORTED_PHOTOS);
-        return deviceRoot.getAbsolutePath() + File.separator + sortedPath + File.separator + getName();
-    }
-
     public File getAccessibleDir(Context context) {
-        return getLocalizations().stream().map(el -> el.getCarrier(context)).filter(carrier -> carrier != null)
-                .map(carrier -> {
-                    File deviceRoot = context.deviceDetector.getDeviceRoot(carrier.getName());
-                    if (deviceRoot != null) {
-                        return new File(getProperPath(deviceRoot));
-                    } else {
-                        return null;
-                    }
-                }
-                )
-                .filter(dir -> dir != null && dir.exists() && dir.isDirectory()).findFirst().orElse(null);
+        return getLocalizations().stream().map(el -> {
+            Carrier carrier = el.getCarrier(context);
+            if (carrier != null && carrier.isConnected(context)) {
+                return new File(el.getFullEventPath(context));
+            } else {
+                return null;
+            }
+        }
+        )
+                .filter(dir -> dir != null && dir.exists() && dir.isDirectory() && dir.canRead()).findFirst().orElse(null);
     }
 
     @Override
@@ -229,25 +208,28 @@ public class Event {
 
     public static Event createEvent(Context c, Event.Type type, String name, Carrier carrier) {
         try {
-            AtomicReference<Event> resEvent = new AtomicReference<Event>(null);
+            AtomicReference<Event> resEvent = new AtomicReference<>(null);
             final Event newEvent = new Event();
-            newEvent.setDateTime(LocalDateTime.now());
+            newEvent.setEarliestDateTime(LocalDateTime.now());
+            newEvent.setLatestDateTime(LocalDateTime.now());
             newEvent.setType(type);
             newEvent.setName(name);
             c.dbManager.executeInDBThreadAndWait(() -> {
                 try {
                     c.dbManager.getDaos().getEventDao().create(newEvent);
 
-                    Event_Localization el = new Event_Localization();
-                    el.setEvent(newEvent);
-                    el.setCarrierId(carrier.getId());
-                    el.setPath("");
+                    if (carrier != null) {
+                        Event_Localization el = new Event_Localization();
+                        el.setEvent(newEvent);
+                        el.setCarrierId(carrier.getId());
+                        el.setDirName(name);
 
-                    c.dbManager.getDaos().getEvent_LocalizationDao().create(el);
+                        c.dbManager.getDaos().getEvent_LocalizationDao().create(el);
+                    }
 
                     List<Event> result = c.dbManager.getDaos().getEventDao().queryForEq("id", newEvent.getId());
                     if (result.size() > 0) {
-                        resEvent.set(result.get(0));
+                        resEvent.set(result.get(0));//in order to obtain id
                     }
                 } catch (SQLException ex) {
                     Logger.getLogger(Event.class.getName()).log(Level.SEVERE, null, ex);
@@ -277,10 +259,6 @@ public class Event {
     }
 
     public void delete(Context context, Runnable successCallback) {
-        if (this.getMFileLinks(context).length > 0) {
-            throw new RuntimeException("To wydarzenie zawiera zdjęcia! Nie można go usunąć.");
-        }
-
         context.dbManager.executeInDBThread(() -> {
             try {
                 DeleteBuilder<Event_Localization, Integer> localizationDeleteBuilder = context.dbManager.getDaos().getEvent_LocalizationDao().deleteBuilder();
@@ -294,10 +272,20 @@ public class Event {
             }
         });
     }
-
-    public static String formatName(LocalDateTime dt, String text) {
-        return "[" + DateTimeFormatter.ofPattern("YYYY.MM.dd").format(dt) + "] " + text;
+    
+    public void update(Context context) {
+        context.dbManager.executeInDBThread(() -> {
+            try {
+                context.dbManager.getDaos().getEventDao().update(this);
+            } catch (SQLException ex) {
+                Logger.getLogger(Carrier.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        });
     }
+
+    /*public static String formatName(LocalDateTime dt, String text) {
+        return "[" + DateTimeFormatter.ofPattern("YYYY.MM.dd").format(dt) + "] " + text;
+    }*/
 
     public static Event forName(Context c, String name) {
         AtomicReference<Event> result = new AtomicReference<>(null);

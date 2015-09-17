@@ -6,21 +6,11 @@
 package pl.jblew.cpr.logic.autoimport;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.FileSystems;
 import java.nio.file.Path;
-import java.nio.file.StandardWatchEventKinds;
-import java.nio.file.WatchEvent;
-import java.nio.file.WatchKey;
-import java.nio.file.WatchService;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -30,9 +20,7 @@ import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.file.StorageDevicePresenceListener;
 import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.io.FileStructureUtil;
-import static pl.jblew.cpr.logic.io.FileStructureUtil.PATH_UNSORTED_AUTOIMPORT;
 import pl.jblew.cpr.util.NamingThreadFactory;
-import pl.jblew.cpr.util.TwoTuple;
 
 /**
  *

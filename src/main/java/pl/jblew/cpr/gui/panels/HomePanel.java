@@ -6,9 +6,7 @@
 package pl.jblew.cpr.gui.panels;
 
 import java.awt.BorderLayout;
-import javax.swing.JLabel;
 import pl.jblew.cpr.gui.MainPanel;
-import pl.jblew.cpr.gui.components.browser.PhotoBrowser;
 
 /**
  *

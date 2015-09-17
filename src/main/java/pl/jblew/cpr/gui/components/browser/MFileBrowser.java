@@ -192,7 +192,7 @@ public class MFileBrowser extends JPanel {
             this.localizedMFile = file_;
             this.thumbnailLoader = thumbnailLoader_;
 
-            setText(localizedMFile.getMFile().getName());
+            setText(localizedMFile.getMFile().getFilename());
             setIcon(emptyImage);
             setVerticalTextPosition(SwingConstants.BOTTOM);
             setHorizontalTextPosition(SwingConstants.CENTER);

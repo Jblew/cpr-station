@@ -10,22 +10,17 @@ import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -41,14 +36,14 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.imageio.ImageIO;
 import pl.jblew.cpr.bootstrap.Context;
-import pl.jblew.cpr.gui.panels.ImportPanel;
 import pl.jblew.cpr.gui.treenodes.EventsNode;
+import pl.jblew.cpr.gui.windows.ImportWindow;
 import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.Event;
 import pl.jblew.cpr.logic.MFile;
-import pl.jblew.cpr.logic.MFile_Event;
 import pl.jblew.cpr.logic.Event_Localization;
 import pl.jblew.cpr.util.IdManager;
+import pl.jblew.cpr.util.ImageCreationDateLoader;
 
 /**
  *
@@ -141,95 +136,57 @@ public class Importer {
         return eventName.get();
     }
 
-    public void startAsync(ImportPanel.ProgressChangedCallback callback) {
+    public void startAsync(ImportWindow.ProgressChangedCallback callback) {
         executor.submit(() -> {
             try {
                 callback.progressChanged(0, "Dodawanie wydarzenia do bazy danych i tworzenie folderu...", false);
 
-                Event targetEvent = Event.forName(context, eventName.get());
-
-                if (targetEvent == null) {//create new event
-                    Event newEvent = new Event();
-                    newEvent.setName(eventName.get());
-                    newEvent.setType(Event.Type.UNSORTED);
-                    newEvent.setDateTime(LocalDateTime.ofEpochSecond(filesToImport[0].lastModified() / 1000l, 0, ZoneOffset.UTC));
-                    AtomicBoolean created = new AtomicBoolean(false);
-                    context.dbManager.executeInDBThreadAndWait(() -> {
-                        try {
-                            List<Event> result = context.dbManager.getDaos().getEventDao().queryForEq("name", newEvent.getName());
-                            if (result.isEmpty()) {
-                                try {
-                                    context.dbManager.getDaos().getEventDao().create(newEvent);
-                                    created.set(true);
-                                } catch (SQLException ex) {
-                                    Logger.getLogger(Importer.class.getName()).log(Level.SEVERE, null, ex);
-                                }
-                            }
-                        } catch (SQLException ex) {
-                            Logger.getLogger(Importer.class.getName()).log(Level.SEVERE, null, ex);
-                        }
-                    });
-
-                    if (!created.get()) {
-                        callback.progressChanged(0, "Błąd: Nie udało się utworzyć wydarzenia", true);
-                        return;
-                    }
-                    targetEvent = newEvent;
+                Carrier carrier = Carrier.forName(context, deviceName.get());
+                if (carrier == null) {
+                    throw new RuntimeException("Selected device is not a carrier");
                 }
 
-                String basePath = targetEvent.getProperPath(deviceRoot.get());
-                if (new File(basePath).exists()) {
-                    //callback.progressChanged(0, "Błąd: Folder tego wydarzenia istnieje na wskazanym dysku!", true);
-                    //return;
+                Event targetEvent = findOrCreateTargetEvent(callback);
+                if (targetEvent == null) {
+                    throw new RuntimeException("Could not load/create target event while importing photos");
                 }
 
-                new File(basePath).mkdirs();
+                Event_Localization targetLocalization = findOrCreateEventLocalization(callback, carrier, targetEvent);
+                if (targetLocalization == null) {
+                    throw new RuntimeException("Could not load/create event_localization while importing photos");
+                }
+
+                String basePath = targetLocalization.getFullEventPath(context);
+                File baseDir = new File(basePath);
+                System.out.println("Creating dirs for basePath: " + baseDir);
+                baseDir.mkdirs();
 
                 callback.progressChanged(0, "Obliczanie prawidłowych nazw...", false);
 
-                final Map<File, File> targetFilesMap = new HashMap<>();
-
-                for (int i = 0; i < filesToImport.length; i++) {
-                    File sourceFile = filesToImport[i];
-                    if (sourceFile.exists() && sourceFile.canRead() && !sourceFile.isDirectory()) {
-                        String name = String.format("%1$" + 4 + "s", i + "").replace(' ', '0') //pads number with zeros to four digits
-                                + "." + sourceFile.getName().substring(sourceFile.getName().lastIndexOf('.') + 1).toLowerCase(); //adds original extension in lower case
-                        File targetFile = new File(basePath + File.separator + name);
-                        
-                        int fileNameI = 0;
-                        while(targetFile.exists()) {
-                            targetFile = new File(basePath + File.separator + fileNameI +"_" + name);
-                            fileNameI++;
-                        }
-
-                        /*VALIDATE IMAGE*/
-                        try {
-                            BufferedImage buf = ImageIO.read(sourceFile);
-                            if (buf.getWidth() > 0 && buf.getHeight() > 0) {
-                                targetFilesMap.put(sourceFile, targetFile);
-                            } else {
-                                System.err.println("Image " + sourceFile + " is invalid: (w<0||h<0)");
-                            }
-                        } catch (Exception e) {
-                            System.err.println("Image " + sourceFile + " is invalid: " + e);
-                        }
-
-                    }
-                }
+                Map<File, MFile> targetFilesMap = createFileMap(callback, targetEvent, basePath);
 
                 callback.progressChanged(0, "Rozpoczynam kopiowanie plików", false);
 
-                final Map<File, String> md5sums = new HashMap<>();
-                if (!writeFiles(targetFilesMap, md5sums, callback)) {
-                    return; //fills md5sums
+                if (!writeFiles(targetFilesMap, targetLocalization, basePath, callback)) {
+                    return;
                 }
                 callback.progressChanged(99, "Dodaję pliki do bazy danych...", false);
 
-                int numOfExisting = registerFilesInDB(targetFilesMap, md5sums, targetEvent, callback);
+                int numOfExisting = registerFilesInDB(targetFilesMap, targetEvent, targetLocalization, carrier, callback);
 
                 callback.progressChanged(99, "Zapisuję listy zaimportowanych plików", false);
 
                 markImported(targetFilesMap);
+
+                targetEvent.recalculateAndUpdateTimeBounds(context);
+                targetEvent.getLocalizations().stream()
+                        .filter(el -> el.getCarrier(context).isConnected(context)).forEachOrdered(el -> {
+                            try {
+                                Validator.validateEventLocalization(context, el);
+                            } catch (Validator.MissingOrBrokenFilesException ex) {
+                                Logger.getLogger(Importer.class.getName()).log(Level.SEVERE, null, ex);
+                            }
+                        });
 
                 callback.progressChanged(100, "Gotowe! (" + numOfExisting + " znajdowało się już wcześniej w bazie!)", false);
             } catch (InterruptedException ex) {
@@ -238,24 +195,116 @@ public class Importer {
         });
     }
 
-    private boolean writeFiles(Map<File, File> targetFilesMap, Map<File, String> md5SumsToFill, ImportPanel.ProgressChangedCallback callback) {
+    private Event findOrCreateTargetEvent(ImportWindow.ProgressChangedCallback callback) throws InterruptedException {
+        Event targetEvent = Event.forName(context, eventName.get());
+
+        if (targetEvent == null) {//create new event
+            targetEvent = Event.createEvent(context, Event.Type.UNSORTED, eventName.get(), null);
+        }
+        return targetEvent;
+    }
+
+    private Event_Localization findOrCreateEventLocalization(ImportWindow.ProgressChangedCallback callback, Carrier carrier, Event targetEvent) throws InterruptedException {
+        Event_Localization targetLocalization = targetEvent.getLocalizations().stream()
+                .filter(el -> el.getCarrier(context).getId() == carrier.getId())
+                .findFirst().orElse(null);
+
+        if (targetLocalization == null) {
+            Event_Localization newLocalization = new Event_Localization();
+            newLocalization.setCarrierId(carrier.getId());
+            newLocalization.setEvent(targetEvent);
+            newLocalization.setDirName(targetEvent.getName());
+
+            AtomicBoolean created = new AtomicBoolean(false);
+            context.dbManager.executeInDBThreadAndWait(() -> {
+                try {
+                    List<Event_Localization> result = context.dbManager.getDaos().getEvent_LocalizationDao()
+                            .queryBuilder().where().eq("eventId", targetEvent.getId()).and().eq("carrierId", carrier.getId()).query();
+                    if (result.isEmpty()) {
+                        try {
+                            context.dbManager.getDaos().getEvent_LocalizationDao().create(newLocalization);
+                            created.set(true);
+                        } catch (SQLException ex) {
+                            Logger.getLogger(Importer.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+                    }
+                } catch (SQLException ex) {
+                    Logger.getLogger(Importer.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            });
+
+            if (!created.get()) {
+                callback.progressChanged(0, "Błąd: Nie udało się utworzyć wydarzenia", true);
+                return null;
+            }
+            targetLocalization = newLocalization;
+        }
+
+        return targetLocalization;
+    }
+
+    private Map<File, MFile> createFileMap(ImportWindow.ProgressChangedCallback callback, Event event, String basePath) {
+        Map<File, MFile> targetFilesMap = new HashMap<>();
+
+        for (int i = 0; i < filesToImport.length; i++) {
+            callback.progressChanged(0, "Obliczanie prawidłowych nazw i spraedzanie ...("+(i+1)+"/"+filesToImport.length+")", false);
+            
+            File sourceFile = filesToImport[i];
+            if (sourceFile.exists() && sourceFile.canRead() && !sourceFile.isDirectory()) {
+                /*VALIDATE IMAGE*/
+                try {
+                    BufferedImage buf = ImageIO.read(sourceFile);
+                    if (buf.getWidth() < 1 || buf.getHeight() < 1) {
+                        System.err.println("Image " + sourceFile + " is invalid: (w<=0||h<=0)");
+                        break;//BREAK
+                    }
+                } catch (Exception e) {
+                    System.err.println("Image " + sourceFile + " is invalid: " + e);
+                    break;//BREAK
+                }
+
+                String sourceExtension = sourceFile.getName().substring(sourceFile.getName().lastIndexOf('.') + 1).toLowerCase();
+
+                MFile targetMf = new MFile();
+                targetMf.setEvent(event);
+                targetMf.setMd5(MD5Util.calculateMD5(sourceFile));
+                targetMf.setDateTime(ImageCreationDateLoader.getCreationDateTime(sourceFile));
+                targetMf.calculateAndSetFilename(basePath, sourceExtension);
+
+                targetFilesMap.put(sourceFile, targetMf);
+            }
+        }
+
+        return targetFilesMap;
+    }
+
+    private boolean writeFiles(Map<File, MFile> targetFilesMap, Event_Localization eventLocalization, String basePath, ImportWindow.ProgressChangedCallback callback) {
         int numOfFiles = targetFilesMap.size();
         callback.progressChanged(0, "Importowanie 0/" + numOfFiles, false);
 
         long sTime = System.currentTimeMillis();
         int i = 0;
         for (File sourceFile : targetFilesMap.keySet()) {
-            File targetFile = targetFilesMap.get(sourceFile);
+            MFile targetMFile = targetFilesMap.get(sourceFile);
+            File targetFile = targetMFile.getFile(context, eventLocalization);
+            
             float percentF = ((float) i) / ((float) numOfFiles);
             int percent = (int) (percentF * 100f);
             if (percent == 100) {
                 percent = 99; //in order not to disable progress bar
             }
             try {
+
+                if (targetFile.exists()) {
+                    String extension = targetFile.getName().substring(sourceFile.getName().lastIndexOf('.') + 1).toLowerCase();
+
+                    targetMFile.calculateAndSetFilename(basePath, extension);//recalculate name if file already exists
+                    targetFile = targetMFile.getFile(context, eventLocalization);
+                }
+
                 Files.copy(sourceFile.toPath(), targetFile.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
 
                 System.out.println(sourceFile.toPath() + " -> " + targetFile.toPath());
-                md5SumsToFill.put(targetFile, MD5Util.calculateMD5(targetFile));
                 ThumbnailLoader.loadThumbnail(targetFile, true, null);
 
                 long elapsedTime = System.currentTimeMillis() - sTime;
@@ -274,25 +323,13 @@ public class Importer {
         return true;
     }
 
-    private int registerFilesInDB(Map<File, File> targetFilesMap, Map<File, String> md5sums, Event event, ImportPanel.ProgressChangedCallback callback) {
+    private int registerFilesInDB(Map<File, MFile> targetFilesMap, Event targetEvent, Event_Localization targetEventLocalization, Carrier carrier, ImportWindow.ProgressChangedCallback callback) {
         final AtomicInteger numOfExistingFiles = new AtomicInteger(0);
         try {
             context.dbManager.executeInDBThreadAndWait(() -> {
                 callback.progressChanged(0, "Dodawanie plików do bazy danych...", false);
                 try {
-                    Dao<Carrier, Integer> carrierDao = context.dbManager.getDaos().getCarrierDao();
-                    Dao<Event, Integer> eventDao = context.dbManager.getDaos().getEventDao();
                     Dao<MFile, Integer> mfileDao = context.dbManager.getDaos().getMfileDao();
-                    Dao<Event_Localization, Integer> event_localizationDao = context.dbManager.getDaos().getEvent_LocalizationDao();
-                    Dao<MFile_Event, Integer> mfile_eventDao = context.dbManager.getDaos().getMfile_EventDao();
-
-                    Carrier carrier = carrierDao.queryForEq("name", deviceName).get(0);
-
-                    Event_Localization el = new Event_Localization();
-                    el.setCarrierId(carrier.getId());
-                    el.setEvent(event);
-                    el.setPath(event.getProperPath(deviceRoot.get()));
-                    event_localizationDao.create(el);
 
                     int i = 0;
                     for (File sourceFile : targetFilesMap.keySet()) {
@@ -301,43 +338,8 @@ public class Importer {
                         if (percent == 100) {
                             percent = 99; //in order not to disable progress bar
                         }
-                        File targetFile = targetFilesMap.get(sourceFile);
-                        String md5 = md5sums.get(targetFile);
-
-                        MFile mf = null;
-                        if (!md5.isEmpty()) {
-                            MFile probe = new MFile();
-                            probe.setDateTime(LocalDateTime.ofEpochSecond(/*->*/sourceFile/*<-*/.lastModified() / 1000l, 0, ZoneOffset.UTC));
-                            probe.setMd5(md5);
-                            List<MFile> result = mfileDao.queryForMatching(probe);
-                            if (result.size() > 0) {
-                                mf = result.get(0);
-                            }
-                        }
-
-                        long mfId;
-                        if (mf != null) {
-                            mfId = mf.getId();
-                            numOfExistingFiles.incrementAndGet();
-                        } else {
-                            mf = new MFile();
-                            mf.setName(targetFile.getName());
-                            mf.setDateTime(LocalDateTime.ofEpochSecond(/*->*/sourceFile/*<-*/.lastModified() / 1000l, 0, ZoneOffset.UTC));
-
-                            if (!md5.isEmpty()) {
-                                mf.setMd5(md5);
-                            } else {
-                                mf.setMd5("-");
-                            }
-
-                            mfileDao.create(mf);
-                            mfId = mf.getId();
-                        }
-
-                        MFile_Event mfe = new MFile_Event();
-                        mfe.setEvent(event);
-                        mfe.setMFile(mf);
-                        mfile_eventDao.create(mfe);
+                        MFile targetMFile = targetFilesMap.get(sourceFile);
+                        mfileDao.create(targetMFile);
 
                         /**
                          * *DELETING FILES **
@@ -366,7 +368,7 @@ public class Importer {
         return numOfExistingFiles.get();
     }
 
-    private void markImported(Map<File, File> targetFilesMap) {
+    private void markImported(Map<File, MFile> targetFilesMap) {
         File[] dirs = targetFilesMap.keySet().stream().map(f -> f.getParentFile()).distinct().toArray(File[]::new);
         for (File dir : dirs) {
 

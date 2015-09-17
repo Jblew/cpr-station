@@ -28,7 +28,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import pl.jblew.cpr.util.NamingThreadFactory;
-import pl.jblew.cpr.util.PrintableBusMessage;
 
 /**
  *

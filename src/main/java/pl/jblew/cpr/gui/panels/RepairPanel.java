@@ -3,11 +3,10 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package pl.jblew.cpr.logic.integritycheck;
+package pl.jblew.cpr.gui.panels;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -19,13 +18,13 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JSeparator;
-import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.gui.MainPanel;
 import pl.jblew.cpr.gui.util.PanelDisabler;
 import pl.jblew.cpr.gui.util.SpacerPanel;
 import pl.jblew.cpr.logic.Event_Localization;
+import pl.jblew.cpr.logic.integritycheck.CarrierIntegrityChecker;
 import pl.jblew.cpr.logic.io.Repairer;
 import pl.jblew.cpr.util.NamingThreadFactory;
 
@@ -36,7 +35,7 @@ import pl.jblew.cpr.util.NamingThreadFactory;
 public class RepairPanel extends MainPanel {
     private final ExecutorService cachedExecutor = Executors.newCachedThreadPool(new NamingThreadFactory("RepairPanel-solutionExecutor"));
 
-    public RepairPanel(Context context, CarrierIntegrityChecker.FilesMissingOnCarrier missingFiles) {
+    private RepairPanel(Context context, CarrierIntegrityChecker.FilesMissingOnCarrier missingFiles) {
         Repairer repairer = new Repairer(context, missingFiles);
         Map<Event_Localization, Repairer.Solution[]> solutionsMap = repairer.calculateSolutions();
 

@@ -3,23 +3,27 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package pl.jblew.cpr.gui.panels;
+package pl.jblew.cpr.gui.windows;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -28,30 +32,49 @@ import javax.swing.JSeparator;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import pl.jblew.cpr.bootstrap.Context;
-import pl.jblew.cpr.logic.io.Importer;
-import pl.jblew.cpr.gui.MainPanel;
+import pl.jblew.cpr.gui.panels.ProgressListPanel;
 import pl.jblew.cpr.gui.util.CPRProgressBarUI;
 import pl.jblew.cpr.gui.util.PanelDisabler;
 import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.Event;
+import pl.jblew.cpr.logic.io.Importer;
 import pl.jblew.cpr.util.FileSizeFormatter;
 
 /**
  *
  * @author teofil
  */
-@Deprecated
-public class ImportPanel extends MainPanel {
-    private final Context context;
-    private final Importer importer;
+public class ImportWindow {
+private final Importer importer;
+private final Context context;
+    private final JFrame frame;
+    private final AtomicBoolean windowCloseEnabled = new AtomicBoolean(true);
 
-    private ImportPanel(Context context_, final File[] filesToImport_) {
-        long sT = System.currentTimeMillis();
-
-        this.context = context_;
+    public ImportWindow(Context context, File[] filesToImport_) {
         this.importer = new Importer(context, filesToImport_);
+        this.context = context;
+        this.frame = new JFrame("Importowanie zdjęć");
 
-        setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
+        SwingUtilities.invokeLater(() -> {
+            frame.setSize(500, 500);
+            frame.setLocationRelativeTo(null);
+            frame.setContentPane(new MainPanel());
+            frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+            frame.addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosing(WindowEvent evt) {
+                    if(!windowCloseEnabled.get()) frame.setVisible(true);
+                }
+            });
+
+            frame.setVisible(true);
+        });
+
+    }
+
+    private final class MainPanel extends JPanel {
+        public MainPanel() {
+            setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
 
         JPanel infoPanel = new JPanel(new FlowLayout());
         JPanel deviceSelectionPanel = new JPanel(new FlowLayout());
@@ -68,7 +91,7 @@ public class ImportPanel extends MainPanel {
          * INFO PANEL *
          */
         String dirs = Arrays.stream(importer.getFilesToImport()).map(f -> f.getParent()).distinct().reduce("", (a, b) -> a + ", " + b);
-        infoPanel.add(new JLabel("<html>Importowanie <b>" + importer.getFilesToImport().length + "</b> plików (<b>" + FileSizeFormatter.format(importer.getSize()) + "</b>) w katalogach: [" + dirs + "]."));
+        infoPanel.add(new JLabel("<html><p width=480>Importowanie <b>" + importer.getFilesToImport().length + "</b> plików (<b>" + FileSizeFormatter.format(importer.getSize()) + "</b>) w katalogach: [" + dirs + "].</p>"));
 
         /**
          * DEVICE SELECTION PANEL *
@@ -122,7 +145,7 @@ public class ImportPanel extends MainPanel {
         eventNamePanel.add(eventNameLabel);
 
         JTextField eventNameField = new JTextField("");
-        eventNameField.setColumns(50);
+        eventNameField.setColumns(37);
         eventNamePanel.add(eventNameField);
         eventNamePanel.setPreferredSize(new Dimension(0, 200));
 
@@ -143,6 +166,7 @@ public class ImportPanel extends MainPanel {
                     PanelDisabler.setEnabled(deviceSelectionPanel, false);
                     PanelDisabler.setEnabled(eventNamePanel, false);
                     PanelDisabler.setEnabled(progressPanel, true);
+                    windowCloseEnabled.set(false);
                     importer.startAsync((final int percent, final String msg, boolean error) -> {
                         SwingUtilities.invokeLater(() -> {
                             progressBar.setValue(percent);
@@ -157,6 +181,7 @@ public class ImportPanel extends MainPanel {
                                 progressEntity.markFinished();
                                 PanelDisabler.setEnabled(progressPanel, false);
                                 PanelDisabler.setEnabled(finishPanel, true);
+                                windowCloseEnabled.set(true);
                             }
 
                             if (error) {
@@ -197,20 +222,10 @@ public class ImportPanel extends MainPanel {
         PanelDisabler.setEnabled(eventNamePanel, false);
         PanelDisabler.setEnabled(progressPanel, false);
         PanelDisabler.setEnabled(finishPanel, false);
-
-        System.out.println("t(ImportPanel.new())" + (System.currentTimeMillis() - sT) + "ms");
+        }
     }
-
-    @Override
-    public void activate() {
-        repaint();
-    }
-
-    @Override
-    public void inactivate() {
-    }
-
-    private static interface ProgressChangedCallback {
+    
+    public static interface ProgressChangedCallback {
         public void progressChanged(int percent, String msg, boolean error);
     }
 }

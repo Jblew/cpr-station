@@ -44,7 +44,7 @@ public class MovePanel extends MainPanel {
     private final JPanel finishPanel;
     private final ExecutorService executor = Executors.newCachedThreadPool(new NamingThreadFactory("MovePanel-executor"));
 
-    public MovePanel(Context context, Event sourceEvent, MFile[] mfilesToMove) {
+    private MovePanel(Context context, Event sourceEvent, MFile[] mfilesToMove) {
         this.context = context;
         this.mover = new Mover(context, sourceEvent, mfilesToMove);
 
@@ -241,7 +241,7 @@ public class MovePanel extends MainPanel {
 
     }
 
-    public static interface ProgressChangedCallback {
+    private static interface ProgressChangedCallback {
         public void progressChanged(int percent, String msg, boolean error);
     }
 }

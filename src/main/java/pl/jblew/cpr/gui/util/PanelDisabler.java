@@ -7,9 +7,7 @@ package pl.jblew.cpr.gui.util;
 
 import java.awt.Component;
 import java.awt.Container;
-import java.util.Arrays;
 import javax.swing.JComponent;
-import javax.swing.JPanel;
 
 /**
  *

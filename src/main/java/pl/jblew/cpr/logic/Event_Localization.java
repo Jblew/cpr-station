@@ -15,6 +15,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.gui.components.browser.MFileBrowser;
+import pl.jblew.cpr.logic.io.FileStructureUtil;
 
 /**
  *
@@ -27,12 +28,13 @@ public class Event_Localization {
 
     @DatabaseField(canBeNull = false, foreign = true, columnName = "eventId")
     private Event event;
+    private final Object eventSync = new Object();
 
     @DatabaseField(canBeNull = false)
     private long carrierId;
 
     @DatabaseField(canBeNull = false)
-    private String path;
+    private String dirName;
 
     private final AtomicReference<Carrier> cachedCarrier = new AtomicReference<>(null);
 
@@ -45,7 +47,7 @@ public class Event_Localization {
     }
 
     public Event getEvent() {
-        synchronized (event) {
+        synchronized (eventSync) {
             return event;
         }
     }
@@ -53,7 +55,7 @@ public class Event_Localization {
     public Event getOrLoadFullEvent(Context c) {
         String name;
         long id;
-        synchronized (event) {
+        synchronized (eventSync) {
             name = event.getName();
             id = event.getId();
         }
@@ -74,13 +76,13 @@ public class Event_Localization {
             }
 
         }
-        synchronized (event) {
+        synchronized (eventSync) {
             return event;
         }
     }
 
     public void setEvent(Event event) {
-        synchronized (event) {
+        synchronized (eventSync) {
             this.event = event;
         }
     }
@@ -93,14 +95,14 @@ public class Event_Localization {
         this.carrierId = carrierId;
     }
 
-    //public String getPath() {
-    //    return path;
-    //}
-    
-    public void setPath(String path) {
-        this.path = path;
+    public String getDirName() {
+        return dirName;
     }
 
+    public void setDirName(String dirName) {
+        this.dirName = dirName;
+    }
+    
     public Carrier getCarrier(Context context) {
         if (cachedCarrier.get() != null) {
             return cachedCarrier.get();
@@ -125,36 +127,13 @@ public class Event_Localization {
         }
     }
 
-    /*public File getFile(final Context context) {
-     final AtomicReference<File> result = new AtomicReference<>(null);
-     try {
-     context.dbManager.executeInDBThreadAndWait(() -> {
-     Carrier c = null;
-     try {
-     List<Carrier> res = context.dbManager.getDaos().getCarrierDao().queryForEq("id", getCarrierId());
-     if (res.size() > 0) {
-     c = res.get(0);
-     }
-     } catch (SQLException ex) {
-     Logger.getLogger(MFileBrowser.class.getName()).log(Level.SEVERE, null, ex);
-     }
-     if (c != null) {
-     File root = context.deviceDetector.getDeviceRoot(c.getName());
-     if (root != null) {
-     File me = new File(root.getAbsolutePath() + File.separator + getPath());
-     if (me.exists() && me.canRead()) {
-     result.set(me);
-     }
-     }
-     }
-     });
-     } catch (InterruptedException ex) {
-     Logger.getLogger(MFile_Localization.class.getName()).log(Level.SEVERE, null, ex);
-     }
+    public String getFullEventPath(Context context) {
+        Event evt = getOrLoadFullEvent(context);
+        String sortedPath = (evt.getType() == Event.Type.SORTED ? FileStructureUtil.PATH_SORTED_PHOTOS : FileStructureUtil.PATH_UNSORTED_PHOTOS);
+        Carrier carrier = getCarrier(context);
+        return context.deviceDetector.getDeviceRoot(carrier.getName()) + File.separator + sortedPath + File.separator + getDirName();
+    }
 
-     return result.get();
-     }*/
-    
     @Override
     public int hashCode() {
         int hash = 7;
@@ -179,6 +158,6 @@ public class Event_Localization {
 
     @Override
     public String toString() {
-        return "Event_Localization{" + "id=" + id + ", event=" + event + ", carrierId=" + carrierId + ", path=" + path + '}';
+        return "Event_Localization{" + "id=" + id + ", event=" + event + ", carrierId=" + carrierId + ", path=" + dirName + '}';
     }
 }

@@ -7,12 +7,10 @@ package pl.jblew.cpr.logic.io;
 
 import com.google.common.collect.MapMaker;
 import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.util.Collections;
 import java.util.Map;
-import java.util.Set;
-import java.util.WeakHashMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -27,6 +25,19 @@ import javax.swing.ImageIcon;
 import pl.jblew.cpr.Settings;
 import pl.jblew.cpr.gui.components.browser.SwingFileBrowser;
 import pl.jblew.cpr.util.TwoTuple;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Image;
+import java.awt.RenderingHints;
+import java.awt.Transparency;
+import java.awt.image.BufferedImage;
+import java.net.URL;
+import javax.imageio.ImageIO;
+import javax.swing.JComponent;
+import javax.swing.JFrame;
+import javax.swing.SwingUtilities;
 
 /**
  *
@@ -104,7 +115,7 @@ public class ThumbnailLoader {
         }
     }
 
-    private static BufferedImage scaleImage(BufferedImage loadedImage, int maxSize) {
+    private static BufferedImage scaleImageLowQuality(BufferedImage loadedImage, int maxSize) {
         int newWidth;
         int newHeight;
         if (loadedImage.getWidth() > loadedImage.getHeight()) {
@@ -117,10 +128,93 @@ public class ThumbnailLoader {
 
         BufferedImage buffer = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = buffer.createGraphics();
-        //g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_SPEED);
         g.drawImage(loadedImage, 0, 0, newWidth, newHeight, null);
         g.dispose();
         return buffer;
+    }
+    
+    private static BufferedImage scaleImageGoodQuality(BufferedImage img, int maxSize)
+    {
+        boolean progressiveBilinear = true;
+        
+        int targetWidth;
+        int targetHeight;
+        if (img.getWidth() > img.getHeight()) {
+            targetWidth = maxSize;
+            targetHeight = (int) Math.floor((float)maxSize * (float) img.getHeight() / (float) img.getWidth());
+        } else {
+            targetHeight = maxSize;
+            targetWidth = (int) Math.floor((float)maxSize * (float) img.getWidth() / (float) img.getHeight());
+        }
+        
+        int type = (img.getTransparency() == Transparency.OPAQUE) ?
+            BufferedImage.TYPE_INT_RGB : BufferedImage.TYPE_INT_ARGB;
+        BufferedImage ret = img;
+        BufferedImage scratchImage = null;
+        Graphics2D g2 = null;
+        int w, h;
+        int prevW = ret.getWidth();
+        int prevH = ret.getHeight();
+        boolean isTranslucent = img.getTransparency() !=  Transparency.OPAQUE; 
+
+        if (progressiveBilinear) {
+            // Use multi-step technique: start with original size, then
+            // scale down in multiple passes with drawImage()
+            // until the target size is reached
+            w = img.getWidth();
+            h = img.getHeight();
+        } else {
+            // Use one-step technique: scale directly from original
+            // size to target size with a single drawImage() call
+            w = targetWidth;
+            h = targetHeight;
+        }
+        
+        do {
+            if (progressiveBilinear && w > targetWidth) {
+                w /= 2;
+                if (w < targetWidth) {
+                    w = targetWidth;
+                }
+            }
+
+            if (progressiveBilinear && h > targetHeight) {
+                h /= 2;
+                if (h < targetHeight) {
+                    h = targetHeight;
+                }
+            }
+
+            if (scratchImage == null || isTranslucent) {
+                // Use a single scratch buffer for all iterations
+                // and then copy to the final, correctly-sized image
+                // before returning
+                scratchImage = new BufferedImage(w, h, type);
+                g2 = scratchImage.createGraphics();
+            }
+            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g2.drawImage(ret, 0, 0, w, h, 0, 0, prevW, prevH, null);
+            prevW = w;
+            prevH = h;
+
+            ret = scratchImage;
+        } while (w != targetWidth || h != targetHeight);
+        
+        if (g2 != null) {
+            g2.dispose();
+        }
+
+        // If we used a scratch buffer that is larger than our target size,
+        // create an image of the right size and copy the results into it
+        if (targetWidth != ret.getWidth() || targetHeight != ret.getHeight()) {
+            scratchImage = new BufferedImage(targetWidth, targetHeight, type);
+            g2 = scratchImage.createGraphics();
+            g2.drawImage(ret, 0, 0, null);
+            g2.dispose();
+            ret = scratchImage;
+        }
+        
+        return ret;
     }
 
     public static void loadThumbnail(File f, boolean tryReadOrSave, LoadedListener listener) {
@@ -147,7 +241,9 @@ public class ThumbnailLoader {
 
                 if (!thumbnailLoaded) {
                     BufferedImage loadedImage = ImageIO.read(f);
-                    BufferedImage scaled = scaleImage(loadedImage, Settings.THUMBNAIL_MAX_SIZE);
+                    BufferedImage scaled = null;
+                    if(tryReadOrSave) scaled = scaleImageGoodQuality(loadedImage, Settings.THUMBNAIL_MAX_SIZE);
+                    else scaled = scaleImageLowQuality(loadedImage, Settings.THUMBNAIL_MAX_SIZE); //if we save thumbnail, we can do it in good quality
                     ImageIcon icon = new ImageIcon(scaled);
                     if (listener != null) {
                         listener.thumbnailLoaded(icon);

@@ -10,17 +10,13 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.SwingUtilities;
@@ -109,6 +105,7 @@ public class ProgressListPanel extends JPanel {
 
         private void finished() {
             SwingUtilities.invokeLater(() -> {
+                System.out.println("Removing from progress panel: "+progressEntity.text.get());
                 meProgressListPanel.remove(this);
                 meProgressListPanel.revalidate();
                 meProgressListPanel.repaint();
@@ -146,7 +143,11 @@ public class ProgressListPanel extends JPanel {
         public void markFinished() {
             ProgressPanel ppSafe = progressPanelRef.get();
             if (ppSafe != null) {
+                System.out.println("Marking finished: "+text.get());
                 ppSafe.finished();
+            }
+            else {
+                System.out.println("Cannot mark finished (ppSafe==null): "+text.get());
             }
         }
 

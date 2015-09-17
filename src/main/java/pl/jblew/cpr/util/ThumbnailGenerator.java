@@ -5,7 +5,6 @@
  */
 package pl.jblew.cpr.util;
 
-import java.awt.Image;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.geom.AffineTransform;

@@ -6,7 +6,6 @@
 package pl.jblew.cpr.util;
 
 import java.text.DecimalFormat;
-import javax.swing.SwingUtilities;
 
 /**
  *

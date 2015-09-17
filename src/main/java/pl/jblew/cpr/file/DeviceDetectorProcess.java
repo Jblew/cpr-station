@@ -23,7 +23,6 @@ import java.util.logging.Logger;
 import net.samuelcampos.usbdrivedectector.USBDeviceDetectorManager;
 import net.samuelcampos.usbdrivedectector.USBStorageDevice;
 import net.samuelcampos.usbdrivedectector.events.DeviceEventType;
-import net.samuelcampos.usbdrivedectector.events.IUSBDriveListener;
 import net.samuelcampos.usbdrivedectector.events.USBStorageEvent;
 import pl.jblew.cpr.db.DatabaseManager;
 import pl.jblew.cpr.logic.Carrier;
@@ -189,7 +188,7 @@ public class DeviceDetectorProcess {
         }
     }
 
-    public Carrier[] getConnectedCarriers(Carrier[] carrierList) {
+    public Carrier[] getConnectedOfCarriers(Carrier[] carrierList) {
         return Arrays.stream(carrierList).filter(carrier -> (getDeviceRoot(carrier.getName()) != null)).toArray(Carrier[]::new);
     }
 

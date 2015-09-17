@@ -12,7 +12,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -22,9 +21,7 @@ import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.gui.panels.ProgressListPanel;
 import pl.jblew.cpr.logic.Event;
 import pl.jblew.cpr.logic.io.Importer;
-import pl.jblew.cpr.util.ImageCreationDateLoader;
 import pl.jblew.cpr.util.NamingThreadFactory;
-import pl.jblew.cpr.util.TimeUtils;
 
 /**
  *
@@ -82,7 +79,7 @@ public class AutomaticImportProcessor {
                 baseEventName = baseEventName.substring(baseEventName.indexOf("]") + 1).trim();
             }
 
-            baseEventName = Event.formatName(LocalDateTime.now(), baseEventName);
+            //baseEventName = Event.formatName(LocalDateTime.now(), baseEventName);
 
             /*while(Event.forName(context, eventName) != null) {
              eventName += "|";

@@ -7,7 +7,6 @@ package pl.jblew.cpr.db;
 
 import java.io.File;
 import pl.jblew.cpr.file.StorageDevicePresenceListener;
-import pl.jblew.cpr.gui.treenodes.NodeChangeListener;
 import pl.jblew.cpr.util.ListenersManager;
 
 /**

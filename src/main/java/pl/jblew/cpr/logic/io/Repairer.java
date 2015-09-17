@@ -9,13 +9,11 @@ import com.google.common.io.Files;
 import com.j256.ormlite.dao.ForeignCollection;
 import java.io.File;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 import pl.jblew.cpr.bootstrap.Context;
-import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.Event;
 import pl.jblew.cpr.logic.Event_Localization;
 import pl.jblew.cpr.logic.MFile;
@@ -113,7 +111,7 @@ public class Repairer {
                                    .orElseThrow(() -> new RuntimeException("Recovery file not found (1)")).getFile();
                            
                            if(recoveryFile != null && recoveryFile.exists() && recoveryFile.canRead()) {
-                               File properFile = mfl.getMFile().getFile(context, el.getOrLoadFullEvent(context), recoverySourceLocalization);
+                               File properFile = mfl.getMFile().getFile(context, recoverySourceLocalization);
                                Files.copy(recoveryFile, properFile);
                            }
                            else throw new RuntimeException("Recovery file not found (2)");

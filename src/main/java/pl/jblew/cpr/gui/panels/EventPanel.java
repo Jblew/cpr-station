@@ -7,23 +7,17 @@ package pl.jblew.cpr.gui.panels;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.sql.SQLException;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
-import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -35,11 +29,12 @@ import pl.jblew.cpr.gui.MainPanel;
 import pl.jblew.cpr.gui.components.browser.MFileBrowser;
 import pl.jblew.cpr.gui.components.modal.FullScreenBrowser;
 import pl.jblew.cpr.gui.treenodes.EventsNode;
+import pl.jblew.cpr.gui.windows.MoveWindow;
+import pl.jblew.cpr.gui.windows.RedundantCopyWindow;
 import pl.jblew.cpr.gui.windows.RenameWindow;
 import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.Event;
 import pl.jblew.cpr.logic.MFile;
-import pl.jblew.cpr.util.IdManager;
 import pl.jblew.cpr.util.TimeUtils;
 
 /**
@@ -148,14 +143,17 @@ public class EventPanel extends MainPanel {
             makeCopyButton.setForeground(Color.WHITE);
             makeCopyButton.setBackground(Color.RED);
         }
+        makeCopyButton.addActionListener((ActionEvent e) -> {
+            new RedundantCopyWindow(context, event);
+        });
         
         final JButton deleteFromDBButton = new JButton("Usuń z bazy danych");
 
         JPanel buttonPanel = new JPanel();
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
         GridLayout buttonPanelLayout = new GridLayout(0, 1);
-        buttonPanelLayout.setHgap(10);
-        buttonPanelLayout.setVgap(10);
+        buttonPanelLayout.setHgap(5);
+        buttonPanelLayout.setVgap(5);
         buttonPanel.setLayout(buttonPanelLayout);
         //buttonPanel.add(showSelectiveEventButton);
         //buttonPanel.add(makeSelectiveEventButton);
@@ -177,6 +175,17 @@ public class EventPanel extends MainPanel {
                 }
             }
         });
+        
+        JButton changeTypeButton = new JButton("Przenieś do "+(event.getType() == Event.Type.SORTED? "NIEPOSEGREGOWANYCH" : "POSEGREGOWANYCH"));
+        changeTypeButton.addActionListener((evt) -> {
+            event.setType((event.getType() == Event.Type.SORTED? Event.Type.UNSORTED : Event.Type.SORTED));
+            event.update(context);
+            SwingUtilities.invokeLater(() -> {
+                            context.eBus.post(new EventsNode.EventsListChanged());
+                            context.eBus.post(new ChangeMainPanel(new EventPanel(context, event)));
+                        });
+        });
+        buttonPanel.add(changeTypeButton);
 
         GridLayout northPanelLayout = new GridLayout(1, 2);
         northPanelLayout.setVgap(10);
@@ -185,10 +194,7 @@ public class EventPanel extends MainPanel {
         northPanel.add(buttonPanel);
         add(northPanel, BorderLayout.NORTH);
 
-        makeCopyButton.addActionListener((ActionEvent e) -> {
-            context.eBus.post(new ChangeMainPanel(new ExportPanel(context, event)));
-        });
-
+        
         browserPanel = new JPanel();
         browserPanel.setLayout(new BorderLayout());
         browserPanel.add(new JLabel("..."), BorderLayout.CENTER);
@@ -255,8 +261,7 @@ public class EventPanel extends MainPanel {
 
     private void moveMFilesToEvent(MFile[] mfilesToMove) {
         if (mfilesToMove != null && mfilesToMove.length > 0) {
-            context.eBus.post(new ChangeMainPanel(new MovePanel(context, event, mfilesToMove)));
-
+            new MoveWindow(context, event, mfilesToMove);
         }
     }
 }

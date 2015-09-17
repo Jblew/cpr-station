@@ -24,11 +24,11 @@ import javax.swing.JProgressBar;
 import javax.swing.SwingUtilities;
 import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.db.DatabaseManager;
-import pl.jblew.cpr.gui.ChangeMainPanel;
 import pl.jblew.cpr.gui.MainPanel;
 import pl.jblew.cpr.gui.MainWindow;
 import pl.jblew.cpr.gui.components.browser.SwingFileBrowser;
 import pl.jblew.cpr.gui.util.CPRProgressBarUI;
+import pl.jblew.cpr.gui.windows.ImportWindow;
 import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.io.CarrierMaker;
 import pl.jblew.cpr.util.FileSizeFormatter;
@@ -156,14 +156,14 @@ public class DevicePanel extends MainPanel {
             SwingUtilities.invokeLater(() -> {
                 File[] selectedFiles = browser.getSelectedFiles();
                 if (selectedFiles.length > 0) {
-                    context.eBus.post(new ChangeMainPanel(new ImportPanel(context, selectedFiles)));
+                    new ImportWindow(context, selectedFiles);
                 }
             });
         });
         JButton importDirButton = new JButton("Importuj katalog i podkatalogi");
         importDirButton.addActionListener((ActionEvent e) -> {
             SwingUtilities.invokeLater(() -> {
-                context.eBus.post(new ChangeMainPanel(new ImportPanel(context, new File[]{browser.getCWD()})));
+                new ImportWindow(context, new File[]{browser.getCWD()});
             });
         });
 
