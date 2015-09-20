@@ -247,7 +247,7 @@ public class Importer {
         Map<File, MFile> targetFilesMap = new HashMap<>();
 
         for (int i = 0; i < filesToImport.length; i++) {
-            callback.progressChanged(0, "Obliczanie prawidłowych nazw i spraedzanie ...("+(i+1)+"/"+filesToImport.length+")", false);
+            callback.progressChanged(0, "Obliczanie prawidłowych nazw i sprawdzanie ...("+(i+1)+"/"+filesToImport.length+")", false);
             
             File sourceFile = filesToImport[i];
             if (sourceFile.exists() && sourceFile.canRead() && !sourceFile.isDirectory()) {

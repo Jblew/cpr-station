@@ -6,11 +6,11 @@
 package pl.jblew.cpr.db;
 
 import com.google.common.eventbus.EventBus;
-import com.google.common.io.Files;
 import com.j256.ormlite.jdbc.JdbcConnectionSource;
 import com.j256.ormlite.support.ConnectionSource;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -75,6 +75,20 @@ public class DatabaseManager implements DatabaseDetectedListener {
 
     public void connect(File dbFile, String deviceName) {
         try {
+            File dbSourceFile = new File(dbFile.getAbsolutePath()+DatabaseDetector.DB_FILE_EXTENSION);
+            File dbBackupTempFile = new File(System.getProperty("user.home")+File.separator+"/cpr-s-db.h2.db.backup.temp");
+            File dbBackupFile = new File(System.getProperty("user.home")+File.separator+"/cpr-s-db.h2.db.backup");
+            
+            Files.copy(dbSourceFile.toPath(), dbBackupTempFile.toPath());
+            if(dbBackupFile.exists()) dbBackupFile.delete();
+            Files.move(dbBackupTempFile.toPath(), dbBackupFile.toPath());
+            System.out.println("<DB BACKUP> Created DB backup in "+dbBackupFile);
+        }
+        catch(Exception ex) {
+            Logger.getLogger(DatabaseManager.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        try {
             ConnectionSource connectionSource = backupManager.createProxy(new JdbcConnectionSource("jdbc:h2:" + dbFile.getAbsolutePath()));
             //JdbcConnectionSource jcs = new JdbcConnectionSource("jdbc:mysql://feynman.jblew.pl/fiszki?user=fiszki");
             //jcs.setPassword("F1#3ki%&^");
@@ -101,7 +115,7 @@ public class DatabaseManager implements DatabaseDetectedListener {
             close();
 
             try {
-                Files.copy(currentDBFile.get(), dbBackupFile);
+                Files.copy(currentDBFile.get().toPath(), dbBackupFile.toPath());
             } catch (IOException ex) {
                 Logger.getLogger(DatabaseManager.class.getName()).log(Level.SEVERE, null, ex);
             }
