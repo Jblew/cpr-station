@@ -26,6 +26,7 @@ import net.samuelcampos.usbdrivedectector.events.DeviceEventType;
 import net.samuelcampos.usbdrivedectector.events.USBStorageEvent;
 import pl.jblew.cpr.db.DatabaseManager;
 import pl.jblew.cpr.logic.Carrier;
+import pl.jblew.cpr.util.NamingThreadFactory;
 import pl.jblew.cpr.util.TwoTuple;
 
 /**
@@ -37,7 +38,7 @@ public class DeviceDetectorProcess {
     private final ArrayList<Object> listeners = new ArrayList<>();
     private final Map<String, File> devices = new HashMap<>();
     private final BlockingQueue<Runnable> executeOnDevicesChange = new LinkedBlockingQueue<>();
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final ExecutorService executor = Executors.newSingleThreadExecutor(new NamingThreadFactory("device-detector"));
 
     public DeviceDetectorProcess(EventBus eBus_) {
         eBus = eBus_;
@@ -121,7 +122,9 @@ public class DeviceDetectorProcess {
                     }
                 }
             });
+            
         }).start();
+        
         /*File[] roots = File.listRoots();
 
          if (roots == null) {
@@ -171,8 +174,8 @@ public class DeviceDetectorProcess {
         executeOnDevicesChange.add(r);
     }
 
-    public void stop() {
-
+    public void shutdown() {
+        executor.shutdown();
     }
 
     public List<TwoTuple<String, File>> getConnectedDevices() {

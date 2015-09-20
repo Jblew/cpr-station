@@ -45,7 +45,6 @@ public class TreePanel extends JPanel {
     private final EventsNode sortedPhotosNode;
     private final EventsNode unsortedPhotosNode;
     private final AtomicReference<SelectableIconTreeNode> lastSelected = new AtomicReference<>(null);
-    //private final ExecutorService loadingExecutor = Executors.newSingleThreadExecutor();
 
     public TreePanel(Context context) {
         DefaultMutableTreeNode top = new DefaultMutableTreeNode("CPR-station");

@@ -52,7 +52,6 @@ import pl.jblew.cpr.util.ImageCreationDateLoader;
 public class Importer {
     private static final String IMPORTED_LIST_FILENAME = "Zaimportowane.txt";
     private static final FilenameFilter fnFilter = (File dir, String name) -> !name.startsWith(".");
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final File[] filesToImport;
     private final Context context;
     private final long size;
@@ -137,7 +136,7 @@ public class Importer {
     }
 
     public void startAsync(ImportWindow.ProgressChangedCallback callback) {
-        executor.submit(() -> {
+        context.cachedExecutor.submit(() -> {
             try {
                 callback.progressChanged(0, "Dodawanie wydarzenia do bazy danych i tworzenie folderu...", false);
 

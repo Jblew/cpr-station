@@ -43,7 +43,6 @@ public class DevicePanel extends MainPanel {
     private final JProgressBar freeSpaceBar;
     private final String deviceName;
     private final File root;
-    private final ExecutorService freeSpaceUpdateExecutor = Executors.newSingleThreadExecutor();
 
     public DevicePanel(Context context_, final String deviceName, File root_) {
         this.context = context_;
@@ -213,7 +212,7 @@ public class DevicePanel extends MainPanel {
     }
 
     private void updateFreeSpaceAsync() {
-        freeSpaceUpdateExecutor.submit(() -> {
+        context.cachedExecutor.submit(() -> {
             try {
                 final long totalSpaceB = root.getTotalSpace();
                 final long freeSpaceB = root.getUsableSpace();

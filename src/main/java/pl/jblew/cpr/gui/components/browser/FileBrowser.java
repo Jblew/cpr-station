@@ -29,6 +29,7 @@ import javax.activation.MimetypesFileTypeMap;
 import javax.imageio.ImageIO;
 import javax.swing.border.BevelBorder;
 import pl.jblew.cpr.Settings;
+import pl.jblew.cpr.bootstrap.Context;
 
 /**
  *
@@ -41,8 +42,10 @@ public class FileBrowser extends JPanel {
     private final AtomicReference<File> cwd;
     private final JLabel dirNameLabel;
     private final JPanel toolPanel;
+    private final Context context;
 
-    public FileBrowser(File root_) {
+    public FileBrowser(Context context, File root_) {
+        this.context = context;
         this.root = root_;
         this.cwd = new AtomicReference<>(root);
         this.browsingPanel = new BrowsingPanel();
@@ -107,7 +110,6 @@ public class FileBrowser extends JPanel {
         private int filesY;
         private int selectionStart = -1;
         private int selectionEnd = -1;
-        private final ExecutorService thumbnailLoaderExecutor = Executors.newSingleThreadExecutor();
         private final AtomicBoolean loadingThumbnails = new AtomicBoolean(false);
         private final AtomicBoolean reloadThumbnails = new AtomicBoolean(false);
         private final Lock dataLock = new ReentrantLock();
@@ -324,7 +326,7 @@ public class FileBrowser extends JPanel {
             if (loadingThumbnails.get()) {
                 reloadThumbnails.set(true);
             } else {
-                thumbnailLoaderExecutor.submit(() -> {
+                context.cachedExecutor.submit(() -> {
                     loadingThumbnails.set(true);
                     reloadThumbnails.set(true);//in order to load them first
                     File[] childrenSafe = new File[0];
@@ -392,7 +394,6 @@ public class FileBrowser extends JPanel {
 
         private void inactivate() {
             loadingThumbnails.set(false);
-            thumbnailLoaderExecutor.shutdown();
         }
     }
 

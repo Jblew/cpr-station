@@ -210,6 +210,7 @@ public class EventPanel extends MainPanel {
 
     @Override
     public void inactivate() {
+        if(browser != null) browser.inactivate();
     }
 
     private void asyncLoadData(Carrier[] carriers) {

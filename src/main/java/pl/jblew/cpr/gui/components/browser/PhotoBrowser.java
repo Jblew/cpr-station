@@ -18,6 +18,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.imageio.ImageIO;
 import javax.swing.*;
+import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.util.NamingThreadFactory;
 
 /**
@@ -29,8 +30,11 @@ public class PhotoBrowser extends JPanel {
     private final ImagePanel imagePanel;
     private final AtomicReference<File> imageUrl = new AtomicReference<>();
     private final PhotoBrowser me = this;
+    private final Context context;
 
-    public PhotoBrowser(File f, final ScaleType t) {
+    public PhotoBrowser(Context context, File f, final ScaleType t) {
+        this.context = context;
+        
         imageUrl.set(f);
 
         setLayout(new BorderLayout());
@@ -64,14 +68,13 @@ public class PhotoBrowser extends JPanel {
         private final AtomicReference<BufferedImage> image = new AtomicReference<>();
         private final AtomicReference<ScaleType> scaleType = new AtomicReference<>(ScaleType.FIT);
         private final AffineTransform transform = new AffineTransform();
-        private final ExecutorService loaderExecutor = Executors.newSingleThreadExecutor(new NamingThreadFactory("PhotoBrowser-loader"));
 
         public ImagePanel() {
 
         }
 
         public void imageChanged() {
-            loaderExecutor.submit(() -> {
+            context.cachedExecutor.submit(() -> {
                 BufferedImage newImage = null;
                 try {
                     newImage = ImageIO.read(imageUrl.get());

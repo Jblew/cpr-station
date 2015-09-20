@@ -21,12 +21,14 @@ public class Context {
     public final DeviceDetectorProcess deviceDetector;
     public final ExecutorService cachedExecutor;
     public final JFrame frame;
+    public final Bootstrap bootstrap;
 
-    Context(EventBus eBus, DatabaseManager dbManager, DeviceDetectorProcess deviceDetector, ExecutorService cachedExecutor, JFrame frame) {
+    Context(EventBus eBus, DatabaseManager dbManager, DeviceDetectorProcess deviceDetector, ExecutorService cachedExecutor, JFrame frame, Bootstrap bootstrap) {
         this.eBus = eBus;
         this.dbManager = dbManager;
         this.deviceDetector = deviceDetector;
         this.cachedExecutor = cachedExecutor;
         this.frame = frame;
+        this.bootstrap = bootstrap;
     }
 }

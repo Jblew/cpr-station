@@ -60,6 +60,10 @@ public class AutomaticImportListener implements StorageDevicePresenceListener {
                 }
             }
         }, 7, 5, TimeUnit.SECONDS);
+        
+        context.bootstrap.addShutdownTask(() -> {
+            scheduledExecutor.shutdown();
+        });
     }
 
     @Override

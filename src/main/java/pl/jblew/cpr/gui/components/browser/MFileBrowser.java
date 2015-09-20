@@ -50,14 +50,13 @@ public class MFileBrowser extends JPanel {
 
     private final JPanel toolPanel;
     private final ImageIcon emptyImage;
-    private final ExecutorService loadingExecutor = Executors.newSingleThreadExecutor();
 
     public MFileBrowser(Context context_, MFile.Localized[] localizedMFiles, Event event_) {
         this.localizedMFiles = localizedMFiles;
         this.event = event_;
         this.context = context_;
         tabbedPane = new JTabbedPane();
-        
+
         emptyImage = new ImageIcon(getClass().getClassLoader().getResource("images/empty128.gif"));
 
         singleBrowsingPanel = new SingleBrowsingPanel();
@@ -119,26 +118,26 @@ public class MFileBrowser extends JPanel {
     }
 
     public void inactivate() {
-        //browsingPanel.inactivate();
+        thumbnailLoader.stopAndInactivate();
     }
-    
+
     public void showSingleView() {
         SwingUtilities.invokeLater(() -> {
-                tabbedPane.setSelectedIndex(1);
-                components.values().stream().sorted().forEachOrdered((mfc) -> {
-                    singleBrowsingPanel.addMFileComponent(mfc);
-                });
+            tabbedPane.setSelectedIndex(1);
+            components.values().stream().sorted().forEachOrdered((mfc) -> {
+                singleBrowsingPanel.addMFileComponent(mfc);
             });
+        });
     }
 
     private void loadFiles() {
         dataLock.lock();
         try {
             components.clear();
-            for (int i = 0;i < localizedMFiles.length;i++) {
+            for (int i = 0; i < localizedMFiles.length; i++) {
                 MFile.Localized mfl = localizedMFiles[i];
                 MFileComponent component = new MFileComponent(mfl, thumbnailLoader);
-                
+
                 gridBrowsingPanel.addMFileComponent(component);
                 components.put(mfl, component);
             }
@@ -246,20 +245,18 @@ public class MFileBrowser extends JPanel {
                 }
             });
 
-            loadingExecutor.submit(() -> {
-                context.dbManager.executeInDBThread(() -> {
-                    File f = localizedMFile.getFile();
-                    if (f != null) {
-                        if (ThumbnailLoader.canBeLoaded(f)) {
-                            thumbnailLoader.loadImage(f, (final ImageIcon img) -> {
-                                SwingUtilities.invokeLater(() -> {
-                                    setIcon(img);
-                                    setDisabledIcon(img);
-                                });
+            context.dbManager.executeInDBThread(() -> {
+                File f = localizedMFile.getFile();
+                if (f != null) {
+                    if (ThumbnailLoader.canBeLoaded(f)) {
+                        thumbnailLoader.loadImage(f, (final ImageIcon img) -> {
+                            SwingUtilities.invokeLater(() -> {
+                                setIcon(img);
+                                setDisabledIcon(img);
                             });
-                        }
+                        });
                     }
-                });
+                }
             });
         }
 
@@ -353,7 +350,7 @@ public class MFileBrowser extends JPanel {
     private class SingleBrowsingPanel extends BrowsingPanel implements OpenMFileCallback, KeyListener {
         private final AtomicReference<MFileComponent> currentComponent = new AtomicReference<>(null);
         private final PreloadingPhotoBrowser browser;
-        private final PreloadingPhotoBrowser.PreloadableImage [] preloadables;
+        private final PreloadingPhotoBrowser.PreloadableImage[] preloadables;
         private final JScrollPane scrollPane;
         private final JPanel southPanel;
         private final SingleBrowsingPanel me = this;
@@ -362,9 +359,9 @@ public class MFileBrowser extends JPanel {
             setLayout(new BorderLayout());
 
             preloadables = Arrays.stream(localizedMFiles).map(mfl -> mfl.getFile()).filter(f -> f != null && f.canRead())
-            .map(f -> new PreloadingPhotoBrowser.PreloadableImage(f, null)).toArray(PreloadingPhotoBrowser.PreloadableImage[]::new);
-            
-            browser = new PreloadingPhotoBrowser(preloadables, 0, PreloadingPhotoBrowser.ScaleType.FIT);
+                    .map(f -> new PreloadingPhotoBrowser.PreloadableImage(f, null)).toArray(PreloadingPhotoBrowser.PreloadableImage[]::new);
+
+            browser = new PreloadingPhotoBrowser(context, preloadables, 0, PreloadingPhotoBrowser.ScaleType.FIT);
             add(browser, BorderLayout.CENTER);
 
             southPanel = new JPanel();
@@ -430,40 +427,40 @@ public class MFileBrowser extends JPanel {
         public void clickedOpen(MFileComponent cmp) {
             changeMFile(cmp.localizedMFile, cmp);
         }
-        
+
         @Override
-                public void keyTyped(KeyEvent e) {
-                }
+        public void keyTyped(KeyEvent e) {
+        }
 
-                @Override
-                public void keyPressed(KeyEvent e) {
-                }
+        @Override
+        public void keyPressed(KeyEvent e) {
+        }
 
-                @Override
-                public void keyReleased(KeyEvent e) {
-                    MFileComponent leftComponent = null;
-                    MFileComponent rightComponent = null;
-                    MFileComponent prev = null;
-                    for (Component c : southPanel.getComponents()) {
-                        if (c instanceof MFileComponent) {
-                            MFileComponent mfc = (MFileComponent) c;
-                            if (mfc == currentComponent.get()) {
-                                leftComponent = prev;
-                            }
-                            if (prev == currentComponent.get()) {
-                                rightComponent = mfc;
-                                break;
-                            }
-                            prev = mfc;
-
-                        }
+        @Override
+        public void keyReleased(KeyEvent e) {
+            MFileComponent leftComponent = null;
+            MFileComponent rightComponent = null;
+            MFileComponent prev = null;
+            for (Component c : southPanel.getComponents()) {
+                if (c instanceof MFileComponent) {
+                    MFileComponent mfc = (MFileComponent) c;
+                    if (mfc == currentComponent.get()) {
+                        leftComponent = prev;
                     }
-
-                    if (e.getKeyCode() == KeyEvent.VK_RIGHT && rightComponent != null) {
-                        changeMFile(rightComponent.localizedMFile, rightComponent);
-                    } else if (e.getKeyCode() == KeyEvent.VK_LEFT && leftComponent != null) {
-                        changeMFile(leftComponent.localizedMFile, leftComponent);
+                    if (prev == currentComponent.get()) {
+                        rightComponent = mfc;
+                        break;
                     }
+                    prev = mfc;
+
                 }
+            }
+
+            if (e.getKeyCode() == KeyEvent.VK_RIGHT && rightComponent != null) {
+                changeMFile(rightComponent.localizedMFile, rightComponent);
+            } else if (e.getKeyCode() == KeyEvent.VK_LEFT && leftComponent != null) {
+                changeMFile(leftComponent.localizedMFile, leftComponent);
+            }
+        }
     }
 }

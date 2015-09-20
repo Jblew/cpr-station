@@ -20,7 +20,7 @@ import pl.jblew.cpr.util.NamingThreadFactory;
  */
 public final class Blinker {
     private static final Blinker INSTANCE = new Blinker();
-    private final ScheduledExecutorService sched = Executors.newSingleThreadScheduledExecutor(new NamingThreadFactory("blick-thread"));
+    private final ScheduledExecutorService sched = Executors.newSingleThreadScheduledExecutor(new NamingThreadFactory("blink-thread"));
     private final List<WeakReference<Blinkable>> buttons = Collections.synchronizedList(new LinkedList<>());
 
     private Blinker() {

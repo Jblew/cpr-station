@@ -27,7 +27,7 @@ public class FullScreenBrowser extends JFrame {
         
         JFrame me = this;
         
-        Executors.newSingleThreadExecutor().submit(() -> {
+        context.cachedExecutor.submit(() -> {
             MFile.Localized[] mfiles = event.getLocalizedMFiles(context);
             if (mfiles.length > 0) {
                 SwingUtilities.invokeLater(() -> {

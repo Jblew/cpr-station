@@ -117,7 +117,7 @@ public class SwingFileBrowser extends JPanel {
         try {
             final File[] childrenSafe = cwd.get().listFiles((File dir, String name1) -> !(name1.startsWith(".")));
             components.clear();
-            thumbnailLoader.stopAll();
+            thumbnailLoader.stopAndInactivate();
             children = childrenSafe;
             SwingUtilities.invokeLater(() -> {
                 browsingPanel.removeAll();

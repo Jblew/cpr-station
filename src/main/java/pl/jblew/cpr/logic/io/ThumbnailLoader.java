@@ -6,9 +6,6 @@
 package pl.jblew.cpr.logic.io;
 
 import com.google.common.collect.MapMaker;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
@@ -20,24 +17,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import pl.jblew.cpr.Settings;
 import pl.jblew.cpr.gui.components.browser.SwingFileBrowser;
 import pl.jblew.cpr.util.TwoTuple;
-import java.awt.BorderLayout;
-import java.awt.Dimension;
-import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.Transparency;
 import java.awt.image.BufferedImage;
-import java.net.URL;
 import javax.imageio.ImageIO;
-import javax.swing.JComponent;
-import javax.swing.JFrame;
-import javax.swing.SwingUtilities;
 
 /**
  *
@@ -50,7 +38,6 @@ public class ThumbnailLoader {
     private final ExecutorService executor = Executors.newFixedThreadPool(numOfProcessingThreads);
     private final BlockingQueue<TwoTuple<File, LoadedListener>> loadingQueue = new LinkedBlockingQueue<>();
     private final ProcessingThread[] processingThreads = new ProcessingThread[numOfProcessingThreads];
-    private final AtomicInteger numOfRunningThreads = new AtomicInteger(0);
     private static final Map<String, BufferedImage> weakCache = new MapMaker().weakValues().makeMap();
 
     public ThumbnailLoader(int maxSize) {
@@ -75,8 +62,9 @@ public class ThumbnailLoader {
         }
     }
 
-    public void stopAll() {
+    public void stopAndInactivate() {
         loadingQueue.clear();
+        executor.shutdown();
     }
 
     public static interface LoadedListener {

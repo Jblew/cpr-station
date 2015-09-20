@@ -33,7 +33,6 @@ public class Exporter {
     private final Context context;
     private final AtomicReference<MFile.Localized[]> localizedMFiles;
     private RedundantCopyWindow.ProgressChangedCallback progressChangedCallback;
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private Carrier targetCarrier;
     private long size = 0;
 
@@ -79,7 +78,7 @@ public class Exporter {
             throw new IllegalArgumentException("Callback is null!");
         }
 
-        executor.submit(() -> {
+        context.cachedExecutor.submit(() -> {
             try {
                 progressChangedCallback.progressChanged(0, "Ładowanie potrzebnych danych...", false);
 

@@ -141,6 +141,11 @@ public class DatabaseManager implements DatabaseDetectedListener {
             connectionSourceRef.set(null);
         }
     }
+    
+    public void shutdown() {
+        close();
+        dbExecutor.shutdown();
+    }
 
     public boolean isConnected() {
         return (connectionSourceRef.get() != null);

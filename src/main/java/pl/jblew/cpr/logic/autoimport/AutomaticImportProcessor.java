@@ -7,14 +7,11 @@ package pl.jblew.cpr.logic.autoimport;
 
 import java.io.File;
 import java.nio.file.Path;
-import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -22,9 +19,7 @@ import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.gui.panels.ProgressListPanel;
-import pl.jblew.cpr.logic.Event;
 import pl.jblew.cpr.logic.io.Importer;
-import pl.jblew.cpr.util.NamingThreadFactory;
 
 /**
  *
@@ -32,7 +27,6 @@ import pl.jblew.cpr.util.NamingThreadFactory;
  */
 public class AutomaticImportProcessor {
     private final Context context;
-    private final ExecutorService cachedExecutor = Executors.newCachedThreadPool(new NamingThreadFactory("autoimport-processor"));
     private final List<String> pathsBeingProcessed = new LinkedList<>();
 
     public AutomaticImportProcessor(Context context) {
@@ -44,7 +38,7 @@ public class AutomaticImportProcessor {
             if (!pathsBeingProcessed.contains(p.toString())) {
                 pathsBeingProcessed.add(p.toString());
 
-                cachedExecutor.submit(() -> {
+                context.cachedExecutor.submit(() -> {
                     File topDir = p.toFile();
 
                     if (topDir.exists() && topDir.canRead()) {

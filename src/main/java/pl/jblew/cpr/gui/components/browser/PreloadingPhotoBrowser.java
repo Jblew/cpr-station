@@ -31,6 +31,7 @@ import javax.imageio.ImageIO;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
+import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.logic.io.ThumbnailLoader;
 import pl.jblew.cpr.util.CollectionUtil;
 import pl.jblew.cpr.util.ListenersManager;
@@ -46,10 +47,12 @@ public class PreloadingPhotoBrowser extends JPanel {
     private final PreloadableImage[] preloadables;
     private final AtomicInteger currentIndex;
     private final BlockingQueue<Integer> preloadingQueue = new LinkedBlockingQueue<>();
-    private final ExecutorService loadingExecutor = Executors.newSingleThreadExecutor(new NamingThreadFactory("preloading-photo-browser"));
+    //private final ExecutorService loadingExecutor = Executors.newSingleThreadExecutor(new NamingThreadFactory("preloading-photo-browser"));
     private final AtomicBoolean preloadingRunning = new AtomicBoolean(false);
+    private final Context context;
 
-    public PreloadingPhotoBrowser(PreloadableImage[] preloadables, int initialIndex, final ScaleType t) {
+    public PreloadingPhotoBrowser(Context context, PreloadableImage[] preloadables, int initialIndex, final ScaleType t) {
+        this.context = context;
         this.preloadables = preloadables;
         currentIndex = new AtomicInteger(initialIndex);
         //if(preloadables.length == 0) throw new IllegalArgumentException("Empty preloadables");
@@ -110,7 +113,7 @@ public class PreloadingPhotoBrowser extends JPanel {
                         .filter(ci -> preloadables[ci].getFullImage() == null).forEachOrdered(ci -> preloadingQueue.add(ci));
 
                 if (!preloadingRunning.get()) {
-                    loadingExecutor.submit(() -> {
+                    context.cachedExecutor.submit(() -> {
                         preloadingRunning.set(true);
 
                         while (true) {
