@@ -146,7 +146,6 @@ public class PreloadingPhotoBrowser extends JPanel {
         private final AtomicReference<PreloadableImage> image = new AtomicReference<>(null);
         private final AtomicReference<ScaleType> scaleType = new AtomicReference<>(ScaleType.FIT);
         private final AffineTransform transform = new AffineTransform();
-        private final ExecutorService loaderExecutor = Executors.newSingleThreadExecutor(new NamingThreadFactory("PhotoBrowser-loader"));
         private final AtomicReference<BufferedImage> cachedThumb = new AtomicReference<>();
 
         public ImagePanel() {
@@ -193,23 +192,35 @@ public class PreloadingPhotoBrowser extends JPanel {
             }
 
             if (imgSafe != null) {
+                int viewportWidth = scrollPane.getViewport().getWidth();
+                int viewportHeight = scrollPane.getViewport().getHeight();
+                int originalImageWidth = imgSafe.getWidth();
+                int originalImageHeight = imgSafe.getHeight();
+                
                 ScaleType scaleTypeSafe = scaleType.get();
+                transform.setToIdentity();
+                
+                float scaleRatio = 1.0f;
                 if (scaleTypeSafe == ScaleType.NATURAL) {
-                    transform.setToIdentity();
+                    scaleRatio = 1.0f;
                 } else if (scaleTypeSafe == ScaleType.FIT) {
-                    transform.setToIdentity();
-                    float xRatio = (float) scrollPane.getViewport().getWidth() / (float) imgSafe.getWidth();
-                    float yRatio = (float) scrollPane.getViewport().getHeight() / (float) imgSafe.getHeight();
-                    float scaleRatio = Math.min(xRatio, yRatio);
-                    transform.setToScale(scaleRatio, scaleRatio);
+                    float xRatio = (float) viewportWidth / (float) originalImageWidth;
+                    float yRatio = (float) viewportHeight / (float) originalImageHeight;
+                    scaleRatio = Math.min(xRatio, yRatio);
                 } else if (scaleTypeSafe == ScaleType.FILL) {
-                    transform.setToIdentity();
-                    float xRatio = (float) scrollPane.getViewport().getWidth() / (float) imgSafe.getWidth();
-                    float yRatio = (float) scrollPane.getViewport().getHeight() / (float) imgSafe.getHeight();
-                    float scaleRatio = Math.max(xRatio, yRatio);
-                    transform.setToScale(scaleRatio, scaleRatio);
+                    float xRatio = (float) viewportWidth / (float) originalImageWidth;
+                    float yRatio = (float) viewportHeight / (float) originalImageHeight;
+                    scaleRatio = Math.max(xRatio, yRatio);
                 }
-
+                
+                int newImageWidth = (int)((double)originalImageWidth*scaleRatio);
+                int newImageHeight = (int)((double)originalImageHeight*scaleRatio);
+                
+                transform.setToTranslation(viewportWidth/2-newImageWidth/2, viewportHeight/2-newImageHeight/2);
+                transform.scale(scaleRatio, scaleRatio);
+                
+                //transform.translate(newImageWidth/2, newImageHeight/2);
+                
                 g.drawImage(imgSafe, transform, null);
             } else {
                 g.setColor(Color.RED);
