@@ -63,14 +63,12 @@ public class MFile implements Comparable<MFile> {
      */
     public String calculateAndSetFilename(String basePath, String extension) {
         String baseFileName = FILENAME_FORMATTER.format(getDateTime());
-
         File targetFile = new File(basePath + File.separator + baseFileName + "." + extension);
 
         if (targetFile.exists()) {
             int fileNameI = 0;
             while (true) {
-                targetFile = new File(basePath + File.separator + baseFileName + "_" + fileNameI + "." + extension);
-                System.out.println("Trying " + targetFile);
+                targetFile = new File(calculateAndSetFilename(basePath, extension, fileNameI));
 
                 if (!targetFile.exists()) {
                     break;
@@ -79,6 +77,15 @@ public class MFile implements Comparable<MFile> {
             }
         }
         this.filename = targetFile.getName();
+
+        return this.filename;
+    }
+    
+    public String calculateAndSetFilename(String basePath, String extension, int addNumber) {
+        String baseFileName = FILENAME_FORMATTER.format(getDateTime());
+        String targetPath = basePath + File.separator + baseFileName + "_" + addNumber + "." + extension;
+
+        this.filename = targetPath;
 
         return this.filename;
     }

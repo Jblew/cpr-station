@@ -79,7 +79,7 @@ public class MD5Util {
             String out = bytesToHex(digest);
             return out;
         } catch (NoSuchAlgorithmException | IOException ex) {
-            Logger.getLogger(Importer.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(Importer.class.getName()).log(Level.SEVERE, "Ex for "+f.getAbsolutePath(), ex);
             return "";
         }
     }

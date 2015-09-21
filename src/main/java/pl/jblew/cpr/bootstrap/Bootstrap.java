@@ -54,6 +54,7 @@ public class Bootstrap {
     }
 
     private void shutdown() {
+        System.out.println("[SHUTDOWN] Shutdown unlocked");
         shutdownLatch.countDown();
     }
     
@@ -115,6 +116,7 @@ public class Bootstrap {
     }
     
     private void doShutdown(Context context) {
+        System.out.println("[SHUTDOWN] Performing basic shutdown tasks");
         //basic shutdown tasks
         context.dbManager.shutdown();
         context.deviceDetector.shutdown();

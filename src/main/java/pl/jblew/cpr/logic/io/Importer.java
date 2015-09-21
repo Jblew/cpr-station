@@ -163,6 +163,9 @@ public class Importer {
                 callback.progressChanged(0, "Obliczanie prawidłowych nazw...", false);
 
                 Map<File, MFile> targetFilesMap = createFileMap(callback, targetEvent, basePath);
+                
+                callback.progressChanged(0, "Rozwiązywanie konfliktów...", false);
+                resolveConflicts(targetFilesMap, targetLocalization, basePath);
 
                 callback.progressChanged(0, "Rozpoczynam kopiowanie plików", false);
 
@@ -276,6 +279,25 @@ public class Importer {
 
         return targetFilesMap;
     }
+    
+    private void resolveConflicts(Map<File, MFile> targetFilesMap, Event_Localization eventLocalization, String basePath) {
+        for (File sourceFile : targetFilesMap.keySet()) {
+            MFile targetMFile = targetFilesMap.get(sourceFile);
+            File targetFile = targetMFile.getFile(context, eventLocalization);
+            
+            int i = 0;
+            while(targetFile.exists()) {
+                String expectedMD5 = targetMFile.getMd5();
+                String actualMD5 = MD5Util.calculateMD5(targetFile);
+                
+                if(!actualMD5.equals(expectedMD5)) {//if MD5 is not equal, these are different files
+                    String extension = targetFile.getName().substring(targetFile.getName().lastIndexOf('.') + 1).toLowerCase();
+                    targetFile = new File(targetMFile.calculateAndSetFilename(basePath, extension, i));
+                }
+                i++;
+            }
+        }
+    }
 
     private boolean writeFiles(Map<File, MFile> targetFilesMap, Event_Localization eventLocalization, String basePath, ImportWindow.ProgressChangedCallback callback) {
         int numOfFiles = targetFilesMap.size();
@@ -287,23 +309,19 @@ public class Importer {
             MFile targetMFile = targetFilesMap.get(sourceFile);
             File targetFile = targetMFile.getFile(context, eventLocalization);
             
+            
             float percentF = ((float) i) / ((float) numOfFiles);
             int percent = (int) (percentF * 100f);
             if (percent == 100) {
                 percent = 99; //in order not to disable progress bar
             }
             try {
-
                 if (targetFile.exists()) {
-                    String extension = targetFile.getName().substring(sourceFile.getName().lastIndexOf('.') + 1).toLowerCase();
-
-                    targetMFile.calculateAndSetFilename(basePath, extension);//recalculate name if file already exists
-                    targetFile = targetMFile.getFile(context, eventLocalization);
+                    targetFile.delete();
+                    targetFile = targetMFile.getFile(context, eventLocalization);//reload File object
                 }
-
                 Files.copy(sourceFile.toPath(), targetFile.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
-
-                System.out.println(sourceFile.toPath() + " -> " + targetFile.toPath());
+                //System.out.println(sourceFile.toPath() + " -> " + targetFile.toPath());
                 ThumbnailLoader.loadThumbnail(targetFile, true, null);
 
                 long elapsedTime = System.currentTimeMillis() - sTime;

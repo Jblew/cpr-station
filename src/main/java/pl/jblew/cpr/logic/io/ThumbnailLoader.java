@@ -108,10 +108,10 @@ public class ThumbnailLoader {
         int newHeight;
         if (loadedImage.getWidth() > loadedImage.getHeight()) {
             newWidth = maxSize;
-            newHeight = (int) Math.floor((float)maxSize * (float) loadedImage.getHeight() / (float) loadedImage.getWidth());
+            newHeight = (int) Math.floor((float) maxSize * (float) loadedImage.getHeight() / (float) loadedImage.getWidth());
         } else {
             newHeight = maxSize;
-            newWidth = (int) Math.floor((float)maxSize * (float) loadedImage.getWidth() / (float) loadedImage.getHeight());
+            newWidth = (int) Math.floor((float) maxSize * (float) loadedImage.getWidth() / (float) loadedImage.getHeight());
         }
 
         BufferedImage buffer = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_RGB);
@@ -120,31 +120,29 @@ public class ThumbnailLoader {
         g.dispose();
         return buffer;
     }
-    
-    private static BufferedImage scaleImageGoodQuality(BufferedImage img, int maxSize)
-    {
+
+    private static BufferedImage scaleImageGoodQuality(BufferedImage img, int maxSize) {
         boolean progressiveBilinear = true;
-        
+
         int targetWidth;
         int targetHeight;
         if (img.getWidth() > img.getHeight()) {
             targetWidth = maxSize;
-            targetHeight = (int) Math.floor((float)maxSize * (float) img.getHeight() / (float) img.getWidth());
+            targetHeight = (int) Math.floor((float) maxSize * (float) img.getHeight() / (float) img.getWidth());
         } else {
             targetHeight = maxSize;
-            targetWidth = (int) Math.floor((float)maxSize * (float) img.getWidth() / (float) img.getHeight());
+            targetWidth = (int) Math.floor((float) maxSize * (float) img.getWidth() / (float) img.getHeight());
         }
-        
-        int type = (img.getTransparency() == Transparency.OPAQUE) ?
-            BufferedImage.TYPE_INT_RGB : BufferedImage.TYPE_INT_ARGB;
+
+        int type = (img.getTransparency() == Transparency.OPAQUE)
+                ? BufferedImage.TYPE_INT_RGB : BufferedImage.TYPE_INT_ARGB;
         BufferedImage ret = img;
         BufferedImage scratchImage = null;
         Graphics2D g2 = null;
         int w, h;
         int prevW = ret.getWidth();
         int prevH = ret.getHeight();
-        boolean isTranslucent = img.getTransparency() !=  Transparency.OPAQUE; 
-
+        boolean isTranslucent = img.getTransparency() != Transparency.OPAQUE;
         if (progressiveBilinear) {
             // Use multi-step technique: start with original size, then
             // scale down in multiple passes with drawImage()
@@ -157,7 +155,6 @@ public class ThumbnailLoader {
             w = targetWidth;
             h = targetHeight;
         }
-        
         do {
             if (progressiveBilinear && w > targetWidth) {
                 w /= 2;
@@ -171,6 +168,14 @@ public class ThumbnailLoader {
                 if (h < targetHeight) {
                     h = targetHeight;
                 }
+            }
+
+            if (w < targetWidth) {
+                w = targetWidth;
+            }
+
+            if (h < targetHeight) {
+                h = targetHeight;
             }
 
             if (scratchImage == null || isTranslucent) {
@@ -187,10 +192,11 @@ public class ThumbnailLoader {
 
             ret = scratchImage;
         } while (w != targetWidth || h != targetHeight);
-        
+
         if (g2 != null) {
             g2.dispose();
         }
+
 
         // If we used a scratch buffer that is larger than our target size,
         // create an image of the right size and copy the results into it
@@ -201,7 +207,8 @@ public class ThumbnailLoader {
             g2.dispose();
             ret = scratchImage;
         }
-        
+
+
         return ret;
     }
 
@@ -230,14 +237,16 @@ public class ThumbnailLoader {
                 if (!thumbnailLoaded) {
                     BufferedImage loadedImage = ImageIO.read(f);
                     BufferedImage scaled = null;
-                    if(tryReadOrSave) scaled = scaleImageGoodQuality(loadedImage, Settings.THUMBNAIL_MAX_SIZE);
-                    else scaled = scaleImageLowQuality(loadedImage, Settings.THUMBNAIL_MAX_SIZE); //if we save thumbnail, we can do it in good quality
+                    if (tryReadOrSave) {
+                        scaled = scaleImageGoodQuality(loadedImage, Settings.THUMBNAIL_MAX_SIZE);
+                    } else {
+                        scaled = scaleImageLowQuality(loadedImage, Settings.THUMBNAIL_MAX_SIZE); //if we save thumbnail, we can do it in good quality
+                    }
                     ImageIcon icon = new ImageIcon(scaled);
                     if (listener != null) {
                         listener.thumbnailLoaded(icon);
                     }
                     weakCache.put(f.getAbsolutePath(), scaled);
-
                     if (tryReadOrSave) {
                         if (!possibleThumbDir.exists()) {
                             possibleThumbDir.mkdirs();
@@ -258,7 +267,7 @@ public class ThumbnailLoader {
         return name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png")
                 || name.endsWith(".gif") || name.endsWith(".tif") || name.endsWith(".bmp");
     }
-    
+
     public static BufferedImage seekImageInCache(File f) {
         return weakCache.get(f.getAbsolutePath());
     }

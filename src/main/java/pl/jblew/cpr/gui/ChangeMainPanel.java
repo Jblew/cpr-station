@@ -25,6 +25,6 @@ public class ChangeMainPanel implements PrintableBusMessage {
 
     @Override
     public String toString() {
-        return "ChangeMainPanel{" + "mainPanel=" + mainPanel + '}';
+        return "ChangeMainPanel{" + "mainPanel=" + mainPanel.getClass().getName() + '}';
     }
 }
