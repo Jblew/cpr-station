@@ -74,7 +74,10 @@ public class SynchronizeWindow {
             frame.addWindowListener(new WindowAdapter() {
                 @Override
                 public void windowClosing(WindowEvent evt) {
-                    if (!windowCloseEnabled.get()) {
+                    if (windowCloseEnabled.get()) {
+                        frame.setVisible(false);
+                    }
+                    else {
                         frame.setVisible(true);
                     }
                 }

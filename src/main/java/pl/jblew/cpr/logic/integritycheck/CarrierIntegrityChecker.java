@@ -6,9 +6,14 @@
 package pl.jblew.cpr.logic.integritycheck;
 
 import java.io.File;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.file.StorageDevicePresenceListener;
+import pl.jblew.cpr.gui.panels.ProgressListPanel;
 import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.Event_Localization;
 
@@ -33,6 +38,8 @@ public class CarrierIntegrityChecker implements StorageDevicePresenceListener {
             if (c != null) {
                 if (c.getLastChecked().isBefore(LocalDateTime.now().minusWeeks(2))) {
                     processor.check(c, rootFile, deviceName);
+                } else {
+                    processor.quickCheck(c, rootFile, deviceName);
                 }
             }
         });

@@ -38,7 +38,7 @@ public class GUI {
             
             treePanel.set(new TreePanel(context));
             window.get().addTreePane(treePanel.get());
-            
+                        
             loaded.set(true);
             while (true) {
                 Runnable r = executeOnLoadQueue.poll();

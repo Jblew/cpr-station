@@ -5,6 +5,7 @@
  */
 package pl.jblew.cpr.logic;
 
+import com.j256.ormlite.field.DataType;
 import com.j256.ormlite.field.DatabaseField;
 import com.j256.ormlite.table.DatabaseTable;
 import java.io.File;
@@ -35,6 +36,12 @@ public class Event_Localization {
 
     @DatabaseField(canBeNull = false)
     private String dirName;
+    
+    @DatabaseField(canBeNull = false, dataType = DataType.ENUM_STRING)
+    private Event.Type actualEventType;
+    
+    @DatabaseField(canBeNull = true)
+    private boolean needValidation;
 
     private final AtomicReference<Carrier> cachedCarrier = new AtomicReference<>(null);
 
@@ -102,6 +109,22 @@ public class Event_Localization {
     public void setDirName(String dirName) {
         this.dirName = dirName;
     }
+
+    public Event.Type getActualEventType() {
+        return actualEventType;
+    }
+
+    public void setActualEventType(Event.Type actualEventType) {
+        this.actualEventType = actualEventType;
+    }
+
+    public boolean getNeedValidation() {
+        return needValidation;
+    }
+
+    public void setNeedValidation(boolean needValidation) {
+        this.needValidation = needValidation;
+    }
     
     public Carrier getCarrier(Context context) {
         if (cachedCarrier.get() != null) {
@@ -128,8 +151,7 @@ public class Event_Localization {
     }
 
     public String getFullEventPath(Context context) {
-        Event evt = getOrLoadFullEvent(context);
-        String sortedPath = (evt.getType() == Event.Type.SORTED ? FileStructureUtil.PATH_SORTED_PHOTOS : FileStructureUtil.PATH_UNSORTED_PHOTOS);
+        String sortedPath = (getActualEventType() == Event.Type.SORTED ? FileStructureUtil.PATH_SORTED_PHOTOS : FileStructureUtil.PATH_UNSORTED_PHOTOS);
         Carrier carrier = getCarrier(context);
         return context.deviceDetector.getDeviceRoot(carrier.getName()) + File.separator + sortedPath + File.separator + getDirName();
     }

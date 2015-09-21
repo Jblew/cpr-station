@@ -120,7 +120,7 @@ public class EventsNode extends TreePanel.IconTreeNode implements TreePanel.AddT
             events.put(e, node);
         }
     }
-
+    
     private void addCreateNode() {
         final TreePanel.SelectableIconTreeNode node = new TreePanel.SelectableIconTreeNode("Dodaj wydarzenie", new ImageIcon(TreePanel.class.getClassLoader().getResource("images/add16.png"))) {
             @Override

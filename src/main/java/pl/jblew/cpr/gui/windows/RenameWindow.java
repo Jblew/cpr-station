@@ -26,7 +26,7 @@ import pl.jblew.cpr.gui.util.ValidableLabel;
 import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.Event;
 import pl.jblew.cpr.logic.Event_Localization;
-import pl.jblew.cpr.logic.io.Validator;
+import pl.jblew.cpr.logic.integritycheck.Validator;
 import pl.jblew.cpr.util.TwoTuple;
 
 /**
@@ -53,7 +53,12 @@ public class RenameWindow {
             frame.addWindowListener(new WindowAdapter() {
                 @Override
                 public void windowClosing(WindowEvent evt) {
-                    if(!windowCloseEnabled.get()) frame.setVisible(true);
+                    if (windowCloseEnabled.get()) {
+                        frame.setVisible(false);
+                    }
+                    else {
+                        frame.setVisible(true);
+                    }
                 }
             });
 
@@ -194,13 +199,7 @@ public class RenameWindow {
 
                                 boolean hadError = false;
                                 for (TwoTuple<Event_Localization, File> tuple : paths) {
-                                    try {
-                                        Validator.validateEventLocalization(context, tuple.getA());
-                                    } catch (Validator.MissingOrBrokenFilesException ex) {
-                                        Logger.getLogger(RenameWindow.class.getName()).log(Level.SEVERE, null, ex);
-                                        progressLabel.setText(progressLabel.getText() + "<br />Błąd: Na wydarzenie jest uszkodzone na urządzeniu \"" + tuple.getA().getCarrier(context).getName() + "\".");
-                                        hadError = true;
-                                    }
+                                    Validator.validateEventLocalizationOrMarkForValidation(context, tuple.getA());
                                 }
 
                                 final boolean hadError_ = hadError;

@@ -62,7 +62,7 @@ public class SwingFileBrowser extends JPanel {
         setBorder(BorderFactory.createBevelBorder(BevelBorder.LOWERED));
         setLayout(new BorderLayout());
 
-        JButton upButton = new JButton("Do góry", new ImageIcon(FileBrowser.class.getClassLoader().getResource("images/up16.png")));
+        JButton upButton = new JButton("", new ImageIcon(FileBrowser.class.getClassLoader().getResource("images/up16.png")));
         upButton.addActionListener((ActionEvent e) -> {
             File safeCwd = cwd.get();
             File parent1 = safeCwd.getParentFile();

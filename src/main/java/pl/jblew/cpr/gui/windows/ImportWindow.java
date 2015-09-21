@@ -63,7 +63,12 @@ private final Context context;
             frame.addWindowListener(new WindowAdapter() {
                 @Override
                 public void windowClosing(WindowEvent evt) {
-                    if(!windowCloseEnabled.get()) frame.setVisible(true);
+                    if (windowCloseEnabled.get()) {
+                        frame.setVisible(false);
+                    }
+                    else {
+                        frame.setVisible(true);
+                    }
                 }
             });
 

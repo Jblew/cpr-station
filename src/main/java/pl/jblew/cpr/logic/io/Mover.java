@@ -13,6 +13,8 @@ import java.sql.SQLException;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -35,7 +37,8 @@ public class Mover {
     private final AtomicReference<Stage> currentStage = new AtomicReference<Stage>(Stage.WAIT_FOR_SOURCE_DEVICE);
     private final Set<Event_Localization> leftTargetLocalizationsToWrite = Collections.synchronizedSet(new HashSet<Event_Localization>());
     private final Set<Event_Localization> leftSourceLocalizationsToDelete = Collections.synchronizedSet(new HashSet<Event_Localization>());
-    private final Set<Event> tempEvents = Collections.synchronizedSet(new HashSet<Event>());
+    private final AtomicBoolean databaseUpdated = new AtomicBoolean(false);
+    private final AtomicBoolean cleanupDone = new AtomicBoolean(false);
 
     public Mover(Context context, Event sourceEvent, MFile[] mfilesToMove) {
         this.context = context;
@@ -63,11 +66,12 @@ public class Mover {
     public Step getNextStep() {
         Stage s = currentStage.get();
         System.out.println("getNextStep() stage=" + s.name() + "; leftTargetLocalizationsToWrite.size()=" + leftTargetLocalizationsToWrite.size() + ";"
-                + " leftSourceLocalizationsToDelete.size()=" + leftSourceLocalizationsToDelete.size() + "; tempEvents.size()=" + tempEvents.size());
+                + " leftSourceLocalizationsToDelete.size()=" + leftSourceLocalizationsToDelete.size());
         if (s == Stage.WAIT_FOR_SOURCE_DEVICE) {
             Carrier[] connectedSourceDevices = context.deviceDetector.getConnectedOfCarriers(sourceEvent.getLocalizations().stream().map(el -> el.getCarrier(context)).toArray(Carrier[]::new));
             if (connectedSourceDevices.length > 0) {
                 currentStage.set(Stage.WRITE_TARGET_DEVICE);
+                leftSourceLocalizationsToDelete.addAll(sourceEvent.getLocalizations());
                 leftTargetLocalizationsToWrite.addAll(targetEvent.get().getLocalizations());
                 return getNextStep();
             } else {
@@ -75,7 +79,7 @@ public class Mover {
             }
         } else if (s == Stage.WRITE_TARGET_DEVICE) {
             if (!leftTargetLocalizationsToWrite.isEmpty()) {
-                Carrier[] targetCarriers = context.deviceDetector.getConnectedOfCarriers(targetEvent.get().getLocalizations().stream().map(el -> el.getCarrier(context)).toArray(Carrier[]::new));
+                Carrier[] targetCarriers = context.deviceDetector.getConnectedOfCarriers(leftTargetLocalizationsToWrite.stream().map(el -> el.getCarrier(context)).toArray(Carrier[]::new));
                 if (targetCarriers.length > 0) {
                     Carrier sourceCarrier = context.deviceDetector.getConnectedOfCarriers(sourceEvent.getLocalizations().stream().map(el -> el.getCarrier(context)).toArray(Carrier[]::new))[0];
                     Carrier carrierToCopy = targetCarriers[0];
@@ -97,7 +101,7 @@ public class Mover {
             }
         } else if (s == Stage.DELETE_FROM_SOURCE_DEVICE) {
             if (!leftSourceLocalizationsToDelete.isEmpty()) {
-                Carrier carrierToDelete = context.deviceDetector.getConnectedOfCarriers(sourceEvent.getLocalizations().stream().map(el -> el.getCarrier(context)).toArray(Carrier[]::new))[0];
+                Carrier carrierToDelete = context.deviceDetector.getConnectedOfCarriers(leftSourceLocalizationsToDelete.stream().map(el -> el.getCarrier(context)).toArray(Carrier[]::new))[0];
                 if (carrierToDelete != null) {
                     Event_Localization sourceLocalization = sourceEvent.getLocalizations().stream().filter((Event_Localization el) -> el.getCarrierId() == carrierToDelete.getId()).findFirst().get();
                     return new Step("Usuwanie z " + carrierToDelete.getName(), (MoveWindow.ProgressChangedCallback callback) -> {
@@ -114,13 +118,26 @@ public class Mover {
                 return getNextStep();
             }
         } else if (s == Stage.UPDATE_DB) {
-            if (!tempEvents.isEmpty()) {
+            if (!databaseUpdated.get()) {
                 return new Step("Aktualizowanie bazy danych ", (MoveWindow.ProgressChangedCallback callback) -> {
                     updateDB(callback);
+                    databaseUpdated.set(true);
+                    currentStage.set(Stage.DO_CLEANUP);
                     callback.progressChanged(100, "Gotowe!", false);
                 });
             } else {
-                return null;
+                currentStage.set(Stage.DO_CLEANUP);
+                return getNextStep();
+            }
+        } else if (s == Stage.DO_CLEANUP) {
+            if (!cleanupDone.get()) {
+                return new Step("Sprzątanie", (MoveWindow.ProgressChangedCallback callback) -> {
+                    doCleanup(callback);
+                    cleanupDone.set(true);
+                    callback.progressChanged(100, "Gotowe!", false);
+                });
+            } else {
+                return null;//EVERYTHING DONE!
             }
         } else {
             throw new RuntimeException("Unknown stage: " + s);
@@ -150,9 +167,16 @@ public class Mover {
                 if (!parent.exists()) {
                     parent.mkdirs();
                 }
+                
+                if(targetFile.exists() && !MD5Util.calculateMD5(targetFile).equals(sourceMFile.getMd5())) {
+                    targetFile.delete();
+                }
+                
+                if(!targetFile.exists()) {
                 System.out.println("Kopiowanie pliku z " + sourceFile.toPath() + " do " + targetFile.toPath());
                 Files.copy(sourceFile.toPath(), targetFile.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
                 ThumbnailLoader.loadThumbnail(targetFile, true, null);
+                }
                 if (callback != null) {
                     callback.progressChanged(percent, "Kopiowanie " + i + "/" + mfilesToMove.length + " (" + percent + "%)", false);
                 }
@@ -212,6 +236,15 @@ public class Mover {
             try {
                 System.out.println("Usuwam " + sourceFile.toPath());
                 Files.delete(sourceFile.toPath());
+
+                if (sourceFile.getParentFile().listFiles((f, name) -> !name.startsWith(".")).length == 0) {
+                    try {
+                        sourceFile.getParentFile().delete();
+                    } catch (Exception ex) {
+                        Logger.getLogger(Exporter.class.getName()).log(Level.SEVERE, "Nie można usunąć pustego katalogu " + sourceFile.getParentFile(), ex);
+                    }
+                }
+
                 if (callback != null) {
                     callback.progressChanged(percent, "Usuwanie " + i + "/" + mfilesToMove.length + " (" + percent + "%)", false);
                 }
@@ -240,6 +273,8 @@ public class Mover {
                     }
                 }
 
+                targetEvent.get().update(context);
+
                 callback.progressChanged(100, "Gotowe!", false);
             });
         } catch (InterruptedException ex) {
@@ -247,8 +282,24 @@ public class Mover {
         }
     }
 
+    private void doCleanup(MoveWindow.ProgressChangedCallback callback) {
+        try {
+            CountDownLatch awaitDelete = new CountDownLatch(1);
+            if (sourceEvent.getLocalizedMFiles(context).length == 0) {
+                sourceEvent.delete(context, () -> {
+                    awaitDelete.countDown();
+                });
+            }
+            awaitDelete.await();
+
+            callback.progressChanged(100, "Gotowe!", false);
+        } catch (InterruptedException ex) {
+            Logger.getLogger(Mover.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
     private enum Stage {
-        WAIT_FOR_SOURCE_DEVICE, WRITE_TARGET_DEVICE, DELETE_FROM_SOURCE_DEVICE, UPDATE_DB
+        WAIT_FOR_SOURCE_DEVICE, WRITE_TARGET_DEVICE, DELETE_FROM_SOURCE_DEVICE, UPDATE_DB, DO_CLEANUP
     }
 
     public static class Step {

@@ -45,9 +45,10 @@ public class CreateEventModal {
         final AtomicReference<Event> result = new AtomicReference<>(null);
         try {
             Runnable r = () -> {
-                JDialog dialog = new JDialog(context.frame, "", Dialog.ModalityType.DOCUMENT_MODAL);
+                JDialog dialog = new JDialog(SwingUtilities.getWindowAncestor(parent), "", Dialog.ModalityType.DOCUMENT_MODAL);
                 dialog.setSize(800, 200);
                 dialog.setTitle("Utwórz nowe wydarzenie");
+                dialog.setLocationRelativeTo(null);
 
                 JPanel contentPanel = new JPanel();
                 contentPanel.setBorder(BorderFactory.createEmptyBorder(25, 25, 25, 25));
@@ -60,7 +61,7 @@ public class CreateEventModal {
                 JComboBox deviceSelection = new JComboBox(Arrays.stream(connectedCarriers).map(c -> c.getName()).toArray(String[]::new));
                 contentPanel.add(deviceSelection);
 
-                JTextField nameField = new JTextField("[" + DateTimeFormatter.ofPattern("YYYY.MM.dd ").format(LocalDateTime.now()) + "] ");
+                JTextField nameField = new JTextField("");
                 nameField.setColumns(40);
                 contentPanel.add(nameField);
 

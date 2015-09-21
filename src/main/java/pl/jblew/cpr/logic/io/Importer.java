@@ -5,6 +5,7 @@
  */
 package pl.jblew.cpr.logic.io;
 
+import pl.jblew.cpr.logic.integritycheck.Validator;
 import com.j256.ormlite.dao.Dao;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
@@ -181,14 +182,15 @@ public class Importer {
                 markImported(targetFilesMap);
 
                 targetEvent.recalculateAndUpdateTimeBounds(context);
-                targetEvent.getLocalizations().stream()
+                /*targetEvent.getLocalizations().stream()
                         .filter(el -> el.getCarrier(context).isConnected(context)).forEachOrdered(el -> {
                             try {
                                 Validator.validateEventLocalization(context, el);
                             } catch (Validator.MissingOrBrokenFilesException ex) {
                                 Logger.getLogger(Importer.class.getName()).log(Level.SEVERE, null, ex);
                             }
-                        });
+                        });*/
+                targetEvent.update(context);//this also marks localizations for revalidation
 
                 callback.progressChanged(100, "Gotowe! (" + numOfExisting + " znajdowało się już wcześniej w bazie!)", false);
             } catch (InterruptedException ex) {
@@ -216,6 +218,7 @@ public class Importer {
             newLocalization.setCarrierId(carrier.getId());
             newLocalization.setEvent(targetEvent);
             newLocalization.setDirName(targetEvent.getName());
+            newLocalization.setActualEventType(targetEvent.getType());
 
             AtomicBoolean created = new AtomicBoolean(false);
             context.dbManager.executeInDBThreadAndWait(() -> {

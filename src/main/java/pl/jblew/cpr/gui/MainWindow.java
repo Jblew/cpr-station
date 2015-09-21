@@ -45,22 +45,23 @@ public class MainWindow {
         frame.setSize(1000, 800);
         frame.setLocationRelativeTo(null);
         frame.setIconImage(IconLoader.LOGO_256.load().getImage());
-        
+
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        
+
         frame.setContentPane(mainContentPane);
-        
+
         lockDialog = new JDialog(frame, "Ładowanie...", Dialog.ModalityType.APPLICATION_MODAL);
     }
 
     public void show() {
-        frame.setVisible(true);
+        SwingUtilities.invokeLater(() -> {
+            frame.setVisible(true);
+        });
     }
 
     //public void setMainPanel(MainPanel newMainPanel) {
     //    mainContentPane.setMainPanel(newMainPanel);
     //}
-
     void addTreePane(JPanel treePane) {
         //JScrollPane sp = new JScrollPane(treePane);
         //sp.setPreferredSize(new Dimension(300, 900));
@@ -80,12 +81,12 @@ public class MainWindow {
             dbLabel = new JLabel("Brak bazy danych, podłącz klucz z bazą");
             dbBackupLabel = new JLabel("");
             dbLabel.setForeground(Color.RED);
-            
+
             JToolBar toolBar = new JToolBar();
             toolBar.add(dbLabel);
             toolBar.addSeparator();
             toolBar.add(dbBackupLabel);
-            
+
             this.setLayout(new BorderLayout());
             this.add(toolBar, BorderLayout.NORTH);
             this.add(mainPanel, BorderLayout.CENTER);
@@ -98,17 +99,17 @@ public class MainWindow {
                 long sT = System.currentTimeMillis();
                 MainPanel prevMainPanel = mainPanel;
                 prevMainPanel.inactivate();
-                
+
                 remove(prevMainPanel);
                 add(newMainPanel, BorderLayout.CENTER);
-                
+
                 mainPanel = newMainPanel;
                 mainPanel.activate();
-                
+
                 revalidate();
                 repaint();
-                
-                System.out.println("Changing main panel: "+(System.currentTimeMillis()-sT)+"ms");
+
+                System.out.println("Changing main panel: " + (System.currentTimeMillis() - sT) + "ms");
                 //setVisible(false);
                 //setVisible(true);
                 //frame.repaint();
@@ -131,32 +132,32 @@ public class MainWindow {
         public void changeMainPanel(ChangeMainPanel e) {
             setMainPanel(e.getMainPanel());
         }
-        
+
         @Subscribe
         public void databaseChanged(final DatabaseChanged e) {
             SwingUtilities.invokeLater(() -> {
-                dbLabel.setForeground((e.isNull()? Color.RED : Color.BLACK));
-                dbLabel.setText("Baza danych: "+e.getDeviceName());
+                dbLabel.setForeground((e.isNull() ? Color.RED : Color.BLACK));
+                dbLabel.setText("Baza danych: " + e.getDeviceName());
             });
         }
-        
+
         @Subscribe
         public void dbBackupStateChanged(final DBBackupManager.BackupStateChanged e) {
             SwingUtilities.invokeLater(() -> {
-                dbBackupLabel.setForeground((e.isSafe()? Color.GREEN.darker() : Color.RED));
-                dbBackupLabel.setText(e.getMsg()+" ("+e.getRemaningChanges()+")");
+                dbBackupLabel.setForeground((e.isSafe() ? Color.GREEN.darker() : Color.RED));
+                dbBackupLabel.setText(e.getMsg() + " (" + e.getRemaningChanges() + ")");
             });
         }
-        
+
         @Subscribe
         public void setUILocked(SetUILocked l) {
             SwingUtilities.invokeLater(() -> {
                 lockDialog.setVisible(l.locked);
             });
         }
-        
+
     }
-    
+
     public static class SetUILocked {
         public final boolean locked;
 

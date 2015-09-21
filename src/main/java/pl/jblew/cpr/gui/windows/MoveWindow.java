@@ -24,8 +24,12 @@ import javax.swing.JProgressBar;
 import javax.swing.JSeparator;
 import javax.swing.SwingUtilities;
 import pl.jblew.cpr.bootstrap.Context;
+import pl.jblew.cpr.gui.ChangeMainPanel;
+import pl.jblew.cpr.gui.components.SearchableEventPicker;
 import pl.jblew.cpr.gui.components.modal.CreateEventModal;
+import pl.jblew.cpr.gui.panels.EventPanel;
 import pl.jblew.cpr.gui.panels.ProgressListPanel;
+import pl.jblew.cpr.gui.treenodes.EventsNode;
 import pl.jblew.cpr.gui.util.CPRProgressBarUI;
 import pl.jblew.cpr.gui.util.PanelDisabler;
 import pl.jblew.cpr.logic.Event;
@@ -57,7 +61,10 @@ public class MoveWindow {
             frame.addWindowListener(new WindowAdapter() {
                 @Override
                 public void windowClosing(WindowEvent evt) {
-                    if (!windowCloseEnabled.get()) {
+                    if (windowCloseEnabled.get()) {
+                        frame.setVisible(false);
+                    }
+                    else {
                         frame.setVisible(true);
                     }
                 }
@@ -74,72 +81,54 @@ public class MoveWindow {
 
         public MainPanel() {
             setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
+            
+            setPreferredSize(new Dimension(500, 500));
+            setMaximumSize(new Dimension(500, 500));
 
             JPanel infoPanel = new JPanel(new FlowLayout());
-            JPanel targetEventPanel = new JPanel(new FlowLayout());
+            JPanel targetEventPanel = new JPanel();
             devicePanelsPanel = new JPanel();
             devicePanelsPanel.setLayout(new BoxLayout(devicePanelsPanel, BoxLayout.PAGE_AXIS));
             finishPanel = new JPanel(new BorderLayout());
 
             /**
+             * 
+             * 
+             * 
+             * 
+             * 
              * INFO PANEL *
              */
             infoPanel.add(new JLabel("<html>Przenoszenie <b>" + mover.getMfilesToMove().length + "</b> plików z <b>" + mover.getSourceEvent().getName() + "</b>."));
 
             /**
+             * 
+             * 
+             * 
+             * 
+             * 
              * TARGET EVENT SELECTION PANEL *
              */
+            targetEventPanel.setLayout(new BoxLayout(targetEventPanel, BoxLayout.PAGE_AXIS));
             targetEventPanel.add(new JLabel("Wybierz docelowe wydarzenie:"));
 
-            JComboBox eventTypeSelection = new JComboBox(new String[]{"Wybierz typ...", "POSEGREGOWANE", "NIEPOSEGREGOWANE"});
-            targetEventPanel.add(eventTypeSelection);
-
-            DefaultComboBoxModel eventSelectionModel = new DefaultComboBoxModel();
-            JComboBox eventSelection = new JComboBox(eventSelectionModel);
-            eventSelection.setEnabled(false);
-            eventSelection.setMaximumRowCount(30);
-            targetEventPanel.add(eventSelection);
+            SearchableEventPicker eventPicker = new SearchableEventPicker(context);
+            eventPicker.setPreferredSize(new Dimension(480, 30));
+            eventPicker.setMaximumSize(new Dimension(480, 30));
+            targetEventPanel.add(eventPicker);
 
             JButton eventConfirmButton = new JButton("Zatwierdź");
             eventConfirmButton.setEnabled(false);
             targetEventPanel.add(eventConfirmButton);
-
-            eventTypeSelection.addActionListener((evt) -> {
-                if (eventTypeSelection.getSelectedIndex() == 0) {//if user selected label
-                    eventSelection.setEnabled(false);
-                    PanelDisabler.setEnabled(devicePanelsPanel, false);
-                    PanelDisabler.setEnabled(finishPanel, false);
-                    return;
+            
+            eventPicker.addSelectionListener((selectedEvent) -> {
+                if(selectedEvent != null) {
+                    eventConfirmButton.setEnabled(true);
+                    mover.setTargetEvent(selectedEvent);
                 }
-
-                Event.Type eventType = Event.Type.UNSORTED; //for index 2
-                if (eventTypeSelection.getSelectedIndex() == 1) {
-                    eventType = Event.Type.SORTED;
+                else {
+                    eventConfirmButton.setEnabled(false);
                 }
-
-                Event[] eventList = Event.getAllEvents(context, eventType);
-                eventSelectionModel.removeAllElements();
-                Arrays.stream(eventList).forEach(e -> eventSelectionModel.addElement(e.getName()));
-                eventSelectionModel.addElement("[+] Utwórz nowe wydarzenie");
-
-                Arrays.stream(eventSelection.getActionListeners()).forEach(listener -> eventSelection.removeActionListener(listener));
-                eventSelection.addActionListener((evt2) -> {
-                    if (eventSelection.getSelectedIndex() == eventList.length) { //"create action" element
-                        Event newEvent = CreateEventModal.showCreateEventModal(context.frame, context, false);
-                        if (newEvent != null) {
-                            eventSelection.setEnabled(false);
-                            mover.setTargetEvent(newEvent);
-                        }
-                    } else if (eventSelection.getSelectedIndex() >= 0 && eventSelection.getSelectedIndex() < eventList.length) {
-                        mover.setTargetEvent(eventList[eventSelection.getSelectedIndex()]);
-                    }
-
-                    if (mover.getTargetEvent() != null) {
-                        eventConfirmButton.setEnabled(true);
-                    }
-                });
-
-                eventSelection.setEnabled(true);
             });
 
             eventConfirmButton.addActionListener((evt) -> {
@@ -177,11 +166,21 @@ public class MoveWindow {
             });
 
             /**
+             * 
+             * 
+             * 
+             * 
+             * 
              * DEVICE PANELS PANEL *
              */
             devicePanelsPanel.add(new JLabel("Ładowanie"));
 
             /**
+             * 
+             * 
+             * 
+             * 
+             * 
              * FINISH PANEL *
              */
             finishPanel.add(new JLabel("Gotowe!"), BorderLayout.CENTER);
@@ -209,6 +208,8 @@ public class MoveWindow {
                 }
 
                 if (step == null) {
+                    context.eBus.post(new ChangeMainPanel(new EventPanel(context, mover.getTargetEvent())));
+                    context.eBus.post(new EventsNode.EventsListChanged());
                     PanelDisabler.setEnabled(devicePanelsPanel, false);
                     PanelDisabler.setEnabled(finishPanel, true);
                     windowCloseEnabled.set(true);

@@ -55,8 +55,7 @@ public class ThumbnailLoader {
     public void loadImage(File f, LoadedListener l) {
         loadingQueue.add(new TwoTuple<>(f, l));
         for (ProcessingThread pt : processingThreads) {
-            if (!pt.running.get()) {
-                pt.running.set(true);
+            if (pt.running.compareAndSet(false, true)) {
                 executor.submit(pt);
             }
         }

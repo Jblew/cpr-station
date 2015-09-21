@@ -23,6 +23,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.gui.panels.EventPanel;
+import pl.jblew.cpr.gui.panels.ProgressListPanel;
+import pl.jblew.cpr.logic.integritycheck.Validator;
 import pl.jblew.cpr.logic.io.Exporter;
 import pl.jblew.cpr.util.TimeUtils;
 
@@ -44,7 +46,7 @@ public class Event implements Comparable<Event> {
     @DatabaseField(canBeNull = false, dataType = DataType.LONG)
     private long latestUnixTime;
 
-    @DatabaseField(canBeNull = false, dataType = DataType.ENUM_INTEGER)
+    @DatabaseField(canBeNull = false, dataType = DataType.ENUM_STRING)
     private Type type;
 
     @ForeignCollectionField(eager = false, foreignFieldName = "event")
@@ -113,7 +115,7 @@ public class Event implements Comparable<Event> {
     public String calculateProperDirName() {
         return "[" + TimeUtils.formatDateRange(getEarliestDateTime(), getLatestDateTime()) + "] " + getName();
     }
-    
+
     public String getDisplayName() {
         return calculateProperDirName();
     }
@@ -185,7 +187,7 @@ public class Event implements Comparable<Event> {
         )
                 .filter(dir -> dir != null && dir.exists() && dir.isDirectory() && dir.canRead()).findFirst().orElse(null);
     }
-    
+
     public boolean hasProblems() {
         return getLocalizations().size() < 2;
     }
@@ -213,7 +215,7 @@ public class Event implements Comparable<Event> {
     public String toString() {
         return "Event{" + "id=" + id + ", name=" + name + ", type=" + type + '}';
     }
-    
+
     @Override
     public int compareTo(Event o) {
         return Long.compare(earliestUnixTime, o.earliestUnixTime);
@@ -236,6 +238,7 @@ public class Event implements Comparable<Event> {
                         el.setEvent(newEvent);
                         el.setCarrierId(carrier.getId());
                         el.setDirName(name);
+                        el.setActualEventType(newEvent.getType());
 
                         c.dbManager.getDaos().getEvent_LocalizationDao().create(el);
                     }
@@ -285,11 +288,22 @@ public class Event implements Comparable<Event> {
             }
         });
     }
-    
+
     public void update(Context context) {
         context.dbManager.executeInDBThread(() -> {
             try {
                 context.dbManager.getDaos().getEventDao().update(this);
+
+                context.cachedExecutor.submit(() -> {
+                    ProgressListPanel.ProgressEntity pe = new ProgressListPanel.ProgressEntity();
+                    context.eBus.post(pe);
+                    pe.setText("Weryfikowanie " + getName());
+                    pe.setPercent(50);
+                    for (Event_Localization el : getLocalizations()) {
+                        Validator.validateEventLocalizationOrMarkForValidation(context, el);
+                    }
+                    pe.markFinished();
+                });
             } catch (SQLException ex) {
                 Logger.getLogger(Carrier.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -297,9 +311,8 @@ public class Event implements Comparable<Event> {
     }
 
     /*public static String formatName(LocalDateTime dt, String text) {
-        return "[" + DateTimeFormatter.ofPattern("YYYY.MM.dd").format(dt) + "] " + text;
-    }*/
-
+     return "[" + DateTimeFormatter.ofPattern("YYYY.MM.dd").format(dt) + "] " + text;
+     }*/
     public static Event forName(Context c, String name) {
         AtomicReference<Event> result = new AtomicReference<>(null);
         try {

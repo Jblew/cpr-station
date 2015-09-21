@@ -88,6 +88,7 @@ public class Exporter {
                 targetLocalization.setEvent(event);
                 targetLocalization.setCarrierId(targetCarrier.getId());
                 targetLocalization.setDirName(event.calculateProperDirName());
+                targetLocalization.setActualEventType(event.getType());
 
                 String targetPath = targetLocalization.getFullEventPath(context);
                 File potentialTargetFile = new File(targetPath);
