@@ -62,9 +62,9 @@ public class MainWindow {
     //}
 
     void addTreePane(JPanel treePane) {
-        JScrollPane sp = new JScrollPane(treePane);
-        sp.setPreferredSize(new Dimension(300, 900));
-        mainContentPane.add(sp, BorderLayout.WEST);
+        //JScrollPane sp = new JScrollPane(treePane);
+        //sp.setPreferredSize(new Dimension(300, 900));
+        mainContentPane.add(treePane, BorderLayout.WEST);
     }
 
     private class MainContentPane extends JPanel {

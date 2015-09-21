@@ -5,6 +5,7 @@
  */
 package pl.jblew.cpr.gui;
 
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
@@ -16,6 +17,7 @@ import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTextField;
 import javax.swing.JTree;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
@@ -27,6 +29,7 @@ import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
 import pl.jblew.cpr.bootstrap.Context;
+import pl.jblew.cpr.gui.components.SearchField;
 import pl.jblew.cpr.gui.treenodes.CarriersNode;
 import pl.jblew.cpr.gui.treenodes.DevicesNode;
 import pl.jblew.cpr.gui.treenodes.EventsNode;
@@ -45,6 +48,7 @@ public class TreePanel extends JPanel {
     private final EventsNode sortedPhotosNode;
     private final EventsNode unsortedPhotosNode;
     private final AtomicReference<SelectableIconTreeNode> lastSelected = new AtomicReference<>(null);
+    private final SearchField searchField;
 
     public TreePanel(Context context) {
         DefaultMutableTreeNode top = new DefaultMutableTreeNode("CPR-station");
@@ -65,9 +69,18 @@ public class TreePanel extends JPanel {
         addTreeListeners(tree);
 
         scrollPane = new JScrollPane(tree);
+        scrollPane.setMaximumSize(new Dimension(300, Integer.MAX_VALUE));
+        scrollPane.setPreferredSize(new Dimension(300, 500));
 
-        setLayout(new GridLayout(1, 1));
-        add(scrollPane);
+        //setLayout(new GridLayout(1, 1));
+        setLayout(new BorderLayout());
+        add(scrollPane, BorderLayout.CENTER);
+        
+        searchField = new SearchField((s) -> {
+            sortedPhotosNode.filter(s);
+            unsortedPhotosNode.filter(s);
+        });
+        add(searchField, BorderLayout.NORTH);
 
         tree.expandPath(new TreePath(devicesNode.getPath()));
         tree.expandPath(new TreePath(unsortedPhotosNode.getPath()));
@@ -76,7 +89,7 @@ public class TreePanel extends JPanel {
 
     }
 
-    private void addMainNodesAndListeners(DefaultMutableTreeNode top) {
+    private NodeChangeListener addMainNodesAndListeners(DefaultMutableTreeNode top) {
         top.add(devicesNode);
         top.add(sortedPhotosNode);
         top.add(unsortedPhotosNode);
@@ -101,6 +114,8 @@ public class TreePanel extends JPanel {
         carriersNode.addNodeChangeListener(nodeChangeListener);
         sortedPhotosNode.addNodeChangeListener(nodeChangeListener);
         unsortedPhotosNode.addNodeChangeListener(nodeChangeListener);
+        
+        return nodeChangeListener;
     }
 
     public DevicesNode getDevicesNode() {
@@ -229,6 +244,8 @@ public class TreePanel extends JPanel {
             return color.get();
         }
     }
+    
+    
 
     public static abstract class SelectableIconTreeNode extends IconTreeNode {
 

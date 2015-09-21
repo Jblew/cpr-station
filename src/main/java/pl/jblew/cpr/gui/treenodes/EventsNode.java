@@ -60,6 +60,25 @@ public class EventsNode extends TreePanel.IconTreeNode implements TreePanel.AddT
 
     }
 
+    public void filter(String s) {
+        SwingUtilities.invokeLater(() -> {
+            removeAllChildren();
+            System.out.println("Filtering for " + s);
+            events.keySet().stream().sorted().forEachOrdered(evt -> {
+                if (s == null || s.isEmpty() || evt.getDisplayName().toLowerCase().contains(s.toLowerCase())) {
+                    add(events.get(evt));
+                }
+            });
+
+            if (eventType == Event.Type.SORTED) {
+                addCreateNode();
+            }
+
+            fireNodeChanged();
+        });
+
+    }
+
     @Subscribe
     public void eventsListChanged(EventsListChanged evt) {
         context.dbManager.executeInDBThread(() -> {
@@ -72,15 +91,7 @@ public class EventsNode extends TreePanel.IconTreeNode implements TreePanel.AddT
                         result.stream().sorted().forEachOrdered((e) -> addEventNode(e));
                     }
                     if (eventType == Event.Type.SORTED) {
-                        final TreePanel.SelectableIconTreeNode node = new TreePanel.SelectableIconTreeNode("Dodaj wydarzenie", new ImageIcon(TreePanel.class.getClassLoader().getResource("images/add16.png"))) {
-                            @Override
-                            public void nodeSelected(JTree tree) {
-                                tree.setSelectionRow(0);
-                                CreateEventModal.showCreateEventModal(tree, context, true);
-                            }
-                        };
-                        add(node);
-
+                        addCreateNode();
                     }
 
                     fireNodeChanged();
@@ -99,13 +110,26 @@ public class EventsNode extends TreePanel.IconTreeNode implements TreePanel.AddT
                 context.eBus.post(new ChangeMainPanel(new EventPanel(context, e)));
             }
         };
-        
-        if(e.hasProblems()) node.setColor(Color.RED);
-        
+
+        if (e.hasProblems()) {
+            node.setColor(Color.RED);
+        }
+
         add(node);
         synchronized (events) {
             events.put(e, node);
         }
+    }
+
+    private void addCreateNode() {
+        final TreePanel.SelectableIconTreeNode node = new TreePanel.SelectableIconTreeNode("Dodaj wydarzenie", new ImageIcon(TreePanel.class.getClassLoader().getResource("images/add16.png"))) {
+            @Override
+            public void nodeSelected(JTree tree) {
+                tree.setSelectionRow(0);
+                CreateEventModal.showCreateEventModal(tree, context, true);
+            }
+        };
+        add(node);
     }
 
     public static class EventsListChanged implements PrintableBusMessage {
