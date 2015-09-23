@@ -85,33 +85,37 @@ public class Repairer {
     }
     
     private class RecoverMissingSolution implements Callable<String> {
-        private final Event_Localization el;
-        private final Event_Localization recoverySourceLocalization;
+        private final Event_Localization brokenLocalization;
+        private final Event_Localization recoveryLocalization;
         
-        RecoverMissingSolution(Event_Localization el, Event_Localization recoverySourceLocalization) {
-            this.el = el;
-            this.recoverySourceLocalization = recoverySourceLocalization;
+        RecoverMissingSolution(Event_Localization brokenLocalization, Event_Localization recoveryLocalization) {
+            this.brokenLocalization = brokenLocalization;
+            this.recoveryLocalization = recoveryLocalization;
         }
         
         @Override
         public String call() throws Exception {
-            File root = context.deviceDetector.getDeviceRoot(recoverySourceLocalization.getCarrier(context).getName());
+            File root = context.deviceDetector.getDeviceRoot(recoveryLocalization.getCarrier(context).getName());
             if(root == null || !root.exists() || !root.canRead()) {
-                throw new TryAgainException(new RuntimeException("Podłącz nośnik \""+recoverySourceLocalization.getCarrier(context).getName()+"\""));
+                throw new TryAgainException(new RuntimeException("Podłącz nośnik \""+recoveryLocalization.getCarrier(context).getName()+"\""));
             }
             
-            MFile.Localized [] localizedTargetMFiles = recoverySourceLocalization.getOrLoadFullEvent(context).getLocalizedMFiles(context, recoverySourceLocalization);
+            System.out.println("Recovering files from "+recoveryLocalization.getFullEventPath(context)+" to "+brokenLocalization.getFullEventPath(context));
+            
+            MFile.Localized [] localizedRecoveryMFiles = recoveryLocalization.getOrLoadFullEvent(context).getLocalizedMFiles(context, recoveryLocalization);
+            
+            System.out.println("First mfile file="+localizedRecoveryMFiles[0].getFile());
             
             AtomicInteger errors = new AtomicInteger(0);
-            Arrays.stream(el.getOrLoadFullEvent(context).getLocalizedMFiles(context, el))
+            Arrays.stream(brokenLocalization.getOrLoadFullEvent(context).getLocalizedMFiles(context, brokenLocalization))
                     .filter(mfl -> mfl.getFile() == null || !mfl.getFile().exists() || !MD5Util.calculateMD5(mfl.getFile()).equals(mfl.getMFile().getMd5()))
                     .forEachOrdered((mfl) -> {
                         try {
-                           File recoveryFile = Arrays.stream(localizedTargetMFiles).filter(recoveryMfl -> mfl.getMFile().getId() == recoveryMfl.getMFile().getId()).findFirst()
+                           File recoveryFile = Arrays.stream(localizedRecoveryMFiles).filter(recoveryMfl -> mfl.getMFile().getId() == recoveryMfl.getMFile().getId()).findFirst()
                                    .orElseThrow(() -> new RuntimeException("Recovery file not found (1)")).getFile();
                            
                            if(recoveryFile != null && recoveryFile.exists() && recoveryFile.canRead()) {
-                               File properFile = mfl.getMFile().getFile(context, recoverySourceLocalization);
+                               File properFile = mfl.getMFile().getFile(context, brokenLocalization);
                                Files.copy(recoveryFile, properFile);
                            }
                            else throw new RuntimeException("Recovery file not found (2)");
@@ -120,7 +124,8 @@ public class Repairer {
                             errors.incrementAndGet();
                         }
                     });
-            return "Odzyskano "+(errors.get() == 0? "wszystkie" : "nie wszystkie (Błąd przy odzyskiwaniu "+errors.get()+" plików)")+" uszkodzone pliki";
+            if(localizedRecoveryMFiles.length == errors.get()) return "Nie udało się odzyskać żadnego pliku";
+            else return "Odzyskano "+(errors.get() == 0? "wszystkie" : "nie wszystkie (Błąd przy odzyskiwaniu "+errors.get()+" plików)")+" uszkodzone pliki";
         }
     }
 

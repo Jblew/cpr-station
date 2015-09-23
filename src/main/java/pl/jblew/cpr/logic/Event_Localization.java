@@ -16,6 +16,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.gui.components.browser.MFileBrowser;
+import pl.jblew.cpr.logic.integritycheck.CarrierIntegrityChecker;
 import pl.jblew.cpr.logic.io.FileStructureUtil;
 
 /**
@@ -154,6 +155,20 @@ public class Event_Localization {
         String sortedPath = (getActualEventType() == Event.Type.SORTED ? FileStructureUtil.PATH_SORTED_PHOTOS : FileStructureUtil.PATH_UNSORTED_PHOTOS);
         Carrier carrier = getCarrier(context);
         return context.deviceDetector.getDeviceRoot(carrier.getName()) + File.separator + sortedPath + File.separator + getDirName();
+    }
+    
+    public void update(Context context) {
+        try {
+            context.dbManager.executeInDBThreadAndWait(() -> {
+                try {
+                    context.dbManager.getDaos().getEvent_LocalizationDao().update(this);
+                } catch (SQLException ex) {
+                    Logger.getLogger(CarrierIntegrityChecker.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            });
+        } catch (InterruptedException ex) {
+            Logger.getLogger(CarrierIntegrityChecker.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
     @Override

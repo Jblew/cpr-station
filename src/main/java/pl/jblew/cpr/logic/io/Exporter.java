@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import pl.jblew.cpr.bootstrap.Context;
+import pl.jblew.cpr.gui.treenodes.EventsNode;
 import pl.jblew.cpr.gui.windows.RedundantCopyWindow;
 import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.Event;
@@ -81,8 +82,9 @@ public class Exporter {
         context.cachedExecutor.submit(() -> {
             try {
                 progressChangedCallback.progressChanged(0, "Ładowanie potrzebnych danych...", false);
-
+                
                 event.recalculateAndUpdateTimeBounds(context);
+                
 
                 Event_Localization targetLocalization = new Event_Localization();
                 targetLocalization.setEvent(event);
@@ -90,28 +92,36 @@ public class Exporter {
                 targetLocalization.setDirName(event.calculateProperDirName());
                 targetLocalization.setActualEventType(event.getType());
 
+                
                 String targetPath = targetLocalization.getFullEventPath(context);
                 File potentialTargetFile = new File(targetPath);
 
-                if (potentialTargetFile.exists()) {
-                    throw new RuntimeException("File already exists!");
+                
+                if (!potentialTargetFile.exists()) {
+                    potentialTargetFile.mkdirs();
                 }
-
-                potentialTargetFile.mkdirs();
-
+                
                 if (!potentialTargetFile.exists()) {
                     progressChangedCallback.progressChanged(0, "Nie można było utworzyć katalogu", true);
                     return;
                 }
+                
 
                 /**
                  * * CALCULATE NAMES AND PATHS **
                  */
                 writeFiles(targetLocalization);
+                
 
                 registerFilesInDB(targetLocalization);
-
-            } finally {
+                
+                context.eBus.post(new EventsNode.EventsListChanged());
+            }catch (Exception ex) {
+                Logger.getLogger(Exporter.class.getName()).log(Level.SEVERE, "Błąd przy kopiowaniu plików", ex);
+                progressChangedCallback.progressChanged(0, " Błąd przy eksportowaniu plików: " + ex, true);
+                throw new RuntimeException("Could not finish", ex);
+            }
+            finally {
                 if (finishedCallback != null) {
                     finishedCallback.run();
                 }
@@ -125,13 +135,22 @@ public class Exporter {
             File sourceFile = sourceLocalizedMFile.getFile();
             File targetFile = sourceLocalizedMFile.getMFile().getFile(context, targetEventLocalization);
 
+            
             float percentF = ((float) i) / ((float) localizedMFiles.get().length);
             int percent = (int) (percentF * 100f);
             if (percent == 100) {
                 percent = 99;
             }
-
+            
+            if(targetFile.exists()) {//we delete files with same name
+                targetFile.delete();
+                //reload targetFile
+                targetFile = sourceLocalizedMFile.getMFile().getFile(context, targetEventLocalization);
+            }
+            
             try {
+                if(sourceFile == null) throw new RuntimeException("sourceFile is null, mFile.getFile(for targetEL)="+sourceLocalizedMFile.getMFile().getFile(context, targetEventLocalization));
+                else if(targetFile == null) throw new RuntimeException("targetFile is null!");
                 Files.copy(sourceFile.toPath(), targetFile.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
                 ThumbnailLoader.loadThumbnail(targetFile, true, null);
                 if (progressChangedCallback != null) {

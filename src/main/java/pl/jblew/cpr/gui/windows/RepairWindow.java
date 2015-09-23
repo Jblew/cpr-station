@@ -19,9 +19,11 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.SwingUtilities;
 import pl.jblew.cpr.bootstrap.Context;
+import pl.jblew.cpr.gui.components.ErrorLabel;
 import pl.jblew.cpr.gui.panels.RepairPanel;
 import pl.jblew.cpr.gui.util.PanelDisabler;
 import pl.jblew.cpr.gui.util.SpacerPanel;
@@ -48,7 +50,7 @@ public class RepairWindow {
         SwingUtilities.invokeLater(() -> {
             frame.setSize(500, 500);
             frame.setLocationRelativeTo(null);
-            frame.setContentPane(new MainPanel());
+            frame.setContentPane(new JScrollPane(new MainPanel()));
             frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
             frame.addWindowListener(new WindowAdapter() {
                 @Override
@@ -81,16 +83,17 @@ public class RepairWindow {
                     JPanel repairElPanel = new JPanel();
                     repairElPanel.setLayout(new BorderLayout());
 
-                    repairElPanel.add(new JLabel("<html>Uszkodzone wydarzenie <b>" + el.getOrLoadFullEvent(context).getName() + "</b> "
-                            + "na nośniku: <b>" + el.getCarrier(context).getName() + "</b>.<br /> Opcje naprawy:"), BorderLayout.CENTER);
+                    repairElPanel.add(new JLabel("<html><p width=480>Uszkodzone wydarzenie <b>" + el.getOrLoadFullEvent(context).getName() + "</b> "
+                            + "na nośniku: <b>" + el.getCarrier(context).getName() + "</b>.<br /> Opcje naprawy:</p>"), BorderLayout.NORTH);
 
                     JPanel buttonPanel = new JPanel();
+                    JPanel resultPanel = new JPanel();
 
                     for (Repairer.Solution solution : solutions) {
                         final JButton solutionButton = new JButton(solution.name);
                         solutionButton.addActionListener((evt) -> {
                             int option = JOptionPane.showConfirmDialog(
-                                    context.frame,
+                                    frame,
                                     solution.ask,
                                     "Potwierdź",
                                     JOptionPane.YES_NO_OPTION);
@@ -107,10 +110,10 @@ public class RepairWindow {
                                         String returnMsg = solution.task.call();
                                         SwingUtilities.invokeLater(() -> {
                                             solutionButton.setEnabled(false);
-                                            repairElPanel.add(new JLabel(returnMsg));
+                                            resultPanel.add(new JLabel(returnMsg));
                                             PanelDisabler.setEnabled(repairElPanel, false);
-                                            repairElPanel.revalidate();
-                                            repairElPanel.repaint();
+                                            resultPanel.revalidate();
+                                            resultPanel.repaint();
                                             windowCloseEnabled.set(true);
                                         });
                                     } catch (Repairer.Solution.TryAgainException ex) {
@@ -118,9 +121,9 @@ public class RepairWindow {
 
                                         SwingUtilities.invokeLater(() -> {
                                             solutionButton.setEnabled(true);
-                                            repairElPanel.add(new JLabel(ex.getCause().getMessage()));
-                                            repairElPanel.revalidate();
-                                            repairElPanel.repaint();
+                                            resultPanel.add(new ErrorLabel(ex.getCause().getMessage()));
+                                            resultPanel.revalidate();
+                                            resultPanel.repaint();
                                             windowCloseEnabled.set(true);
                                         });
 
@@ -128,11 +131,11 @@ public class RepairWindow {
                                         Logger.getLogger(RepairPanel.class.getName()).log(Level.SEVERE, null, ex);
                                         SwingUtilities.invokeLater(() -> {
                                             solutionButton.setEnabled(false);
-                                            JLabel errLabel = new JLabel(ex.getMessage());
+                                            JLabel errLabel = new ErrorLabel(ex.getMessage());
                                             errLabel.setForeground(Color.RED);
-                                            repairElPanel.add(errLabel);
-                                            repairElPanel.revalidate();
-                                            repairElPanel.repaint();
+                                            resultPanel.add(errLabel);
+                                            resultPanel.revalidate();
+                                            resultPanel.repaint();
                                             windowCloseEnabled.set(true);
                                         });
                                     }
@@ -144,7 +147,8 @@ public class RepairWindow {
                         buttonPanel.add(solutionButton);
                     }
 
-                    repairElPanel.add(buttonPanel, BorderLayout.SOUTH);
+                    repairElPanel.add(buttonPanel, BorderLayout.CENTER);
+                    repairElPanel.add(resultPanel, BorderLayout.SOUTH);
 
                     add(repairElPanel);
                     add(new JSeparator(JSeparator.HORIZONTAL));

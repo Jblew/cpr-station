@@ -10,6 +10,7 @@ import java.util.concurrent.ExecutorService;
 import javax.swing.JFrame;
 import pl.jblew.cpr.db.DatabaseManager;
 import pl.jblew.cpr.file.DeviceDetectorProcess;
+import pl.jblew.cpr.logic.integritycheck.CarrierIntegrityChecker;
 
 /**
  *
@@ -21,6 +22,7 @@ public class Context {
     public final DeviceDetectorProcess deviceDetector;
     public final ExecutorService cachedExecutor;
     public final JFrame frame;
+    CarrierIntegrityChecker integrityChecker;
     public final Bootstrap bootstrap;
 
     Context(EventBus eBus, DatabaseManager dbManager, DeviceDetectorProcess deviceDetector, ExecutorService cachedExecutor, JFrame frame, Bootstrap bootstrap) {
@@ -30,5 +32,9 @@ public class Context {
         this.cachedExecutor = cachedExecutor;
         this.frame = frame;
         this.bootstrap = bootstrap;
+    }
+
+    public CarrierIntegrityChecker getIntegrityChecker() {
+        return integrityChecker;
     }
 }

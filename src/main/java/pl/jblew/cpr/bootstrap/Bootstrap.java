@@ -87,7 +87,9 @@ public class Bootstrap {
     
     private Context createContextAndGUI(EventBus mainBus, DatabaseManager dbManager, DeviceDetectorProcess deviceDetectorProcess, JFrame frame) {
         Context context = new Context(mainBus, dbManager, deviceDetectorProcess, Executors.newCachedThreadPool(new NamingThreadFactory("main-cached-executor")), frame, this);
-
+        CarrierIntegrityChecker integrityChecker = new CarrierIntegrityChecker(context);
+        context.integrityChecker = integrityChecker;
+        
         GUI gui = new GUI(context);
         gui.start();
 
@@ -95,7 +97,7 @@ public class Bootstrap {
             context.deviceDetector.addStorageDevicePresenceListener(gui.getTreePanel().getDevicesNode());
             context.deviceDetector.addStorageDevicePresenceListener(gui.getTreePanel().getCarriersNode());
             context.deviceDetector.addStorageDevicePresenceListener(new AutomaticImportListener(context));
-            context.deviceDetector.addStorageDevicePresenceListener(new CarrierIntegrityChecker(context));
+            context.deviceDetector.addStorageDevicePresenceListener(integrityChecker);
             context.deviceDetector.start();
         });
 

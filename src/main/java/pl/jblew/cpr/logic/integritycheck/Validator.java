@@ -60,6 +60,8 @@ public class Validator {
         for (MFile.Localized mfl : event.getLocalizedMFiles(context, el)) {
             if (mfl.getFile() == null || !MD5Util.calculateMD5(mfl.getFile()).equals(mfl.getMFile().getMd5())) {
                 if (!ignoreMissingOrBrokenFiles) {
+                    el.setNeedValidation(true);
+                    el.update(context);
                     throw new MissingOrBrokenFilesException();
                 }
             }
@@ -123,17 +125,7 @@ public class Validator {
         }
 
         el.setNeedValidation(false);
-        try {
-            context.dbManager.executeInDBThreadAndWait(() -> {
-                try {
-                    context.dbManager.getDaos().getEvent_LocalizationDao().update(el);
-                } catch (SQLException ex) {
-                    Logger.getLogger(CarrierIntegrityChecker.class.getName()).log(Level.SEVERE, null, ex);
-                }
-            });
-        } catch (InterruptedException ex) {
-            Logger.getLogger(CarrierIntegrityChecker.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        el.update(context);
     }
 
     public static class MissingOrBrokenFilesException extends Exception {

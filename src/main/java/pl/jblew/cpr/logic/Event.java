@@ -128,7 +128,7 @@ public class Event implements Comparable<Event> {
     }
 
     public MFile.Localized[] getLocalizedMFiles(Context context, Event_Localization localization) {
-        long sT = System.currentTimeMillis();
+        //long sT = System.currentTimeMillis();
 
         final List<MFile.Localized> result = new LinkedList<>();
         try {
@@ -158,12 +158,12 @@ public class Event implements Comparable<Event> {
         } catch (InterruptedException ex) {
             Logger.getLogger(Exporter.class.getName()).log(Level.SEVERE, null, ex);
         }
-        try {
+        //try {
             return result.stream().sorted().toArray(MFile.Localized[]::new);
 
-        } finally {
-            System.out.println("t(getMFiles)=" + (System.currentTimeMillis() - sT) + "ms");
-        }
+        //} finally {
+        //    System.out.println("t(getMFiles)=" + (System.currentTimeMillis() - sT) + "ms");
+        //}
     }
 
     public ForeignCollection<Event_Localization> getLocalizations() {

@@ -50,6 +50,11 @@ public class CarrierIntegrityChecker implements StorageDevicePresenceListener {
 
     }
 
+    public IntegrityCheckerProcessor getProcessor() {
+        return processor;
+    }
+    
+
     public static class FilesMissingOnCarrier {
         public final Carrier carrier;
         public final Event_Localization[] eventLocalizations;

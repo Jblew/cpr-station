@@ -185,10 +185,10 @@ public class PreloadingPhotoBrowser extends JPanel {
             } else if (cachedThumb.get() != null) {
                 imgSafe = cachedThumb.get();
             } else {
-                imgSafe = ThumbnailLoader.seekImageInCache(preloadableSafe.thumbFile);
+                /*imgSafe = ThumbnailLoader.seekImageInCache(preloadableSafe.thumbFile);
                 if (imgSafe != null) {
                     cachedThumb.set(imgSafe);
-                }
+                }*/
             }
 
             if (imgSafe != null) {

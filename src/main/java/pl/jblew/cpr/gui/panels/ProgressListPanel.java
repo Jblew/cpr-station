@@ -12,6 +12,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -48,9 +49,11 @@ public class ProgressListPanel extends JPanel {
     public void progressStarted(ProgressListPanel.ProgressEntity pe) {
         SwingUtilities.invokeLater(() -> {
             synchronized (progresses) {
-                ProgressPanel pp = new ProgressPanel(pe);
-                progresses.add(pp);
-                this.add(pp);
+                if (!pe.finished.get()) {
+                    ProgressPanel pp = new ProgressPanel(pe);
+                    progresses.add(pp);
+                    this.add(pp);
+                }
                 revalidate();
                 repaint();
             }
@@ -105,7 +108,7 @@ public class ProgressListPanel extends JPanel {
 
         private void finished() {
             SwingUtilities.invokeLater(() -> {
-                System.out.println("Removing from progress panel: "+progressEntity.text.get());
+                System.out.println("Removing from progress panel: " + progressEntity.text.get());
                 meProgressListPanel.remove(this);
                 meProgressListPanel.revalidate();
                 meProgressListPanel.repaint();
@@ -119,6 +122,7 @@ public class ProgressListPanel extends JPanel {
         private final AtomicReference<String> text = new AtomicReference<>("");
         private final AtomicReference<MainPanel> associatedPanel = new AtomicReference<>(null);
         private final AtomicBoolean error = new AtomicBoolean(false);
+        private final AtomicBoolean finished = new AtomicBoolean(false);
 
         public ProgressEntity() {
 
@@ -141,13 +145,12 @@ public class ProgressListPanel extends JPanel {
         }
 
         public void markFinished() {
+            finished.set(true);
+
             ProgressPanel ppSafe = progressPanelRef.get();
             if (ppSafe != null) {
-                System.out.println("Marking finished: "+text.get());
+                System.out.println("Marking finished: " + text.get());
                 ppSafe.finished();
-            }
-            else {
-                System.out.println("Cannot mark finished (ppSafe==null): "+text.get());
             }
         }
 

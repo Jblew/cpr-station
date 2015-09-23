@@ -29,7 +29,7 @@ import pl.jblew.cpr.util.NamingThreadFactory;
  *
  * @author teofil
  */
-class IntegrityCheckerProcessor {
+public class IntegrityCheckerProcessor {
     private final Context context;
     private final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor(new NamingThreadFactory("integritychecker-processor-sched"));
     private final Set<String> devicesInProgress = Collections.synchronizedSet(new HashSet<>());

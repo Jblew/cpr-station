@@ -30,13 +30,29 @@ public class CarrierPanel extends MainPanel {
         JLabel carrierNameLabel = new JLabel("<html><p style=\"font-size:16px\">"+carrier.getName()+"</p>");
         add(carrierNameLabel);
         
+        /**
+         * 
+         */
         JButton synchronizeEvents = new JButton("<html><p width=300>Utwórz kopię wszystkich wydarzeń z tego nośnika na innym nośniku</p>");
         synchronizeEvents.addActionListener((evt) -> {
             new SynchronizeWindow(context, carrier);
         });
         synchronizeEvents.setEnabled(carrier.isConnected(context));
         
+        /**
+         * 
+         */
+        JButton checkButton = new JButton("Sprawdź spójność");
+        checkButton.addActionListener((evt) -> {
+            context.getIntegrityChecker().getProcessor().check(carrier, context.deviceDetector.getDeviceRoot(carrier.getName()), carrier.getName());
+        });
+        checkButton.setEnabled(carrier.isConnected(context));
+        
+        /**
+         * 
+         */
         add(synchronizeEvents);
+        add(checkButton);
     }
 
     @Override

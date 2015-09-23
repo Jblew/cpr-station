@@ -76,8 +76,7 @@ public class SynchronizeWindow {
                 public void windowClosing(WindowEvent evt) {
                     if (windowCloseEnabled.get()) {
                         frame.setVisible(false);
-                    }
-                    else {
+                    } else {
                         frame.setVisible(true);
                     }
                 }
@@ -281,20 +280,23 @@ public class SynchronizeWindow {
                                 exporter.tryDevice(context, selectedCarrier, event);
                                 exporter.setTargetCarrier(selectedCarrier);
 
-                                CountDownLatch awaiterLatch = new CountDownLatch(1);
-                                exporter.startAsync(() -> {
-                                    awaiterLatch.countDown();
-                                });
-                                awaiterLatch.await();
+                                if (!event.getLocalizations().stream()
+                                        .filter(lEl -> lEl.getCarrierId() == selectedCarrier.getId())
+                                        .findAny().isPresent()) {
 
-                                int percent = (int) ((float) (i+1) / (float) eventLocalizations.length * 100f);
+                                    CountDownLatch awaiterLatch = new CountDownLatch(1);
+                                    exporter.startAsync(() -> {
+                                        awaiterLatch.countDown();
+                                    });
+                                    awaiterLatch.await();
+                                }
+
+                                int percent = (int) ((float) (i + 1) / (float) eventLocalizations.length * 100f);
 
                                 SwingUtilities.invokeLater(() -> {
                                     progressEntity.setPercent(percent);
                                     progressBar.setValue(percent);
                                 });
-
-                                context.eBus.post(new EventsNode.EventsListChanged());
 
                                 numOfDone++;
                             } catch (Exporter.DeviceNotWritableException ex) {
