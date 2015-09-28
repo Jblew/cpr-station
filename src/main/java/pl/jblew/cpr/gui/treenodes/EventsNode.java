@@ -63,7 +63,7 @@ public class EventsNode extends TreePanel.IconTreeNode implements TreePanel.AddT
     public void filter(String s) {
         SwingUtilities.invokeLater(() -> {
             removeAllChildren();
-            System.out.println("Filtering for " + s);
+            Logger.getLogger(getClass().getName()).info("Filtering for " + s);
             events.keySet().stream().sorted().forEachOrdered(evt -> {
                 if (s == null || s.isEmpty() || evt.getDisplayName().toLowerCase().contains(s.toLowerCase())) {
                     add(events.get(evt));

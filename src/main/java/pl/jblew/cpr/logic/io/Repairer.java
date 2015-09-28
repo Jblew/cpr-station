@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Logger;
 import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.logic.Event;
 import pl.jblew.cpr.logic.Event_Localization;
@@ -76,7 +77,7 @@ public class Repairer {
                         try {
                             mfl.getMFile().delete(context);
                         } catch(Exception e) {
-                            System.out.println("Could not delete mfile: "+e);
+                            Logger.getLogger(getClass().getName()).info("Could not delete mfile: "+e);
                             errors.incrementAndGet();
                         }
                     });
@@ -100,11 +101,11 @@ public class Repairer {
                 throw new TryAgainException(new RuntimeException("Podłącz nośnik \""+recoveryLocalization.getCarrier(context).getName()+"\""));
             }
             
-            System.out.println("Recovering files from "+recoveryLocalization.getFullEventPath(context)+" to "+brokenLocalization.getFullEventPath(context));
+            Logger.getLogger(getClass().getName()).info("Recovering files from "+recoveryLocalization.getFullEventPath(context)+" to "+brokenLocalization.getFullEventPath(context));
             
             MFile.Localized [] localizedRecoveryMFiles = recoveryLocalization.getOrLoadFullEvent(context).getLocalizedMFiles(context, recoveryLocalization);
             
-            System.out.println("First mfile file="+localizedRecoveryMFiles[0].getFile());
+            Logger.getLogger(getClass().getName()).info("First mfile file="+localizedRecoveryMFiles[0].getFile());
             
             AtomicInteger errors = new AtomicInteger(0);
             Arrays.stream(brokenLocalization.getOrLoadFullEvent(context).getLocalizedMFiles(context, brokenLocalization))
@@ -120,7 +121,7 @@ public class Repairer {
                            }
                            else throw new RuntimeException("Recovery file not found (2)");
                         } catch(Exception e) {
-                            System.out.println("Could not recover mfile: "+e);
+                            Logger.getLogger(getClass().getName()).info("Could not recover mfile: "+e);
                             errors.incrementAndGet();
                         }
                     });

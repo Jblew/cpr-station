@@ -158,7 +158,7 @@ public class Importer {
 
                 String basePath = targetLocalization.getFullEventPath(context);
                 File baseDir = new File(basePath);
-                System.out.println("Creating dirs for basePath: " + baseDir);
+                Logger.getLogger(getClass().getName()).info("Creating dirs for basePath: " + baseDir);
                 baseDir.mkdirs();
 
                 callback.progressChanged(0, "Obliczanie prawidłowych nazw...", false);
@@ -324,7 +324,7 @@ public class Importer {
                     targetFile = targetMFile.getFile(context, eventLocalization);//reload File object
                 }
                 Files.copy(sourceFile.toPath(), targetFile.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
-                //System.out.println(sourceFile.toPath() + " -> " + targetFile.toPath());
+                //Logger.getLogger(getClass().getName()).info(sourceFile.toPath() + " -> " + targetFile.toPath());
                 ThumbnailLoader.loadThumbnail(targetFile, true, null);
 
                 long elapsedTime = System.currentTimeMillis() - sTime;

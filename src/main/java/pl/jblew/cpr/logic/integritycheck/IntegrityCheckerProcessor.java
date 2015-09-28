@@ -54,7 +54,7 @@ public class IntegrityCheckerProcessor {
                 for (Event_Localization el : eventLocalizations) {
                     int percent = (int) (((float) i / (float) eventLocalizations.length) * 100f);
                     progressEntity.setPercent(percent);
-                    System.out.println("Checking " + el.getOrLoadFullEvent(context).getName() + " on " + deviceName);
+                    Logger.getLogger(getClass().getName()).info("Checking " + el.getOrLoadFullEvent(context).getName() + " on " + deviceName);
 
                     try {
                         Validator.validateEventLocalization(context, el);

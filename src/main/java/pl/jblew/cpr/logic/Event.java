@@ -162,7 +162,7 @@ public class Event implements Comparable<Event> {
             return result.stream().sorted().toArray(MFile.Localized[]::new);
 
         //} finally {
-        //    System.out.println("t(getMFiles)=" + (System.currentTimeMillis() - sT) + "ms");
+        //    Logger.getLogger(getClass().getName()).info("t(getMFiles)=" + (System.currentTimeMillis() - sT) + "ms");
         //}
     }
 

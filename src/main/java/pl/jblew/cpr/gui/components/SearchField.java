@@ -43,7 +43,7 @@ public class SearchField extends JTextField {
         this.addKeyListener(new KeyListener() {
             @Override
             public void keyTyped(KeyEvent e) {
-                /*System.out.println("kTyped="+getText());
+                /*Logger.getLogger(getClass().getName()).info("kTyped="+getText());
                 if (!getText().equals(prevString)) {
                     //internalCallback.callback(getText());
                     callback.callback(getText());
@@ -53,7 +53,7 @@ public class SearchField extends JTextField {
 
             @Override
             public void keyPressed(KeyEvent e) {
-                //System.out.println("kPressed="+getText());
+                //Logger.getLogger(getClass().getName()).info("kPressed="+getText());
                 if (!getText().equals(prevString)) {
                     internalCallback.callback(getText());
                     callback.callback(getText());
@@ -63,7 +63,7 @@ public class SearchField extends JTextField {
 
             @Override
             public void keyReleased(KeyEvent e) {
-                //System.out.println("kReleased="+getText());
+                //Logger.getLogger(getClass().getName()).info("kReleased="+getText());
                 if (!getText().equals(prevString)) {
                     internalCallback.callback(getText());
                     callback.callback(getText());

@@ -48,7 +48,7 @@ public class DeviceDetectorProcess {
         new Thread(() -> {
             USBDeviceDetectorManager detectorManager = new USBDeviceDetectorManager(2 * 1000);
             for (USBStorageDevice device : detectorManager.getRemovableDevices()) {
-                System.out.println("USB device detected: \"" + device.getSystemDisplayName() + "\". Writable: " + device.getRootDirectory().canWrite());
+                Logger.getLogger(getClass().getName()).info("USB device detected: \"" + device.getSystemDisplayName() + "\". Writable: " + device.getRootDirectory().canWrite());
 
                 synchronized (devices) {
                     devices.put(device.getSystemDisplayName(), device.getRootDirectory());
@@ -132,7 +132,7 @@ public class DeviceDetectorProcess {
          }
 
          for(Path p:FileSystems.getDefault().getRootDirectories()) {
-         System.out.println("File root detected: \""+p+"\". Writable: "+p.toFile().canWrite());
+         Logger.getLogger(getClass().getName()).info("File root detected: \""+p+"\". Writable: "+p.toFile().canWrite());
          }*/
     }
 

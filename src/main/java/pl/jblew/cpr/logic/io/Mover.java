@@ -65,7 +65,7 @@ public class Mover {
 
     public Step getNextStep() {
         Stage s = currentStage.get();
-        System.out.println("getNextStep() stage=" + s.name() + "; leftTargetLocalizationsToWrite.size()=" + leftTargetLocalizationsToWrite.size() + ";"
+        Logger.getLogger(getClass().getName()).info("getNextStep() stage=" + s.name() + "; leftTargetLocalizationsToWrite.size()=" + leftTargetLocalizationsToWrite.size() + ";"
                 + " leftSourceLocalizationsToDelete.size()=" + leftSourceLocalizationsToDelete.size());
         if (s == Stage.WAIT_FOR_SOURCE_DEVICE) {
             Carrier[] connectedSourceDevices = context.deviceDetector.getConnectedOfCarriers(sourceEvent.getLocalizations().stream().map(el -> el.getCarrier(context)).toArray(Carrier[]::new));
@@ -145,16 +145,16 @@ public class Mover {
     }
 
     private boolean writeFiles(Carrier targetCarrier, MoveWindow.ProgressChangedCallback callback, Event_Localization sourceLocalization, Event_Localization targetLocalization) {
-        System.out.println("Writing files...");
+        Logger.getLogger(getClass().getName()).info("Writing files...");
 
-        System.out.println(mfilesToMove.length + " plików do skopiowania");
+        Logger.getLogger(getClass().getName()).info(mfilesToMove.length + " plików do skopiowania");
 
         for (int i = 0; i < mfilesToMove.length; i++) {
             MFile sourceMFile = mfilesToMove[i];
             File sourceFile = mfilesToMove[i].getFile(context, sourceLocalization);
             File targetFile = mfilesToMove[i].getFile(context, targetLocalization);
 
-            System.out.println("sourceFile=" + sourceFile + ", targetFile=" + targetFile);
+            Logger.getLogger(getClass().getName()).info("sourceFile=" + sourceFile + ", targetFile=" + targetFile);
 
             float percentF = ((float) i) / ((float) mfilesToMove.length);
             int percent = (int) (percentF * 100f);
@@ -173,7 +173,7 @@ public class Mover {
                 }
                 
                 if(!targetFile.exists()) {
-                System.out.println("Kopiowanie pliku z " + sourceFile.toPath() + " do " + targetFile.toPath());
+                Logger.getLogger(getClass().getName()).info("Kopiowanie pliku z " + sourceFile.toPath() + " do " + targetFile.toPath());
                 Files.copy(sourceFile.toPath(), targetFile.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
                 ThumbnailLoader.loadThumbnail(targetFile, true, null);
                 }
@@ -195,24 +195,24 @@ public class Mover {
          tempEvent.setName(targetEvent.get().getName() + "." + targetCarrier.getName() + "-" + DateTimeFormatter.ofPattern("YYYY.MM.dd-HH.mm.ss.SSS").format(LocalDateTime.now()));
          context.dbManager.getDaos().getEventDao().create(tempEvent);
          tempEvents.add(tempEvent);
-         System.out.println("Dodano tymczasowe wydarzenie: " + tempEvent);
+         Logger.getLogger(getClass().getName()).info("Dodano tymczasowe wydarzenie: " + tempEvent);
 
          Event_Localization tempEl = new Event_Localization();
          tempEl.setCarrierId(targetCarrier.getId());
          tempEl.setEvent(tempEvent);
          tempEl.setDirName(tempEvent.getName());
          context.dbManager.getDaos().getEvent_LocalizationDao().create(tempEl);
-         System.out.println("Dodano lokalizację tymczasowego wydarzenia: " + tempEl);
+         Logger.getLogger(getClass().getName()).info("Dodano lokalizację tymczasowego wydarzenia: " + tempEl);
 
          for (MFile mf : mfilesToMove) {
          mf.setEvent(tempEvent);
          context.dbManager.getDaos().getMfileDao().update(mf);
-         System.out.println("   Połączono MFile do tymczasowego wydarzenia: " + mf);
+         Logger.getLogger(getClass().getName()).info("   Połączono MFile do tymczasowego wydarzenia: " + mf);
          }
          } catch (SQLException ex) {
          Logger.getLogger(Mover.class.getName()).log(Level.SEVERE, null, ex);
          }
-         System.out.println("Koniec kopiowania plików");
+         Logger.getLogger(getClass().getName()).info("Koniec kopiowania plików");
          });
          } catch (InterruptedException ex) {
          Logger.getLogger(Mover.class.getName()).log(Level.SEVERE, null, ex);
@@ -222,7 +222,7 @@ public class Mover {
     }
 
     private boolean deleteFiles(Carrier targetCarrier, MoveWindow.ProgressChangedCallback callback, Event_Localization sourceLocalization) {
-        System.out.println("Usuwanie plików");
+        Logger.getLogger(getClass().getName()).info("Usuwanie plików");
         for (int i = 0; i < mfilesToMove.length; i++) {
             MFile sourceMFile = mfilesToMove[i];
             File sourceFile = sourceMFile.getFile(context, sourceLocalization);
@@ -234,7 +234,7 @@ public class Mover {
             }
 
             try {
-                System.out.println("Usuwam " + sourceFile.toPath());
+                Logger.getLogger(getClass().getName()).info("Usuwam " + sourceFile.toPath());
                 Files.delete(sourceFile.toPath());
 
                 if (sourceFile.getParentFile().listFiles((f, name) -> !name.startsWith(".")).length == 0) {
@@ -311,21 +311,21 @@ public class Mover {
             this.msg = msg;
             this.processable = null;
             this.notifyOnNewDevice = false;
-            System.out.println("Constructing step: msg=" + msg + ", processable=" + processable + ", notifyOnNewDevice=" + notifyOnNewDevice);
+            Logger.getLogger(getClass().getName()).info("Constructing step: msg=" + msg + ", processable=" + processable + ", notifyOnNewDevice=" + notifyOnNewDevice);
         }
 
         public Step(String msg, Processable processable) {
             this.msg = msg;
             this.processable = processable;
             this.notifyOnNewDevice = false;
-            System.out.println("Constructing step: msg=" + msg + ", processable=" + processable + ", notifyOnNewDevice=" + notifyOnNewDevice);
+            Logger.getLogger(getClass().getName()).info("Constructing step: msg=" + msg + ", processable=" + processable + ", notifyOnNewDevice=" + notifyOnNewDevice);
         }
 
         public Step(String msg, boolean notifyOnNewDevice) {
             this.msg = msg;
             this.processable = null;
             this.notifyOnNewDevice = notifyOnNewDevice;
-            System.out.println("Constructing step: msg=" + msg + ", processable=" + processable + ", notifyOnNewDevice=" + notifyOnNewDevice);
+            Logger.getLogger(getClass().getName()).info("Constructing step: msg=" + msg + ", processable=" + processable + ", notifyOnNewDevice=" + notifyOnNewDevice);
         }
 
         public boolean isProcessable() {

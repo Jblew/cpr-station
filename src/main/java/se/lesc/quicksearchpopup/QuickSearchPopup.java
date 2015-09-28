@@ -97,7 +97,7 @@ public class QuickSearchPopup implements SelectionListener {
 		int x = locationOnScreen.x;
 		int y = locationOnScreen.y + searchField.getHeight();
 
-//		System.out.println(x + ", " + y);
+//		Logger.getLogger(getClass().getName()).info(x + ", " + y);
 		Popup popup = factory.getPopup(searchField, quickSearchPopupContent, x, y);
 
 //		quickSearchPopupContent.setMaximumSize(new Dimension(
@@ -110,12 +110,12 @@ public class QuickSearchPopup implements SelectionListener {
 		//
 		//			@Override
 		//			public void focusLost(FocusEvent e) {
-		//				System.out.println("focusLost");
+		//				Logger.getLogger(getClass().getName()).info("focusLost");
 		//			}
 		//
 		//			@Override
 		//			public void focusGained(FocusEvent e) {
-		//				System.out.println("focusGained");
+		//				Logger.getLogger(getClass().getName()).info("focusGained");
 		//			}
 		//		});
 
@@ -139,7 +139,7 @@ public class QuickSearchPopup implements SelectionListener {
 			popup.hide();
 
 			popup = null;
-//			System.out.println("hide");
+//			Logger.getLogger(getClass().getName()).info("hide");
 		}
 	}
 
@@ -250,7 +250,7 @@ public class QuickSearchPopup implements SelectionListener {
 
 		@Override
 		public void eventDispatched(AWTEvent event) {
-//			System.out.println(event);
+//			Logger.getLogger(getClass().getName()).info(event);
 			
 //			if (event instanceof ComponentEvent) {
 //				ComponentEvent componentEvent = (ComponentEvent) event;
@@ -261,11 +261,11 @@ public class QuickSearchPopup implements SelectionListener {
 			
 			if (event instanceof WindowEvent) {
 //				WindowEvent windowEvent = (WindowEvent) event;
-//				System.out.println(windowEvent);
+//				Logger.getLogger(getClass().getName()).info(windowEvent);
 				if (event.getID() == WindowEvent.WINDOW_LOST_FOCUS) {
 					hidePopup();
 //				} else {
-//					System.out.println(windowEvent);
+//					Logger.getLogger(getClass().getName()).info(windowEvent);
 				}
 			}
 
@@ -275,7 +275,7 @@ public class QuickSearchPopup implements SelectionListener {
 
 //			if (event instanceof FocusEvent) {
 //				FocusEvent focusEvent = (FocusEvent) event;
-////				System.out.println(focusEvent);
+////				Logger.getLogger(getClass().getName()).info(focusEvent);
 //				hidePopup();
 //			}
 		}
@@ -289,7 +289,7 @@ public class QuickSearchPopup implements SelectionListener {
 					return;
 				}
 
-//				System.out.println(event);
+//				Logger.getLogger(getClass().getName()).info(event);
 				hidePopup();
 				break;
 

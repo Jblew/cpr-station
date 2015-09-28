@@ -10,7 +10,9 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dialog;
 import java.awt.Dimension;
+import java.util.logging.Logger;
 import javax.swing.BorderFactory;
+import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -23,6 +25,7 @@ import pl.jblew.cpr.db.DBBackupManager;
 import pl.jblew.cpr.db.DatabaseChanged;
 import pl.jblew.cpr.gui.panels.HomePanel;
 import pl.jblew.cpr.gui.panels.ProgressListPanel;
+import pl.jblew.cpr.gui.windows.LogWindow;
 import pl.jblew.cpr.util.MessageToStatusBar;
 
 /**
@@ -86,6 +89,13 @@ public class MainWindow {
             toolBar.add(dbLabel);
             toolBar.addSeparator();
             toolBar.add(dbBackupLabel);
+            toolBar.addSeparator();
+            
+            JButton logButton = new JButton("Log");
+            logButton.addActionListener((evt) -> {
+                new LogWindow(context);
+            });
+            toolBar.add(logButton);
 
             this.setLayout(new BorderLayout());
             this.add(toolBar, BorderLayout.NORTH);
@@ -109,7 +119,7 @@ public class MainWindow {
                 revalidate();
                 repaint();
 
-                System.out.println("Changing main panel: " + (System.currentTimeMillis() - sT) + "ms");
+                Logger.getLogger(getClass().getName()).info("Changing main panel: " + (System.currentTimeMillis() - sT) + "ms");
                 //setVisible(false);
                 //setVisible(true);
                 //frame.repaint();

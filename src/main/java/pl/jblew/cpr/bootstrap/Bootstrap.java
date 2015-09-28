@@ -26,6 +26,7 @@ import pl.jblew.cpr.logic.integritycheck.CarrierIntegrityChecker;
 import pl.jblew.cpr.util.MessageToStatusBar;
 import pl.jblew.cpr.util.NamingThreadFactory;
 import pl.jblew.cpr.util.PrintableBusMessage;
+import pl.jblew.cpr.util.log.LogManager;
 
 /**
  *
@@ -37,11 +38,12 @@ public class Bootstrap {
 
     public void synchronousStart() {
         EventBus mainBus = setupEventBus();
+        LogManager logMgr = new LogManager();
         DatabaseManager dbManager = new DatabaseManager(mainBus);
         DeviceDetectorProcess deviceDetectorProcess = new DeviceDetectorProcess(mainBus);
         JFrame frame = createFrame();
         
-        Context context = createContextAndGUI(mainBus, dbManager, deviceDetectorProcess, frame);
+        Context context = createContextAndGUI(mainBus, logMgr, dbManager, deviceDetectorProcess, frame);
 
         mainBus.post(new MessageToStatusBar("Czekam na polecenia", MessageToStatusBar.Type.INFO));
 
@@ -54,7 +56,7 @@ public class Bootstrap {
     }
 
     private void shutdown() {
-        System.out.println("[SHUTDOWN] Shutdown unlocked");
+        Logger.getLogger(getClass().getName()).info("[SHUTDOWN] Shutdown unlocked");
         shutdownLatch.countDown();
     }
     
@@ -63,7 +65,7 @@ public class Bootstrap {
         mainBus.register(new Object() {
             @Subscribe
             public void printableMessageArrivedOnBus(PrintableBusMessage e) {
-                System.out.println(e);
+                Logger.getLogger(Bootstrap.class.getName()).info(e.toString());
             }
         });
         
@@ -85,8 +87,8 @@ public class Bootstrap {
         return frame;
     }
     
-    private Context createContextAndGUI(EventBus mainBus, DatabaseManager dbManager, DeviceDetectorProcess deviceDetectorProcess, JFrame frame) {
-        Context context = new Context(mainBus, dbManager, deviceDetectorProcess, Executors.newCachedThreadPool(new NamingThreadFactory("main-cached-executor")), frame, this);
+    private Context createContextAndGUI(EventBus mainBus, LogManager logMgr, DatabaseManager dbManager, DeviceDetectorProcess deviceDetectorProcess, JFrame frame) {
+        Context context = new Context(mainBus, logMgr, dbManager, deviceDetectorProcess, Executors.newCachedThreadPool(new NamingThreadFactory("main-cached-executor")), frame, this);
         CarrierIntegrityChecker integrityChecker = new CarrierIntegrityChecker(context);
         context.integrityChecker = integrityChecker;
         
@@ -118,7 +120,7 @@ public class Bootstrap {
     }
     
     private void doShutdown(Context context) {
-        System.out.println("[SHUTDOWN] Performing basic shutdown tasks");
+        Logger.getLogger(getClass().getName()).info("[SHUTDOWN] Performing basic shutdown tasks");
         //basic shutdown tasks
         context.dbManager.shutdown();
         context.deviceDetector.shutdown();
@@ -130,9 +132,9 @@ public class Bootstrap {
         int i = 0;
         for (Runnable r : shutdownTasks) {
             try {
-                System.out.println("[SHUTDOWN " + i + "] Starting");
+                Logger.getLogger(getClass().getName()).info("[SHUTDOWN " + i + "] Starting");
                 r.run();
-                System.out.println("[SHUTDOWN " + i + "] Done");
+                Logger.getLogger(getClass().getName()).info("[SHUTDOWN " + i + "] Done");
                 i++;
             } catch (Exception ex) {
                 Logger.getLogger(Bootstrap.class.getName()).log(Level.SEVERE, "Exception in shutdown task", ex);

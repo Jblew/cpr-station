@@ -73,7 +73,7 @@ public class AutomaticImportListener implements StorageDevicePresenceListener {
                 Path autoImportDir = new File(rootFile.toString() + File.separator + FileStructureUtil.PATH_UNSORTED_AUTOIMPORT).toPath();
 
                 if (autoImportDir.toFile().exists() && autoImportDir.toFile().canRead()) {
-                    //System.out.println("Registering watcher for " + autoImportDir);
+                    //Logger.getLogger(getClass().getName()).info("Registering watcher for " + autoImportDir);
                     observedDirs.put(deviceName, autoImportDir);
                 }
             }

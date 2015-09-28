@@ -335,7 +335,7 @@ public class PreloadingPhotoBrowser extends JPanel {
                     BufferedImage fullImg = ImageIO.read(imageFile);
                     fullImage.set(fullImg);
                     listenersManager.callListeners((l) -> l.imageLoaded(fullImg, true));
-                    //System.out.println("Loaded image " + imageFile);
+                    //Logger.getLogger(getClass().getName()).info("Loaded image " + imageFile);
                     return fullImg;
                 } catch (IOException ex) {
                     Logger.getLogger(PreloadingPhotoBrowser.class.getName()).log(Level.SEVERE, null, ex);

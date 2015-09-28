@@ -6,6 +6,7 @@
 package pl.jblew.cpr.db;
 
 import java.io.File;
+import java.util.logging.Logger;
 import pl.jblew.cpr.file.StorageDevicePresenceListener;
 import pl.jblew.cpr.util.ListenersManager;
 
@@ -35,17 +36,17 @@ public class DatabaseDetector implements StorageDevicePresenceListener {
         if (root.isDirectory() && root.canRead()) {
             final File potentialDbFile = getPotentialDBFile(root);
             final File potentialDbFileJDBCPath = getPotentialDbFileJDBCPath(root);
-            System.out.println("Checking for DB on "+potentialDbFile);
+            Logger.getLogger(getClass().getName()).info("Checking for DB on "+potentialDbFile);
             
             if (potentialDbFile.exists()) {
                 if (potentialDbFile.canWrite() && potentialDbFile.canRead()) {
-                    System.out.println("Found DB file in " + potentialDbFile);
+                    Logger.getLogger(getClass().getName()).info("Found DB file in " + potentialDbFile);
 
                     listenersManager.callListeners((DatabaseDetectedListener listener) -> {
                         listener.databaseDetected(deviceName, potentialDbFileJDBCPath);
                     });
                 } else {
-                    System.out.println("Found DB file in " + potentialDbFile + " but is not writable or not readable");
+                    Logger.getLogger(getClass().getName()).info("Found DB file in " + potentialDbFile + " but is not writable or not readable");
                 }
             }
         }

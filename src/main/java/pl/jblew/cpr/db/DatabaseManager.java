@@ -82,7 +82,7 @@ public class DatabaseManager implements DatabaseDetectedListener {
             Files.copy(dbSourceFile.toPath(), dbBackupTempFile.toPath());
             if(dbBackupFile.exists()) dbBackupFile.delete();
             Files.move(dbBackupTempFile.toPath(), dbBackupFile.toPath());
-            System.out.println("<DB BACKUP> Created DB backup in "+dbBackupFile);
+            Logger.getLogger(DatabaseManager.class.getName()).info("<DB BACKUP> Created DB backup in "+dbBackupFile);
         }
         catch(Exception ex) {
             Logger.getLogger(DatabaseManager.class.getName()).log(Level.SEVERE, null, ex);
@@ -156,13 +156,18 @@ public class DatabaseManager implements DatabaseDetectedListener {
             int myNum = taskNum.incrementAndGet();
             long s = System.currentTimeMillis();
             if (DEBUG) {
-                System.out.println("<" + myNum + "> Starting task " + myNum);
+                Logger.getLogger(DatabaseManager.class.getName()).info("<" + myNum + "> Starting task " + myNum);
+            }
+            
+            try {
+            r.run();
+            }
+            catch(Exception e) {
+                Logger.getLogger(DatabaseManager.class.getName()).log(Level.SEVERE, null, e);
             }
 
-            r.run();
-
             if (DEBUG) {
-                System.out.println("<" + myNum + "> Finished task " + myNum + ", Time: " + (System.currentTimeMillis() - s) + "ms");
+                Logger.getLogger(DatabaseManager.class.getName()).info("<" + myNum + "> Finished task " + myNum + ", Time: " + (System.currentTimeMillis() - s) + "ms");
             }
 
             if (latch != null) {
@@ -171,7 +176,7 @@ public class DatabaseManager implements DatabaseDetectedListener {
         };
         if (Thread.currentThread().getName().startsWith("dbthread")) {
             if (DEBUG) {
-                System.out.println("Already in dbthread");
+               Logger.getLogger(DatabaseManager.class.getName()).info("Already in dbthread");
             }
             fullTask.run();
         }
@@ -181,11 +186,11 @@ public class DatabaseManager implements DatabaseDetectedListener {
     public void executeInDBThread(final Runnable r) {
         if (r == null) {
             if (DEBUG) {
-                System.out.println("Initial execution in DB Thread");
+                Logger.getLogger(DatabaseManager.class.getName()).info("Initial execution in DB Thread");
             }
         } else {
             if (DEBUG) {
-                System.out.println("Execute in DB Thread");
+                Logger.getLogger(DatabaseManager.class.getName()).info("Execute in DB Thread");
             }
         }
 
@@ -194,7 +199,7 @@ public class DatabaseManager implements DatabaseDetectedListener {
                 while (!executeWhenDBConnected.isEmpty()) {
                     try {
                         if (DEBUG) {
-                            System.out.println("Executing task from queue");
+                            Logger.getLogger(DatabaseManager.class.getName()).info("Executing task from queue");
                         }
                         simplyExecute(executeWhenDBConnected.take(), null);
 

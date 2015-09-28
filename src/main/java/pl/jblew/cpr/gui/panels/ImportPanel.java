@@ -15,6 +15,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Logger;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultComboBoxModel;
@@ -198,7 +199,7 @@ public class ImportPanel extends MainPanel {
         PanelDisabler.setEnabled(progressPanel, false);
         PanelDisabler.setEnabled(finishPanel, false);
 
-        System.out.println("t(ImportPanel.new())" + (System.currentTimeMillis() - sT) + "ms");
+        Logger.getLogger(getClass().getName()).info("t(ImportPanel.new())" + (System.currentTimeMillis() - sT) + "ms");
     }
 
     @Override

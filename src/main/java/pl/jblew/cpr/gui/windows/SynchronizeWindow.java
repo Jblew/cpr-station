@@ -270,7 +270,7 @@ public class SynchronizeWindow {
                             SwingUtilities.invokeLater(() -> {
                                 progressEntity.setText("Kopiowanie " + event.getName() + ". Nieudane: " + (i_ - numOfDone_));
                                 progressBar.setString("Kopiowanie " + event.getName() + ". Nieudane: " + (i_ - numOfDone_));
-                                System.out.println("Kopiowanie " + event.getName() + ". Nieudane: " + (i_ - numOfDone_));
+                                Logger.getLogger(getClass().getName()).info("Kopiowanie " + event.getName() + ". Nieudane: " + (i_ - numOfDone_));
                             });
 
                             Exporter exporter = new Exporter(context, event);

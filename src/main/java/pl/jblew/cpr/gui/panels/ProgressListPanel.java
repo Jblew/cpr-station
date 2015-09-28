@@ -16,6 +16,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.logging.Logger;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JPanel;
@@ -108,7 +109,7 @@ public class ProgressListPanel extends JPanel {
 
         private void finished() {
             SwingUtilities.invokeLater(() -> {
-                System.out.println("Removing from progress panel: " + progressEntity.text.get());
+                Logger.getLogger(getClass().getName()).info("Removing from progress panel: " + progressEntity.text.get());
                 meProgressListPanel.remove(this);
                 meProgressListPanel.revalidate();
                 meProgressListPanel.repaint();
@@ -149,7 +150,7 @@ public class ProgressListPanel extends JPanel {
 
             ProgressPanel ppSafe = progressPanelRef.get();
             if (ppSafe != null) {
-                System.out.println("Marking finished: " + text.get());
+                Logger.getLogger(getClass().getName()).info("Marking finished: " + text.get());
                 ppSafe.finished();
             }
         }
