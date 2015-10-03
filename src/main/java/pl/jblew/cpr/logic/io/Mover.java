@@ -89,7 +89,7 @@ public class Mover {
                     return new Step("Kopiowanie do " + carrierToCopy.getName(), (MoveWindow.ProgressChangedCallback callback) -> {
                         if (writeFiles(carrierToCopy, callback, sourceLocalization, targetLocalization)) {
                             leftTargetLocalizationsToWrite.remove(targetLocalization);
-                            callback.progressChanged(100, "Gotowe!", false);
+                            callback.progressChanged(100, 100, "Gotowe!", false);
                         }
                     });
                 } else {
@@ -107,7 +107,7 @@ public class Mover {
                     return new Step("Usuwanie z " + carrierToDelete.getName(), (MoveWindow.ProgressChangedCallback callback) -> {
                         if (deleteFiles(carrierToDelete, callback, sourceLocalization)) {
                             leftSourceLocalizationsToDelete.remove(sourceLocalization);
-                            callback.progressChanged(100, "Gotowe!", false);
+                            callback.progressChanged(100, 100, "Gotowe!", false);
                         }
                     });
                 } else {
@@ -123,7 +123,7 @@ public class Mover {
                     updateDB(callback);
                     databaseUpdated.set(true);
                     currentStage.set(Stage.DO_CLEANUP);
-                    callback.progressChanged(100, "Gotowe!", false);
+                    callback.progressChanged(100, 100, "Gotowe!", false);
                 });
             } else {
                 currentStage.set(Stage.DO_CLEANUP);
@@ -134,7 +134,7 @@ public class Mover {
                 return new Step("Sprzątanie", (MoveWindow.ProgressChangedCallback callback) -> {
                     doCleanup(callback);
                     cleanupDone.set(true);
-                    callback.progressChanged(100, "Gotowe!", false);
+                    callback.progressChanged(100, 100, "Gotowe!", false);
                 });
             } else {
                 return null;//EVERYTHING DONE!
@@ -167,22 +167,22 @@ public class Mover {
                 if (!parent.exists()) {
                     parent.mkdirs();
                 }
-                
-                if(targetFile.exists() && !MD5Util.calculateMD5(targetFile).equals(sourceMFile.getMd5())) {
+
+                if (targetFile.exists() && !MD5Util.calculateMD5(targetFile).equals(sourceMFile.getMd5())) {
                     targetFile.delete();
                 }
-                
-                if(!targetFile.exists()) {
-                Logger.getLogger(getClass().getName()).info("Kopiowanie pliku z " + sourceFile.toPath() + " do " + targetFile.toPath());
-                Files.copy(sourceFile.toPath(), targetFile.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
-                ThumbnailLoader.loadThumbnail(targetFile, true, null);
+
+                if (!targetFile.exists()) {
+                    Logger.getLogger(getClass().getName()).info("Kopiowanie pliku z " + sourceFile.toPath() + " do " + targetFile.toPath());
+                    Files.copy(sourceFile.toPath(), targetFile.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
+                    ThumbnailLoader.loadThumbnail(targetFile, true, null);
                 }
                 if (callback != null) {
-                    callback.progressChanged(percent, "Kopiowanie " + i + "/" + mfilesToMove.length + " (" + percent + "%)", false);
+                    callback.progressChanged(i, mfilesToMove.length, "Kopiowanie " + i + "/" + mfilesToMove.length + " (" + percent + "%)", false);
                 }
             } catch (IOException ex) {
                 Logger.getLogger(Exporter.class.getName()).log(Level.SEVERE, "Błąd przy kopiowaniu plików", ex);
-                callback.progressChanged(percent, " Błąd przy kopiowaniu pliku: " + i + "/" + mfilesToMove.length + ": " + ex.getLocalizedMessage(), true);
+                callback.progressChanged(i, mfilesToMove.length, " Błąd przy kopiowaniu pliku: " + i + "/" + mfilesToMove.length + ": " + ex.getLocalizedMessage(), true);
                 return false;
             }
         }
@@ -246,11 +246,11 @@ public class Mover {
                 }
 
                 if (callback != null) {
-                    callback.progressChanged(percent, "Usuwanie " + i + "/" + mfilesToMove.length + " (" + percent + "%)", false);
+                    callback.progressChanged(i, mfilesToMove.length, "Usuwanie " + i + "/" + mfilesToMove.length + " (" + percent + "%)", false);
                 }
             } catch (IOException ex) {
                 Logger.getLogger(Exporter.class.getName()).log(Level.SEVERE, "Błąd przy usuwaniu plików", ex);
-                callback.progressChanged(percent, " Błąd przy usuwaniu pliku: " + i + "/" + mfilesToMove.length + ": " + ex.getLocalizedMessage(), true);
+                callback.progressChanged(i, mfilesToMove.length, " Błąd przy usuwaniu pliku: " + i + "/" + mfilesToMove.length + ": " + ex.getLocalizedMessage(), true);
                 return false;
             }
         }
@@ -262,7 +262,7 @@ public class Mover {
         try {
             context.dbManager.executeInDBThreadAndWait(() -> {
 
-                callback.progressChanged(50, "Linkuję zdjęcia do nowego wydarzenia", false);
+                callback.progressChanged(50, 100, "Linkuję zdjęcia do nowego wydarzenia", false);
 
                 for (MFile mf : mfilesToMove) {
                     mf.setEvent(targetEvent.get());
@@ -275,7 +275,7 @@ public class Mover {
 
                 targetEvent.get().update(context);
 
-                callback.progressChanged(100, "Gotowe!", false);
+                callback.progressChanged(100, 100, "Gotowe!", false);
             });
         } catch (InterruptedException ex) {
             Logger.getLogger(Mover.class.getName()).log(Level.SEVERE, null, ex);
@@ -292,7 +292,7 @@ public class Mover {
             }
             awaitDelete.await();
 
-            callback.progressChanged(100, "Gotowe!", false);
+            callback.progressChanged(100, 100, "Gotowe!", false);
         } catch (InterruptedException ex) {
             Logger.getLogger(Mover.class.getName()).log(Level.SEVERE, null, ex);
         }

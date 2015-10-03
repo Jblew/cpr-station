@@ -172,17 +172,18 @@ private final Context context;
                     PanelDisabler.setEnabled(eventNamePanel, false);
                     PanelDisabler.setEnabled(progressPanel, true);
                     windowCloseEnabled.set(false);
-                    importer.startAsync((final int percent, final String msg, boolean error) -> {
+                    importer.startAsync((int value, int maximum, final String msg, boolean error) -> {
                         SwingUtilities.invokeLater(() -> {
-                            progressBar.setValue(percent);
+                            progressBar.setValue(value);
+                            progressBar.setMaximum(maximum);
                             progressBar.setString(msg);
                             progressBar.revalidate();
                             progressBar.repaint();
 
-                            progressEntity.setPercent(percent);
-                            progressEntity.setText("(Import) " + msg);
+                            progressEntity.setValue(value, maximum);
+                            progressEntity.setText("(Import "+importer.getEventName()+") " + msg);
 
-                            if (percent == 100) {
+                            if (value == maximum) {
                                 progressEntity.markFinished();
                                 PanelDisabler.setEnabled(progressPanel, false);
                                 PanelDisabler.setEnabled(finishPanel, true);
@@ -231,6 +232,6 @@ private final Context context;
     }
     
     public static interface ProgressChangedCallback {
-        public void progressChanged(int percent, String msg, boolean error);
+        public void progressChanged(int value, int maximum, String msg, boolean error);
     }
 }

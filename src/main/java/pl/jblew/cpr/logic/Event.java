@@ -52,6 +52,11 @@ public class Event implements Comparable<Event> {
     @ForeignCollectionField(eager = false, foreignFieldName = "event")
     private ForeignCollection<Event_Localization> localizations;
 
+    public Event() {
+        
+    }
+    
+    
     public long getId() {
         return id;
     }
@@ -222,6 +227,7 @@ public class Event implements Comparable<Event> {
     }
 
     public static Event createEvent(Context c, Event.Type type, String name, Carrier carrier) {
+        if(name.isEmpty()) throw new IllegalArgumentException("Event name is null!");
         try {
             AtomicReference<Event> resEvent = new AtomicReference<>(null);
             final Event newEvent = new Event();
@@ -298,10 +304,11 @@ public class Event implements Comparable<Event> {
                     ProgressListPanel.ProgressEntity pe = new ProgressListPanel.ProgressEntity();
                     context.eBus.post(pe);
                     pe.setText("Weryfikowanie " + getName());
-                    pe.setPercent(50);
+                    pe.setValue(1,2);
                     for (Event_Localization el : getLocalizations()) {
                         Validator.validateEventLocalizationOrMarkForValidation(context, el);
                     }
+                    pe.setValue(2, 2);
                     pe.markFinished();
                 });
             } catch (SQLException ex) {

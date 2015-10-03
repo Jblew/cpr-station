@@ -96,7 +96,9 @@ public class ProgressListPanel extends JPanel {
                     this.setToolTipText(text);
                 }
 
-                this.setValue(progressEntity.percent.get());
+                this.setValue(progressEntity.value.get());
+                this.setMaximum(progressEntity.maximum.get());
+                
 
                 if (progressEntity.error.get()) {
                     this.setForeground(Color.RED);
@@ -119,18 +121,20 @@ public class ProgressListPanel extends JPanel {
 
     public static class ProgressEntity {
         private final AtomicReference<ProgressPanel> progressPanelRef = new AtomicReference<>(null);
-        private final AtomicInteger percent = new AtomicInteger();
+        private final AtomicInteger value = new AtomicInteger(0);
+        private final AtomicInteger maximum = new AtomicInteger(100);
         private final AtomicReference<String> text = new AtomicReference<>("");
         private final AtomicReference<MainPanel> associatedPanel = new AtomicReference<>(null);
         private final AtomicBoolean error = new AtomicBoolean(false);
         private final AtomicBoolean finished = new AtomicBoolean(false);
 
         public ProgressEntity() {
-
         }
 
-        public void setPercent(int percent) {
-            this.percent.set(percent);
+        
+        public void setValue(int value, int maximum) {
+            this.value.set(value);
+            this.maximum.set(maximum);
             ProgressPanel ppSafe = progressPanelRef.get();
             if (ppSafe != null) {
                 ppSafe.changed();

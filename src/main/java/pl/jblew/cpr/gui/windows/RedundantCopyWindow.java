@@ -285,14 +285,15 @@ public class RedundantCopyWindow {
             progressEntity.setText("(Eksport) Ładowanie...");
             progressPanel.add(progressBar, BorderLayout.CENTER);
 
-            exporter.setProgressChangedCallback((percent, msg, error) -> {
+            exporter.setProgressChangedCallback((value, maximum, msg, error) -> {
                 progressBar.setString(msg);
                 progressEntity.setText("(Eksport) " + msg);
 
-                progressBar.setValue(percent);
-                progressEntity.setPercent(percent);
+                progressBar.setValue(value);
+                progressBar.setMaximum(maximum);
+                progressEntity.setValue(value, maximum);
 
-                if (percent == 100) {
+                if (value == maximum) {
                     progressEntity.markFinished();
                     PanelDisabler.setEnabled(progressPanel, false);
                     PanelDisabler.setEnabled(finishPanel, true);
@@ -338,6 +339,6 @@ public class RedundantCopyWindow {
     }
 
     public static interface ProgressChangedCallback {
-        public void progressChanged(int percent, String msg, boolean error);
+        public void progressChanged(int value, int maximum, String msg, boolean error);
     }
 }

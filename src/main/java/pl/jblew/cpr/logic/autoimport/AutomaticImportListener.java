@@ -68,6 +68,7 @@ public class AutomaticImportListener implements StorageDevicePresenceListener {
 
     @Override
     public void storageDeviceConnected(File rootFile, String deviceName) {
+        if(rootFile == null) throw new IllegalArgumentException("rootFile cannot be null");
         try {
             if (Carrier.forName(context, deviceName) != null) {//import only if device is registered carrier
                 Path autoImportDir = new File(rootFile.toString() + File.separator + FileStructureUtil.PATH_UNSORTED_AUTOIMPORT).toPath();
@@ -79,7 +80,7 @@ public class AutomaticImportListener implements StorageDevicePresenceListener {
             }
 
         } catch (Exception ex) {
-            Logger.getLogger(AutomaticImportListener.class.getName()).log(Level.SEVERE, null, ex + " for path " + rootFile.toURI());
+            Logger.getLogger(AutomaticImportListener.class.getName()).log(Level.SEVERE, null, ex + " for path " + rootFile);
         }
     }
 

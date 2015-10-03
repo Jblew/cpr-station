@@ -237,16 +237,17 @@ public class MoveWindow {
                         progressBar.setStringPainted(true);
                         stepPanel.add(progressBar);
 
-                        context.cachedExecutor.execute(() -> step.processable.process((percent, msg, error) -> {
+                        context.cachedExecutor.execute(() -> step.processable.process((value, maximum, msg, error) -> {
                             progressBar.setString(msg);
-                            progressBar.setValue(percent);
+                            progressBar.setValue(value);
+                            progressBar.setMaximum(maximum);
                             progressBar.repaint();
                             progressBar.revalidate();
 
-                            progressEntity.setPercent(percent);
+                            progressEntity.setValue(value, maximum);
                             progressEntity.setText("(Przenoszenie) " + msg);
 
-                            if (percent == 100) {
+                            if (value == maximum) {
                                 progressEntity.markFinished();
                                 processStep(mover.getNextStep());
                             }
@@ -263,6 +264,6 @@ public class MoveWindow {
     }
 
     public static interface ProgressChangedCallback {
-        public void progressChanged(int percent, String msg, boolean error);
+        public void progressChanged(int value, int maximum, String msg, boolean error);
     }
 }

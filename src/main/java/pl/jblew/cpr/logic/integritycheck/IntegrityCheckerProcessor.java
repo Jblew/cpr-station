@@ -45,42 +45,38 @@ public class IntegrityCheckerProcessor {
                 ProgressListPanel.ProgressEntity progressEntity = new ProgressListPanel.ProgressEntity();
                 context.eBus.post(progressEntity);
 
-                progressEntity.setText("Sprawdzam " + deviceName);
+                progressEntity.setText("Oznaczam wydarzenia na " + deviceName+" do sprawdzenia");
 
-                List<Event_Localization> missingLocalizations = new LinkedList<>();
+                //List<Event_Localization> missingLocalizations = new LinkedList<>();
 
                 Event_Localization[] eventLocalizations = c.getEvents(context);
                 int i = 0;
                 for (Event_Localization el : eventLocalizations) {
-                    int percent = (int) (((float) i / (float) eventLocalizations.length) * 100f);
-                    progressEntity.setPercent(percent);
+                    el.setNeedValidation(true);
+                    el.update(context);
+                    progressEntity.setValue(i,  eventLocalizations.length);
+                    
+                    /*int percent = (int) (((float) i / (float) eventLocalizations.length) * 100f);
+                    progressEntity.setText("Sprawdzam " + deviceName+": ("+i+"/"+eventLocalizations.length+") "+el.getOrLoadFullEvent(context).getName());
                     Logger.getLogger(getClass().getName()).info("Checking " + el.getOrLoadFullEvent(context).getName() + " on " + deviceName);
 
                     try {
                         Validator.validateEventLocalization(context, el);
                     } catch (Validator.MissingOrBrokenFilesException ex) {
                         missingLocalizations.add(el);
-                    }
-
+                    }*/
                     i++;
                 }
-                progressEntity.setText("Zakończono sprawdzanie " + deviceName);
-                progressEntity.setPercent(100);
-                if (missingLocalizations.isEmpty()) {
-                    c.setLastChecked(LocalDateTime.now());
-                    c.update(context);
-                    progressEntity.markFinished();
-                } else {
-                    CarrierIntegrityChecker.FilesMissingOnCarrier missingFiles = new CarrierIntegrityChecker.FilesMissingOnCarrier(c, missingLocalizations.toArray(new Event_Localization[]{}));
-                    //progressEntity.markError();
-                    progressEntity.setText("Uszkodzone pliki na " + deviceName + ".");
-                    new RepairWindow(context, missingFiles);
-                    context.eBus.post(missingFiles);
-                }
 
-                //scheduledExecutor.scheduleAtFixedRate(() -> {
+                c.setLastChecked(LocalDateTime.now());
+                c.update(context);
+
+                progressEntity.setText("Zakończono oznaczanie " + deviceName);
+                progressEntity.setValue(100, 100);
+                progressEntity.markFinished();
+
                 devicesInProgress.remove(deviceName);
-                //}, 10, 10, TimeUnit.SECONDS);
+                quickCheck(c, rootFile, deviceName);
             });
         }
     }
@@ -99,11 +95,11 @@ public class IntegrityCheckerProcessor {
 
                         List<Event_Localization> missingLocalizations = new LinkedList<>();
 
-                        progressEntity.setText("Szybkie sprawdzanie wydarzeń na " + c.getName());
+                        progressEntity.setText("Sprawdzanie wydarzeń na " + c.getName());
                         int i = 0;
                         for (Event_Localization el : result) {
-                            progressEntity.setText("Szybkie sprawdzanie wydarzeń na " + c.getName() + " (" + i + "/" + result.size() + ")");
-                            progressEntity.setPercent((int) ((float) i / (float) result.size() * 100f));
+                            progressEntity.setText("Sprawdzanie \"" + c.getName() + "\" (" + i + "/" + result.size() + "): \""+el.getOrLoadFullEvent(context).getName()+"\"; Błędy: "+missingLocalizations.size());
+                            progressEntity.setValue(i, result.size());
                             if (el.getCarrier(context).isConnected(context)) {
                                 try {
                                     Validator.validateEventLocalization(context, el);
@@ -115,7 +111,7 @@ public class IntegrityCheckerProcessor {
                             i++;
                         }
                         progressEntity.setText("Zakończono szybkie sprawdzanie sprawdzanie " + deviceName);
-                        progressEntity.setPercent(100);
+                        progressEntity.setValue(100, 100);
                         if (missingLocalizations.isEmpty()) {
                             progressEntity.markFinished();
                         } else {

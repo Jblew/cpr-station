@@ -81,7 +81,7 @@ public class Exporter {
 
         context.cachedExecutor.submit(() -> {
             try {
-                progressChangedCallback.progressChanged(0, "Ładowanie potrzebnych danych...", false);
+                progressChangedCallback.progressChanged(0, 1, "Ładowanie potrzebnych danych...", false);
                 
                 event.recalculateAndUpdateTimeBounds(context);
                 
@@ -102,7 +102,7 @@ public class Exporter {
                 }
                 
                 if (!potentialTargetFile.exists()) {
-                    progressChangedCallback.progressChanged(0, "Nie można było utworzyć katalogu", true);
+                    progressChangedCallback.progressChanged(0, 1, "Nie można było utworzyć katalogu", true);
                     return;
                 }
                 
@@ -118,7 +118,7 @@ public class Exporter {
                 context.eBus.post(new EventsNode.EventsListChanged());
             }catch (Exception ex) {
                 Logger.getLogger(Exporter.class.getName()).log(Level.SEVERE, "Błąd przy kopiowaniu plików", ex);
-                progressChangedCallback.progressChanged(0, " Błąd przy eksportowaniu plików: " + ex, true);
+                progressChangedCallback.progressChanged(0, 1, " Błąd przy eksportowaniu plików: " + ex, true);
                 throw new RuntimeException("Could not finish", ex);
             }
             finally {
@@ -138,9 +138,7 @@ public class Exporter {
             
             float percentF = ((float) i) / ((float) localizedMFiles.get().length);
             int percent = (int) (percentF * 100f);
-            if (percent == 100) {
-                percent = 99;
-            }
+
             
             if(targetFile.exists()) {//we delete files with same name
                 targetFile.delete();
@@ -154,11 +152,11 @@ public class Exporter {
                 Files.copy(sourceFile.toPath(), targetFile.toPath(), StandardCopyOption.COPY_ATTRIBUTES);
                 ThumbnailLoader.loadThumbnail(targetFile, true, null);
                 if (progressChangedCallback != null) {
-                    progressChangedCallback.progressChanged(percent, "Eksportowanie " + i + "/" + localizedMFiles.get().length + " (" + percent + "%)", false);
+                    progressChangedCallback.progressChanged(i, localizedMFiles.get().length, "Eksportowanie " + i + "/" + localizedMFiles.get().length + " (" + percent + "%) ~ "+targetEventLocalization.getOrLoadFullEvent(context).getName(), false);
                 }
             } catch (IOException ex) {
                 Logger.getLogger(Exporter.class.getName()).log(Level.SEVERE, "Błąd przy kopiowaniu plików", ex);
-                progressChangedCallback.progressChanged(percent, " Błąd przy Eksportowaniu pliku: " + i + "/" + localizedMFiles.get().length + ": " + ex.getLocalizedMessage(), true);
+                progressChangedCallback.progressChanged(i, localizedMFiles.get().length, " Błąd przy Eksportowaniu pliku: " + i + "/" + localizedMFiles.get().length + ": " + ex.getLocalizedMessage(), true);
                 throw new RuntimeException("Could not finish", ex);
             }
         }
@@ -169,10 +167,10 @@ public class Exporter {
             Dao<Event_Localization, Integer> event_localizationDao = context.dbManager.getDaos().getEvent_LocalizationDao();
             try {
                 event_localizationDao.create(targetEventLocalization);
-                progressChangedCallback.progressChanged(100, "Gotowe!", false);
+                progressChangedCallback.progressChanged(1, 1, "Gotowe!", false);
             } catch (SQLException ex) {
                 Logger.getLogger(Exporter.class.getName()).log(Level.SEVERE, null, ex);
-                progressChangedCallback.progressChanged(99, "Błąd: Nie można było dodać do bazy danych!", true);
+                progressChangedCallback.progressChanged(99, 100, "Błąd: Nie można było dodać do bazy danych!", true);
             }
         });
     }

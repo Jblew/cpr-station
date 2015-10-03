@@ -139,7 +139,7 @@ public class Importer {
     public void startAsync(ImportWindow.ProgressChangedCallback callback) {
         context.cachedExecutor.submit(() -> {
             try {
-                callback.progressChanged(0, "Dodawanie wydarzenia do bazy danych i tworzenie folderu...", false);
+                callback.progressChanged(0, 1, "Dodawanie wydarzenia do bazy danych i tworzenie folderu...", false);
 
                 Carrier carrier = Carrier.forName(context, deviceName.get());
                 if (carrier == null) {
@@ -161,23 +161,23 @@ public class Importer {
                 Logger.getLogger(getClass().getName()).info("Creating dirs for basePath: " + baseDir);
                 baseDir.mkdirs();
 
-                callback.progressChanged(0, "Obliczanie prawidłowych nazw...", false);
+                callback.progressChanged(0, 1, "Obliczanie prawidłowych nazw...", false);
 
                 Map<File, MFile> targetFilesMap = createFileMap(callback, targetEvent, basePath);
                 
-                callback.progressChanged(0, "Rozwiązywanie konfliktów...", false);
+                callback.progressChanged(0, 1, "Rozwiązywanie konfliktów...", false);
                 resolveConflicts(targetFilesMap, targetLocalization, basePath);
 
-                callback.progressChanged(0, "Rozpoczynam kopiowanie plików", false);
+                callback.progressChanged(0, 1, "Rozpoczynam kopiowanie plików", false);
 
                 if (!writeFiles(targetFilesMap, targetLocalization, basePath, callback)) {
                     return;
                 }
-                callback.progressChanged(99, "Dodaję pliki do bazy danych...", false);
+                callback.progressChanged(99, 100, "Dodaję pliki do bazy danych...", false);
 
                 int numOfExisting = registerFilesInDB(targetFilesMap, targetEvent, targetLocalization, carrier, callback);
 
-                callback.progressChanged(99, "Zapisuję listy zaimportowanych plików", false);
+                callback.progressChanged(99, 100, "Zapisuję listy zaimportowanych plików", false);
 
                 markImported(targetFilesMap);
 
@@ -192,7 +192,7 @@ public class Importer {
                         });*/
                 targetEvent.update(context);//this also marks localizations for revalidation
 
-                callback.progressChanged(100, "Gotowe! (" + numOfExisting + " znajdowało się już wcześniej w bazie!)", false);
+                callback.progressChanged(100, 100, "Gotowe! (" + numOfExisting + " znajdowało się już wcześniej w bazie!)", false);
             } catch (InterruptedException ex) {
                 Logger.getLogger(Importer.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -239,7 +239,7 @@ public class Importer {
             });
 
             if (!created.get()) {
-                callback.progressChanged(0, "Błąd: Nie udało się utworzyć wydarzenia", true);
+                callback.progressChanged(0, 1, "Błąd: Nie udało się utworzyć wydarzenia", true);
                 return null;
             }
             targetLocalization = newLocalization;
@@ -252,7 +252,7 @@ public class Importer {
         Map<File, MFile> targetFilesMap = new HashMap<>();
 
         for (int i = 0; i < filesToImport.length; i++) {
-            callback.progressChanged(0, "Obliczanie prawidłowych nazw i sprawdzanie ...("+(i+1)+"/"+filesToImport.length+")", false);
+            callback.progressChanged(0, 1, "Obliczanie prawidłowych nazw i sprawdzanie ...("+(i+1)+"/"+filesToImport.length+")", false);
             
             File sourceFile = filesToImport[i];
             if (sourceFile.exists() && sourceFile.canRead() && !sourceFile.isDirectory()) {
@@ -304,20 +304,13 @@ public class Importer {
 
     private boolean writeFiles(Map<File, MFile> targetFilesMap, Event_Localization eventLocalization, String basePath, ImportWindow.ProgressChangedCallback callback) {
         int numOfFiles = targetFilesMap.size();
-        callback.progressChanged(0, "Importowanie 0/" + numOfFiles, false);
+        callback.progressChanged(0, 1, "Importowanie 0/" + numOfFiles, false);
 
-        long sTime = System.currentTimeMillis();
         int i = 0;
         for (File sourceFile : targetFilesMap.keySet()) {
             MFile targetMFile = targetFilesMap.get(sourceFile);
             File targetFile = targetMFile.getFile(context, eventLocalization);
-            
-            
-            float percentF = ((float) i) / ((float) numOfFiles);
-            int percent = (int) (percentF * 100f);
-            if (percent == 100) {
-                percent = 99; //in order not to disable progress bar
-            }
+
             try {
                 if (targetFile.exists()) {
                     targetFile.delete();
@@ -327,15 +320,10 @@ public class Importer {
                 //Logger.getLogger(getClass().getName()).info(sourceFile.toPath() + " -> " + targetFile.toPath());
                 ThumbnailLoader.loadThumbnail(targetFile, true, null);
 
-                long elapsedTime = System.currentTimeMillis() - sTime;
-                int percentLeft = 100 - percent;
-                long leftTimeMulti = (long) elapsedTime * (long) percentLeft;
-                long leftTime = (percent > 0 ? leftTimeMulti / (long) percent : 1);
-
-                callback.progressChanged(percent, "Importowanie " + i + "/" + numOfFiles + " (" + percent + "%) Zostało: " + DateTimeFormatter.ofPattern("HH:mm:ss").format(LocalDateTime.ofEpochSecond(leftTime / 1000l, 0, ZoneOffset.UTC)), false);
+                callback.progressChanged(i, numOfFiles+1, "Importowanie "+eventLocalization.getOrLoadFullEvent(context).getName() + " " + i + "/" + numOfFiles, false);
             } catch (IOException ex) {
                 Logger.getLogger(Importer.class.getName()).log(Level.SEVERE, "Błąd przy kopiowaniu plików", ex);
-                callback.progressChanged(percent, " Błąd przy importowaniu pliku: " + i + "/" + numOfFiles + ": " + ex.getLocalizedMessage(), true);
+                callback.progressChanged(i, numOfFiles+1, " Błąd przy importowaniu pliku: " + i + "/" + numOfFiles + ": " + ex.getLocalizedMessage(), true);
                 return false;
             }
             i++;
@@ -347,7 +335,7 @@ public class Importer {
         final AtomicInteger numOfExistingFiles = new AtomicInteger(0);
         try {
             context.dbManager.executeInDBThreadAndWait(() -> {
-                callback.progressChanged(0, "Dodawanie plików do bazy danych...", false);
+                callback.progressChanged(99, 100, "Dodawanie plików do bazy danych...", false);
                 try {
                     Dao<MFile, Integer> mfileDao = context.dbManager.getDaos().getMfileDao();
 
@@ -355,9 +343,7 @@ public class Importer {
                     for (File sourceFile : targetFilesMap.keySet()) {
                         float percentF = ((float) i) / ((float) targetFilesMap.keySet().size());
                         int percent = (int) (percentF * 100f);
-                        if (percent == 100) {
-                            percent = 99; //in order not to disable progress bar
-                        }
+                        
                         MFile targetMFile = targetFilesMap.get(sourceFile);
                         mfileDao.create(targetMFile);
 
@@ -372,7 +358,7 @@ public class Importer {
                             }
                         }
 
-                        callback.progressChanged(percent, "Dodawanie plików do bazy danych... (" + percent + "%)", false);
+                        callback.progressChanged(99, 100, "Dodawanie plików do bazy danych... ("+percent+"%)", false);
 
                         i++;
                     }

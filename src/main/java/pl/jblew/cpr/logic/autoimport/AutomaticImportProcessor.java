@@ -75,6 +75,8 @@ public class AutomaticImportProcessor {
             if (baseEventName.matches("^\\[[0-9\\.\\-]+\\](.*)")) {
                 baseEventName = baseEventName.substring(baseEventName.indexOf("]") + 1).trim();
             }
+            
+            if(baseEventName.trim().isEmpty()) baseEventName = System.currentTimeMillis()+"";
 
             //baseEventName = Event.formatName(LocalDateTime.now(), baseEventName);
 
@@ -104,6 +106,7 @@ public class AutomaticImportProcessor {
             eventMapping.put(newEventName, entry.getValue());
         }*/
 
+        int i = 0;
         for (String eventName : eventMapping.keySet()) {
             List<File> files = eventMapping.get(eventName);
 
@@ -125,13 +128,15 @@ public class AutomaticImportProcessor {
 
                 importer.setEventName(eventName);
 
+                final int importNum = i;
                 CountDownLatch cdLatch = new CountDownLatch(1);
-                importer.startAsync((final int percent, final String msg, boolean error) -> {
+                importer.startAsync((int value, int maximum, String msg, boolean error) -> {
                     SwingUtilities.invokeLater(() -> {
-                        progressEntity.setPercent(percent);
-                        progressEntity.setText("(Import) " + msg);
+                        progressEntity.setValue(value, maximum);
+                        
+                        progressEntity.setText("(Import a"+importNum+"/"+eventMapping.size()+") "+eventName+") " + msg);
 
-                        if (percent == 100) {
+                        if (value == maximum) {
                             progressEntity.markFinished();
                             cdLatch.countDown();
                         } else if (error) {
@@ -163,6 +168,7 @@ public class AutomaticImportProcessor {
                     progressEntity.markFinished();
                 });
             }
+            i++;
         }
 
     }

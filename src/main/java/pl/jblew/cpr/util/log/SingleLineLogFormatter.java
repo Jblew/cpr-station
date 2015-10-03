@@ -49,15 +49,19 @@ public class SingleLineLogFormatter extends Formatter {
             sb.append("   ");
         }
         String msg = record.getMessage();
-        Object parameters = record.getParameters();
-        if (parameters != null && ((Object[]) parameters).length > 0) {
-            int i = 0;
-            for (Object o : (Object[]) parameters) {
-                msg = msg.replace("{" + i + "}", o.toString());
-                i++;
+        if (msg != null) {
+            Object parameters = record.getParameters();
+            if (parameters != null && ((Object[]) parameters).length > 0) {
+                int i = 0;
+                for (Object o : (Object[]) parameters) {
+                    if (o != null) {
+                        msg = msg.replace("{" + i + "}", o.toString());
+                    }
+                    i++;
+                }
             }
+            sb.append(msg);
         }
-        sb.append(msg);
 
         // if there was an exception thrown, log it as well
         if (record.getThrown() != null) {

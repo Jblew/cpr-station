@@ -14,7 +14,6 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -33,13 +32,10 @@ import javax.swing.JSeparator;
 import javax.swing.SwingUtilities;
 import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.file.StorageDevicePresenceListener;
-import pl.jblew.cpr.gui.ChangeMainPanel;
-import pl.jblew.cpr.gui.panels.EventPanel;
 import pl.jblew.cpr.gui.panels.ProgressListPanel;
 import pl.jblew.cpr.gui.treenodes.EventsNode;
 import pl.jblew.cpr.gui.util.CPRProgressBarUI;
 import pl.jblew.cpr.gui.util.PanelDisabler;
-import pl.jblew.cpr.gui.util.ValidableLabel;
 import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.Event;
 import pl.jblew.cpr.logic.Event_Localization;
@@ -274,7 +270,7 @@ public class SynchronizeWindow {
                             });
 
                             Exporter exporter = new Exporter(context, event);
-                            exporter.setProgressChangedCallback((percent, msg, error) -> {
+                            exporter.setProgressChangedCallback((value, maximum, msg, error) -> {
                             });
                             try {
                                 exporter.tryDevice(context, selectedCarrier, event);
@@ -291,11 +287,11 @@ public class SynchronizeWindow {
                                     awaiterLatch.await();
                                 }
 
-                                int percent = (int) ((float) (i + 1) / (float) eventLocalizations.length * 100f);
-
+                                final int value = i+1;
                                 SwingUtilities.invokeLater(() -> {
-                                    progressEntity.setPercent(percent);
-                                    progressBar.setValue(percent);
+                                    progressEntity.setValue(value, eventLocalizations.length);
+                                    progressBar.setValue(value);
+                                    progressBar.setMaximum(eventLocalizations.length);
                                 });
 
                                 numOfDone++;

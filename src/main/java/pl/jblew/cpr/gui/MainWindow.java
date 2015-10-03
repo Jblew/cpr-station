@@ -13,11 +13,13 @@ import java.awt.Dimension;
 import java.util.logging.Logger;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JToggleButton;
 import javax.swing.JToolBar;
 import javax.swing.SwingUtilities;
 import pl.jblew.cpr.bootstrap.Context;
@@ -25,6 +27,7 @@ import pl.jblew.cpr.db.DBBackupManager;
 import pl.jblew.cpr.db.DatabaseChanged;
 import pl.jblew.cpr.gui.panels.HomePanel;
 import pl.jblew.cpr.gui.panels.ProgressListPanel;
+import pl.jblew.cpr.gui.treenodes.SleepPreventer;
 import pl.jblew.cpr.gui.windows.LogWindow;
 import pl.jblew.cpr.util.MessageToStatusBar;
 
@@ -90,12 +93,24 @@ public class MainWindow {
             toolBar.addSeparator();
             toolBar.add(dbBackupLabel);
             toolBar.addSeparator();
-            
-            JButton logButton = new JButton("Log");
+
+            JButton logButton = new JButton("Pokaż log");
             logButton.addActionListener((evt) -> {
                 new LogWindow(context);
             });
             toolBar.add(logButton);
+            
+            toolBar.addSeparator();
+
+            SleepPreventer preventer = new SleepPreventer(context);
+            JCheckBox preventSleepButton = new JCheckBox("Nie usypiaj");
+            preventSleepButton.addActionListener((evt) -> {
+                SwingUtilities.invokeLater(() -> {
+                    boolean selected = preventSleepButton.getModel().isSelected();
+                    preventer.setEnabled(selected);
+                });
+            });
+            toolBar.add(preventSleepButton);
 
             this.setLayout(new BorderLayout());
             this.add(toolBar, BorderLayout.NORTH);
