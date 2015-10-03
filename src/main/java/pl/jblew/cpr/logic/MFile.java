@@ -17,6 +17,8 @@ import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import pl.jblew.cpr.bootstrap.Context;
+import pl.jblew.cpr.gui.panels.ProgressListPanel;
+import pl.jblew.cpr.logic.integritycheck.Validator;
 
 /**
  *
@@ -155,6 +157,16 @@ public class MFile implements Comparable<MFile> {
                 context.dbManager.getDaos().getMfileDao().delete(this);
             } catch (SQLException ex) {
                 Logger.getLogger(MFile.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        });
+    }
+    
+    public void update(Context context) {
+        context.dbManager.executeInDBThread(() -> {
+            try {
+                context.dbManager.getDaos().getMfileDao().update(this);
+            } catch (SQLException ex) {
+                Logger.getLogger(Carrier.class.getName()).log(Level.SEVERE, null, ex);
             }
         });
     }

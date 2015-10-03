@@ -68,7 +68,7 @@ public class MD5Util {
             raf.seek(raf.length() - buf.length / 2 - 1);
             raf.readFully(buf, buf.length / 2, buf.length / 2);
             raf.close();
-
+            
             try (ByteArrayInputStream bais = new ByteArrayInputStream(buf);
                     DigestInputStream dis = new DigestInputStream(bais, md5Digest)) {
                 byte[] bytes = new byte[buf.length];

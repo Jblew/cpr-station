@@ -6,11 +6,13 @@
 package pl.jblew.cpr.logic.integritycheck;
 
 import com.google.common.io.Files;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.imageio.ImageIO;
 import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.logic.Event;
 import pl.jblew.cpr.logic.Event_Localization;
@@ -58,7 +60,37 @@ public class Validator {
         event.recalculateAndUpdateTimeBounds(context);
 
         for (MFile.Localized mfl : event.getLocalizedMFiles(context, el)) {
-            if (mfl.getFile() == null || !MD5Util.calculateMD5(mfl.getFile()).equals(mfl.getMFile().getMd5())) {
+            boolean missingOrBroken = false;
+            if (mfl.getFile() == null) {
+                missingOrBroken = true;
+                Logger.getLogger(Validator.class.getName()).warning("Missing file " + mfl.getMFile().getFile(context, el));
+            } else {
+                String properMD5 = mfl.getMFile().getMd5();
+                String actualMD5 = MD5Util.calculateMD5(mfl.getFile());
+                if (!actualMD5.equals(properMD5)) {
+                    try {
+                        BufferedImage img = ImageIO.read(mfl.getFile());
+                        if(img.getWidth() > 0 && img.getHeight() > 0) {
+                            img.getRGB(img.getWidth()-1, img.getHeight()-1);
+                            
+                            mfl.getMFile().setMd5(actualMD5);
+                            mfl.getMFile().update(context);
+                        }
+                        else {
+                            missingOrBroken = true;
+                        }
+                    } catch (IOException ex) {
+                        missingOrBroken = true;
+                        Logger.getLogger(Validator.class.getName()).log(Level.SEVERE, "Image not loadable", ex);
+                    }
+                    
+                    
+                    if(missingOrBroken) Logger.getLogger(Validator.class.getName()).warning("MD5 mismatch for file " + mfl.getMFile().getFile(context, el) + ": Proper: \"" + properMD5 + "\", actual: \"" + actualMD5 + "\"");
+                    else Logger.getLogger(Validator.class.getName()).warning("MD5 mismatch for file " + mfl.getMFile().getFile(context, el) + ": Proper: \"" + properMD5 + "\", actual: \"" + actualMD5 + "\". Img was valid, changed MD5 to actual");
+                }
+            }
+
+            if (missingOrBroken) {
                 if (!ignoreMissingOrBrokenFiles) {
                     el.setNeedValidation(true);
                     el.update(context);
