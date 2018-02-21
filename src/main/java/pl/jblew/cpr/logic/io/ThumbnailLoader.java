@@ -56,6 +56,7 @@ public class ThumbnailLoader {
         loadingQueue.add(new TwoTuple<>(f, l));
         for (ProcessingThread pt : processingThreads) {
             if (pt.running.compareAndSet(false, true)) {
+                //if(executor)
                 executor.submit(pt);
             }
         }
@@ -63,7 +64,7 @@ public class ThumbnailLoader {
 
     public void stopAndInactivate() {
         loadingQueue.clear();
-        executor.shutdown();
+        //executor.shutdown();
     }
 
     public static interface LoadedListener {

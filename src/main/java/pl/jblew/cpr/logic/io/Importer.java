@@ -352,6 +352,7 @@ public class Importer {
                          */
                         if (this.deleteAfterAdd) {
                             try {
+                                Logger.getLogger(Importer.class.getName()).info("DELETING "+sourceFile);
                                 sourceFile.delete();
                             } catch (Exception e) {
 

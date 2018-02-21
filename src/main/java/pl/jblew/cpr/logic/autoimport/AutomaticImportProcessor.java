@@ -52,7 +52,7 @@ public class AutomaticImportProcessor {
     }
 
     private void doProcess(File topDir, String deviceName) {
-        String topEventName = "Import z" + deviceName;
+        String topEventName = "Import z " + deviceName;
 
         List<File> allImportableFiles = new LinkedList<>();
         walkDir(allImportableFiles, topDir);
@@ -63,49 +63,29 @@ public class AutomaticImportProcessor {
          * CALCULATING BASE EVENT NAME (WITHOUT DATE) *
          */
         for (File f : allImportableFiles) {
-            String baseEventName = topEventName;
-            if (f.getParentFile().equals(topDir)) {
-                baseEventName = topEventName;
-            } else {
-                baseEventName = f.getParentFile().getName();
+            String eventName = calculateEventName(f, topEventName, topDir);
+            if (!eventMapping.containsKey(eventName)) {
+                eventMapping.put(eventName, new LinkedList<>());
             }
-
-            //process event name
-            baseEventName = baseEventName.trim();
-            if (baseEventName.matches("^\\[[0-9\\.\\-]+\\](.*)")) {
-                baseEventName = baseEventName.substring(baseEventName.indexOf("]") + 1).trim();
-            }
-            
-            if(baseEventName.trim().isEmpty()) baseEventName = System.currentTimeMillis()+"";
-
-            //baseEventName = Event.formatName(LocalDateTime.now(), baseEventName);
-
-            /*while(Event.forName(context, eventName) != null) {
-             eventName += "|";
-             }*/
-            if (!eventMapping.containsKey(baseEventName)) {
-                eventMapping.put(baseEventName, new LinkedList<>());
-            }
-            eventMapping.get(baseEventName).add(f);
+            eventMapping.get(eventName).add(f);
         }
 
         /**
          * ADD DATE TO EVENT NAME *
          */
         /*for (Entry<String, List<File>> entry : eventMapping.entrySet()) {
-            LocalDateTime[] timeBounds = entry.getValue().stream()
-                    .map(f -> ImageCreationDateLoader.getCreationDateTime(f)).sorted().toArray(LocalDateTime[]::new);
+         LocalDateTime[] timeBounds = entry.getValue().stream()
+         .map(f -> ImageCreationDateLoader.getCreationDateTime(f)).sorted().toArray(LocalDateTime[]::new);
 
-            LocalDateTime startDT = timeBounds[0];
-            LocalDateTime endDT = timeBounds[timeBounds.length - 1];
+         LocalDateTime startDT = timeBounds[0];
+         LocalDateTime endDT = timeBounds[timeBounds.length - 1];
 
-            String oldEventName = entry.getKey();
-            String newEventName = TimeUtils.formatDateRange(startDT, endDT) + " " + oldEventName;
+         String oldEventName = entry.getKey();
+         String newEventName = TimeUtils.formatDateRange(startDT, endDT) + " " + oldEventName;
 
-            eventMapping.remove(oldEventName);
-            eventMapping.put(newEventName, entry.getValue());
-        }*/
-
+         eventMapping.remove(oldEventName);
+         eventMapping.put(newEventName, entry.getValue());
+         }*/
         int i = 0;
         for (String eventName : eventMapping.keySet()) {
             List<File> files = eventMapping.get(eventName);
@@ -133,8 +113,8 @@ public class AutomaticImportProcessor {
                 importer.startAsync((int value, int maximum, String msg, boolean error) -> {
                     SwingUtilities.invokeLater(() -> {
                         progressEntity.setValue(value, maximum);
-                        
-                        progressEntity.setText("(Import a"+importNum+"/"+eventMapping.size()+") "+eventName+") " + msg);
+
+                        progressEntity.setText("(Import a" + importNum + "/" + eventMapping.size() + ") " + eventName + ") " + msg);
 
                         if (value == maximum) {
                             progressEntity.markFinished();
@@ -185,5 +165,31 @@ public class AutomaticImportProcessor {
                 }
             }
         }
+    }
+
+    public static String calculateEventName(File f, String topEventName, File topDir) {
+        String baseEventName = topEventName;
+        if (topDir != null && f.getParentFile().equals(topDir)) {
+            baseEventName = topEventName;
+        } else {
+            baseEventName = f.getParentFile().getName();
+        }
+
+        //process event name
+        baseEventName = baseEventName.trim();
+        if (baseEventName.matches("^\\[[0-9\\.\\-]+\\](.*)")) {
+            baseEventName = baseEventName.substring(baseEventName.indexOf("]") + 1).trim();
+        }
+
+        if (baseEventName.trim().isEmpty()) {
+            baseEventName = System.currentTimeMillis() + "";
+        }
+
+            //baseEventName = Event.formatName(LocalDateTime.now(), baseEventName);
+
+        /*while(Event.forName(context, eventName) != null) {
+         eventName += "|";
+         }*/
+        return baseEventName;
     }
 }

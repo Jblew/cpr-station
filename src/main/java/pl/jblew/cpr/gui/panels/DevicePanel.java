@@ -28,6 +28,7 @@ import pl.jblew.cpr.gui.MainPanel;
 import pl.jblew.cpr.gui.MainWindow;
 import pl.jblew.cpr.gui.components.browser.SwingFileBrowser;
 import pl.jblew.cpr.gui.util.CPRProgressBarUI;
+import pl.jblew.cpr.gui.windows.CrawlerWindow;
 import pl.jblew.cpr.gui.windows.ImportWindow;
 import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.logic.io.CarrierMaker;
@@ -150,6 +151,12 @@ public class DevicePanel extends MainPanel {
         northPanel.add(buttonPanel);
         add(northPanel, BorderLayout.NORTH);
 
+        JButton scanAllButton = new JButton("Skanuj wszystko");
+        scanAllButton.addActionListener((ActionEvent e) -> {
+            SwingUtilities.invokeLater(() -> 
+                    new CrawlerWindow(context, deviceName, browser.getCWD()));
+        });
+        
         JButton importSelectedButton = new JButton("Importuj zaznaczone");
         importSelectedButton.addActionListener((ActionEvent e) -> {
             SwingUtilities.invokeLater(() -> {
@@ -159,16 +166,17 @@ public class DevicePanel extends MainPanel {
                 }
             });
         });
-        JButton importDirButton = new JButton("Importuj katalog i podkatalogi");
+        JButton importDirButton = new JButton("Importuj wszystko");
         importDirButton.addActionListener((ActionEvent e) -> {
             SwingUtilities.invokeLater(() -> {
                 new ImportWindow(context, new File[]{browser.getCWD()});
             });
         });
 
-        
+        browser.addComponentToToolPanel(scanAllButton);
         browser.addComponentToToolPanel(importSelectedButton);
         browser.addComponentToToolPanel(importDirButton);
+        
 
         JPanel browserPanel = new JPanel();
         browserPanel.setLayout(new BorderLayout());

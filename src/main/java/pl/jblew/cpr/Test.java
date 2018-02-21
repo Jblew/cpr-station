@@ -8,7 +8,6 @@ package pl.jblew.cpr;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -25,7 +24,9 @@ public class Test {
      * @param args the command line arguments
      */
     public static void main(String[] args) throws InterruptedException {
-        File f1 = new File("/Users/teofil/cmp/EPSN0135.JPG");
+        System.out.println("System: "+System.getProperty("os.name"));
+        
+        /*File f1 = new File("/Users/teofil/cmp/EPSN0135.JPG");
         File f2 = new File("/Users/teofil/cmp/2006.07.06-10.54.40.jpg");
 
         try {
@@ -103,7 +104,7 @@ public class Test {
         }
         else {
             System.out.println(md5_1+" | "+md5_2);
-        }
+        }*/
     }
 
 }

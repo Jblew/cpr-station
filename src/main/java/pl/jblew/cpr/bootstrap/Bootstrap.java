@@ -100,7 +100,7 @@ public class Bootstrap {
             context.deviceDetector.addStorageDevicePresenceListener(gui.getTreePanel().getCarriersNode());
             context.deviceDetector.addStorageDevicePresenceListener(new AutomaticImportListener(context));
             context.deviceDetector.addStorageDevicePresenceListener(integrityChecker);
-            context.deviceDetector.start();
+            context.deviceDetector.start(this);
         });
 
         DatabaseDetector dbDetector = new DatabaseDetector();

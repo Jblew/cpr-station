@@ -18,12 +18,15 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.samuelcampos.usbdrivedectector.USBDeviceDetectorManager;
 import net.samuelcampos.usbdrivedectector.USBStorageDevice;
 import net.samuelcampos.usbdrivedectector.events.DeviceEventType;
 import net.samuelcampos.usbdrivedectector.events.USBStorageEvent;
+import pl.jblew.cpr.bootstrap.Bootstrap;
 import pl.jblew.cpr.db.DatabaseManager;
 import pl.jblew.cpr.logic.Carrier;
 import pl.jblew.cpr.util.NamingThreadFactory;
@@ -39,92 +42,70 @@ public class DeviceDetectorProcess {
     private final Map<String, File> devices = new HashMap<>();
     private final BlockingQueue<Runnable> executeOnDevicesChange = new LinkedBlockingQueue<>();
     private final ExecutorService executor = Executors.newSingleThreadExecutor(new NamingThreadFactory("device-detector"));
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
     public DeviceDetectorProcess(EventBus eBus_) {
         eBus = eBus_;
     }
 
-    public void start() {
+    public void start(Bootstrap bootstrap) {
         new Thread(() -> {
             USBDeviceDetectorManager detectorManager = new USBDeviceDetectorManager(2 * 1000);
             for (USBStorageDevice device : detectorManager.getRemovableDevices()) {
-                Logger.getLogger(getClass().getName()).info("USB device detected: \"" + device.getSystemDisplayName() + "\". Writable: " + device.getRootDirectory().canWrite());
+                changeDeviceState(device.getSystemDisplayName(), device.getRootDirectory(),
+                        DeviceChange.CONNECTED);
+            }
+            detectorManager.addDriveListener((USBStorageEvent usbse) -> {
+
+                if (usbse.getEventType() == DeviceEventType.CONNECTED) {
+                    if (!devices.containsKey(usbse.getStorageDevice().getSystemDisplayName())) {
+                        changeDeviceState(usbse.getStorageDevice().getSystemDisplayName(), usbse.getStorageDevice().getRootDirectory(),
+                                DeviceChange.CONNECTED);
+                    }
+                } else if (usbse.getEventType() == DeviceEventType.REMOVED) {
+                    changeDeviceState(usbse.getStorageDevice().getSystemDisplayName(), usbse.getStorageDevice().getRootDirectory(),
+                            DeviceChange.DISCONNECTED);
+                }
+
+            });
+
+        }).start();
+
+        bootstrap.addShutdownTask(() -> {
+            scheduler.shutdown();
+            try {
+                scheduler.awaitTermination(10, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException ex) {
+                Logger.getLogger(DeviceDetectorProcess.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            scheduler.shutdownNow();
+        });
+
+        boolean isOSX = (System.getProperty("os.name").startsWith("Mac OS"));
+        scheduler.scheduleAtFixedRate(() -> {
+            if (isOSX) {
+                for (File deviceRoot : new File("/Volumes").listFiles((f, name) -> !name.startsWith("."))) {
+                    synchronized (devices) {
+                        if (!devices.containsKey(deviceRoot.getName())) {
+                            System.out.println("!!!OSX poll found new device: " + deviceRoot.getName());
+                            changeDeviceState(deviceRoot.getName(), deviceRoot, DeviceChange.CONNECTED);
+                        }
+                    }
+                }
 
                 synchronized (devices) {
-                    devices.put(device.getSystemDisplayName(), device.getRootDirectory());
-                }
+                    for (String deviceName : devices.keySet()) {
+                        File deviceRoot = devices.get(deviceName);
+                        if (!deviceRoot.exists() || !deviceRoot.canRead()) {
+                            Logger.getLogger(getClass().getName()).info("Cannot read from device \"" + deviceRoot + "\". Removing device from list.");
 
-                Object[] tmpList;
-                synchronized (listeners) {
-                    tmpList = listeners.toArray(new Object[]{});
-                }
-                for (Object listenerO : tmpList) {
-                    if (listenerO instanceof StorageDevicePresenceListener) {
-                        ((StorageDevicePresenceListener) listenerO).storageDeviceConnected(device.getRootDirectory(), device.getSystemDisplayName());
-                    } else if (listenerO instanceof WeakReference) {
-                        WeakReference<StorageDevicePresenceListener> ref = (WeakReference<StorageDevicePresenceListener>) listenerO;
-                        StorageDevicePresenceListener listener = ref.get();
-                        if (listener != null) {
-                            listener.storageDeviceConnected(device.getRootDirectory(), device.getSystemDisplayName());
-                        } else {
-                            synchronized (listeners) {
-                                listeners.remove(listenerO);
-                            }
+                            changeDeviceState(deviceRoot.getName(), deviceRoot, DeviceChange.DISCONNECTED);
                         }
                     }
                 }
             }
-            detectorManager.addDriveListener((USBStorageEvent usbse) -> {
+        }, 2, 2, TimeUnit.SECONDS);
 
-                synchronized (devices) {
-                    if (usbse.getEventType() == DeviceEventType.CONNECTED) {
-                        devices.put(usbse.getStorageDevice().getSystemDisplayName(), usbse.getStorageDevice().getRootDirectory());
-                    } else if (usbse.getEventType() == DeviceEventType.REMOVED) {
-                        devices.remove(usbse.getStorageDevice().getSystemDisplayName());
-                    }
-
-                }
-
-                Object[] tmpList;
-                synchronized (listeners) {
-                    tmpList = listeners.toArray(new StorageDevicePresenceListener[]{});
-                }
-                for (Object listenerO : tmpList) {
-                    StorageDevicePresenceListener listener = null;
-                    if (listenerO instanceof StorageDevicePresenceListener) {
-                        listener = ((StorageDevicePresenceListener) listenerO);
-
-                    } else if (listenerO instanceof WeakReference) {
-                        WeakReference<StorageDevicePresenceListener> ref = (WeakReference<StorageDevicePresenceListener>) listenerO;
-                        listener = ref.get();
-                        if (listener == null) {
-                            synchronized (listeners) {
-                                listeners.remove(listenerO);
-                            }
-                        }
-                    }
-                    if (listener != null) {
-                        if (usbse.getEventType() == DeviceEventType.CONNECTED) {
-                            listener.storageDeviceConnected(usbse.getStorageDevice().getRootDirectory(), usbse.getStorageDevice().getSystemDisplayName());
-                        } else if (usbse.getEventType() == DeviceEventType.REMOVED) {
-                            listener.storageDeviceDisconnected(usbse.getStorageDevice().getRootDirectory(), usbse.getStorageDevice().getSystemDisplayName());
-                        }
-                    }
-                }
-
-                if (!executeOnDevicesChange.isEmpty()) {
-                    while (!executeOnDevicesChange.isEmpty()) {
-                        try {
-                            executor.submit(executeOnDevicesChange.take());
-                        } catch (InterruptedException ex) {
-                            Logger.getLogger(DatabaseManager.class.getName()).log(Level.SEVERE, null, ex);
-                        }
-                    }
-                }
-            });
-            
-        }).start();
-        
         /*File[] roots = File.listRoots();
 
          if (roots == null) {
@@ -136,15 +117,69 @@ public class DeviceDetectorProcess {
          }*/
     }
 
+    private void changeDeviceState(String name, File rootDirectory, DeviceChange changeType) {
+        Logger.getLogger(getClass().getName()).info("USB device detected: \"" + name + "\". Writable: " + rootDirectory.canWrite());
+
+        synchronized (devices) {
+            if (changeType == DeviceChange.CONNECTED) {
+                devices.put(name, rootDirectory);
+            } else {
+                devices.remove(name);
+            }
+        }
+
+        Object[] tmpList;
+        synchronized (listeners) {
+            tmpList = listeners.toArray(new Object[]{});
+        }
+        for (Object listenerO : tmpList) {
+            if (listenerO instanceof StorageDevicePresenceListener) {
+                if (changeType == DeviceChange.CONNECTED) {
+                    ((StorageDevicePresenceListener) listenerO).storageDeviceConnected(rootDirectory, name);
+                } else {
+                    ((StorageDevicePresenceListener) listenerO).storageDeviceDisconnected(rootDirectory, name);
+                }
+            } else if (listenerO instanceof WeakReference) {
+                WeakReference<StorageDevicePresenceListener> ref = (WeakReference<StorageDevicePresenceListener>) listenerO;
+                StorageDevicePresenceListener listener = ref.get();
+                if (listener != null) {
+                    if (changeType == DeviceChange.CONNECTED) {
+                        listener.storageDeviceConnected(rootDirectory, name);
+                    } else {
+                        listener.storageDeviceDisconnected(rootDirectory, name);
+                    }
+                } else {
+                    synchronized (listeners) {
+                        listeners.remove(listenerO);
+                    }
+                }
+            }
+        }
+
+        notifyDeviceChangedListeners();
+    }
+
+    private void notifyDeviceChangedListeners() {
+        if (!executeOnDevicesChange.isEmpty()) {
+            while (!executeOnDevicesChange.isEmpty()) {
+                try {
+                    executor.submit(executeOnDevicesChange.take());
+                } catch (InterruptedException ex) {
+                    Logger.getLogger(DatabaseManager.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+        }
+    }
+
     public void addStorageDevicePresenceListener(StorageDevicePresenceListener l) {
         synchronized (listeners) {
             listeners.add(l);
         }
     }
-    
+
     public void addWeakStorageDevicePresenceListener(StorageDevicePresenceListener l) {
         synchronized (listeners) {
-            listeners.add(new WeakReference<StorageDevicePresenceListener>(l));
+            listeners.add(new WeakReference<>(l));
         }
     }
 
@@ -201,5 +236,9 @@ public class DeviceDetectorProcess {
         } else {
             return null;
         }
+    }
+
+    private enum DeviceChange {
+        CONNECTED, DISCONNECTED
     }
 }

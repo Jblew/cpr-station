@@ -14,11 +14,13 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import pl.jblew.cpr.bootstrap.Context;
 import pl.jblew.cpr.gui.panels.ProgressListPanel;
 import pl.jblew.cpr.logic.integritycheck.Validator;
+import pl.jblew.cpr.logic.io.MD5Util;
 
 /**
  *
@@ -207,6 +209,24 @@ public class MFile implements Comparable<MFile> {
     @Override
     public String toString() {
         return "MFile{" + "id=" + id + ", name=" + filename + '}';
+    }
+    
+    public static boolean checkIfImported(Context c, File f) {
+        String md5 = MD5Util.calculateMD5(f);
+        AtomicBoolean imported = new AtomicBoolean(false);
+        try {
+            c.dbManager.executeInDBThreadAndWait(() -> {
+                try {
+                    if(c.dbManager.getDaos().getMfileDao().queryForEq("md5", md5).size() > 0) imported.set(true);
+                } catch (SQLException ex) {
+                    Logger.getLogger(MFile.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            });
+        } catch (InterruptedException ex) {
+            Logger.getLogger(MFile.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        return imported.get();
     }
 
     public static class Localized implements Comparable<MFile.Localized> {
